@@ -4,7 +4,7 @@ Optional helper programs for the [MMGen online/offline Bitcoin wallet][6]
 
 Included in: https://github.com/mmgen/MMGenLive
 
-Depends on: https://github.com/mmgen/mmgen
+Requires: https://github.com/mmgen/mmgen
 
 The node tools are Linux-only for now
 
