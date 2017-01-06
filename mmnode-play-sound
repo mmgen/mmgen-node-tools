@@ -1,0 +1,55 @@
+#!/usr/bin/python
+#
+# mmgen = Multi-Mode GENerator, command-line Bitcoin cold storage solution
+# Copyright (C)2013-2016 Philemon <mmgen-py@yandex.com>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+"""
+mmnode-play-sound: play a sound with controlled volume
+"""
+
+import sys
+from mmgen.util import die
+from mmgen.node_tools.Sound import *
+from mmgen.share import Opts
+volume = 100
+
+opts_data = {
+	'prog_name': sys.argv[0].split('/')[-1],
+	'desc': 'Play a sound file at controlled volume',
+	'usage': '[opts]',
+	'options': """
+-h, --help       Print this help message
+-v, --volume=  n Adjust sound volume by percentage 'n' (default: {})
+""".format(volume)
+}
+
+opts,args = Opts.parse_opts(sys.argv,opts_data)[:2]
+
+if 'volume' in opts:
+	volume = opts['volume']
+	try:
+		volume = int(volume)
+		assert 1 <= volume <= 120
+	except:
+		die(1,'Sound volume must be an integer between 1 and 120')
+
+if len(args) != 1:
+	die(1,'You must supply a sound file')
+
+try:    os.stat(args[0])
+except: die(1,"Couldn't stat file '{}'".format(args[0]))
+
+play_sound(args[0],volume)
