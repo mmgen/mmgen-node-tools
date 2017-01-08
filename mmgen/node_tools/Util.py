@@ -40,7 +40,11 @@ def do_system(cmd,testing=False,shell=False):
 	else:
 		return subprocess.call((cmd if shell else cmd.split()),shell,stderr=subprocess.PIPE)
 
-def get_url(url,gzip_ok=False,proxy=None,timeout=60,verbose=False):
+def get_url(url,gzip_ok=False,proxy=None,timeout=60,verbose=False,debug=False):
+	if debug:
+		print 'get_url():'
+		print '  url', url
+		print '  gzip_ok:',gzip_ok, 'proxy:',proxy, 'timeout:',timeout, 'verbose:',verbose
 	import pycurl,cStringIO
 	c = pycurl.Curl()
 	c_out = cStringIO.StringIO()

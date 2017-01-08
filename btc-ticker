@@ -67,7 +67,7 @@ def update_fx(a,b,debug=False):
 	if debug:
 		with open('/tmp/ticker.out') as f: text = f.read()
 	else:
-		text = get_url('{}/q?s={}{}'.format(fx_host,a,b),gzip_ok=True,proxy=proxy)
+		text = get_url('{}/q?s={}{}'.format(fx_host,a,b),gzip_ok=True,proxy=proxy,debug=debug_curl)
 	if not text: return False
 	import re
 	ret = re.split('yfs_l10_{}{}=.+?>'.format(a,b),text,maxsplit=1)[1].split('<',1)[0][:10]
@@ -140,6 +140,7 @@ opts_data = {
 -a, --alarm-clock-only   Disable ticker, use as alarm clock only
 -c, --cur-ticker-only    Display only current exchange's ticker price
 -d, --debug              Debug mode.  Use saved HTTP data from files
+-D, --debug-curl         Debug curl
 -l, --log=             l Log all data to file '{lf}' at levels 'l' (comma-separated: {lls})
 -n, --num-digits=      n Display 'n' number of big digits
 -p, --poll-intervals=i1[,i2] Poll servers every 'i' seconds (default: '{pi}')
@@ -183,6 +184,9 @@ CONFIGURED EXCHANGES:
 
 opts,args = Opts.parse_opts(sys.argv,opts_data)[:2]
 
+debug_curl = 'debug_curl' in opts
+proxy = opts['proxy'] if 'proxy' in opts else None
+
 # Global var: the currently displayed exchange
 if 'alarm_clock_only' in opts:
 	num_digits = 4
@@ -199,7 +203,6 @@ else:
 			msg('OK')
 		else:
 			die_pause(1,'Unable to get {}/{} exchange rate'.format(a.upper(),b.upper()))
-	if 'proxy' in opts: proxy = opts['proxy']
 
 	if 'xchgs' in opts:
 		usr_xchgs = [int(i)-1 for i in opts['xchgs'].split(',')]
@@ -561,7 +564,7 @@ def get_market_data(g,d,connfail_msg='full'):
 
 	while True:
 		try:
-			text = get_url(d.url,proxy=proxy)
+			text = get_url(d.url,proxy=proxy,debug=debug_curl)
 			log(2,g,d.desc,text)
 			return eval(text)
 		except KeyboardInterrupt:
