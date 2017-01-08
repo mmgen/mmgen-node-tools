@@ -446,7 +446,9 @@ def display_ac_info():
 		'{}'.format(ac_fmt),
 		'snd vol: {}%'.format(int(sound_vol)),
 		'{}'.format((yellow('unmuted'),'muted')[mute_alrms]),
-		'{}'.format(blue(audio_host[:infoW] or 'localhost'))
+		'{}'.format(blue(audio_host[:infoW] or 'localhost')),
+		'',
+		"'?' for help"
 		)
 	r = CUR_RIGHT(bigDigitsW+1)
 	msg_r(CUR_HOME+r+('\n'+r).join(info_lines))
@@ -700,6 +702,8 @@ def input_loop():
 	global ga,sound_vol,alrm_clock,quit,mute_alrms
 	from mmgen.node_tools.Term import get_keypress
 
+	if 'alarm_clock_only' not in opts:
+		msg("Type '?' for help after the ticker starts")
 	ch = get_keypress("Hit 'q' to quit, any other key to continue: ")
 	if ch == 'q': die(0,'')
 
