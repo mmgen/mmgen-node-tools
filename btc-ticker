@@ -101,13 +101,13 @@ for g in xchgs:
 	for k in sources:
 		setattr(g,k,Src())
 		setattr(getattr(g,k),'desc',sources[k])
-
+# Gemini - available symbols: btcusd ethbtc ethusd
 for g in [xchgs[0]]:
 	g.cur = 'USD'
-	g.Desc = 'BitFinex'
-	g.desc = 'bitfinex'
-	g.desc_short = 'bfx'
-	g.tc.url = 'https://api.bitfinex.com/v1/pubticker/btcusd'
+	g.Desc = 'Gemini'
+	g.desc = 'gemini'
+	g.desc_short = 'gem'
+	g.tc.url = 'https://api.gemini.com/v1/pubticker/btcusd'
 	g.poll_secs = 60
 	g.cur_sign = '$'
 	g.xcur_sign = '¥'
@@ -129,6 +129,20 @@ for g in [xchgs[1]]:
 	g.hi_alrm = 999999
 	g.lo_alrm = 1
 	g.cc_unit = 'BTC'
+
+# for g in [xchgs[2]]:
+# 	g.cur = 'USD'
+# 	g.Desc = 'BitFinex'
+# 	g.desc = 'bitfinex'
+# 	g.desc_short = 'bfx'
+# 	g.tc.url = 'https://api.bitfinex.com/v1/pubticker/btcusd'
+# 	g.poll_secs = 60
+# 	g.cur_sign = '$'
+# 	g.xcur_sign = '¥'
+# 	g.fiat_precision = 2
+# 	g.hi_alrm = 999999
+# 	g.lo_alrm = 1
+# 	g.cc_unit = 'BTC'
 
 opts_data = {
 	'prog_name': sys.argv[0].split('/')[-1],
@@ -462,7 +476,8 @@ def display_ac_info():
 def display_ticker(g,called_by_clock=False):
 	if not g: return
 	d = g.tc
-	if not hasattr(d,'timestamp'): return
+	log(3,'display_ticker(): ' + repr(d.__dict__))
+	if not hasattr(d,'timestamp'): return # DEBUG
 
 	avg = sum((d.bal[i] or d.save_bal[i]) for i in range(3)) / 3
 	alrm,lb,hb,rst = (
@@ -637,18 +652,24 @@ def ticker_loop(g):
 		with dlock:
 			if g.desc == 'bitfinex':
 				a = ret
-				ts,bal = 'timestamp',('bid','ask','last_price')
-			else:
+				bal = 'bid','ask','last_price'
+				ts = ret['timestamp']
+			elif g.desc == 'gemini':
+				a = ret
+				bal = 'bid','ask','last'
+				ts = ret['volume']['timestamp']
+			elif g.desc in ('okcoin','huobi'):
 				try:
 					a = ret['ticker']
 				except:
 					log(1,errmsg); continue
-				ts = ('time','date')[g.desc=='okcoin']
 				bal = 'buy','sell','last'
+				ts = ret[('time','date')[g.desc=='okcoin']]
 # okc: {"date":"1477932232","ticker":{"buy":"4844.13","high":"4873.36","last":"4844.16","low":"4660.0","sell":"4844.14","vol":"2992115.73393084"}}
+# gemini: {"bid":"1025.64","ask":"1026.93","volume":{"BTC":"1710.8752181914","USD":"1734356.065049020336","timestamp":1486377600000},"last":"1026.93"}
 
 			try:
-				d.timestamp = int(float(ret[ts]))
+				d.timestamp = int(float(ts))
 			except:
 				log(1,errmsg); continue
 
@@ -657,6 +678,8 @@ def ticker_loop(g):
 				d.bal = tuple([float(a[k]) for k in bal])
 			except:
 				log(1,errmsg); continue
+
+			log(3,'{}: timestamp {}, bal {}'.format(g.desc,d.timestamp,d.bal))
 
 		if killwait(g,d): break
 
