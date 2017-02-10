@@ -101,9 +101,13 @@ for g in xchgs:
 	for k in sources:
 		setattr(g,k,Src())
 		setattr(getattr(g,k),'desc',sources[k])
-# Gemini - available symbols: btcusd ethbtc ethusd
+
 for g in [xchgs[0]]:
 	g.cur = 'USD'
+# 	g.Desc = 'OKCoin USD'
+# 	g.desc = 'okcoin_usd'
+# 	g.desc_short = 'okc'
+# 	g.tc.url = 'https://www.okcoin.com/api/v1/ticker.do?symbol=btc_usd'
 	g.Desc = 'Gemini'
 	g.desc = 'gemini'
 	g.desc_short = 'gem'
@@ -118,8 +122,8 @@ for g in [xchgs[0]]:
 
 for g in [xchgs[1]]:
 	g.cur = 'CNY'
-	g.Desc = 'OKCoin'
-	g.desc = 'okcoin'
+	g.Desc = 'OKCoin CNY'
+	g.desc = 'okcoin_cny'
 	g.desc_short = 'okc'
 	g.tc.url = 'https://www.okcoin.cn/api/v1/ticker.do?symbol=btc_cny'
 	g.poll_secs = 60
@@ -130,19 +134,18 @@ for g in [xchgs[1]]:
 	g.lo_alrm = 1
 	g.cc_unit = 'BTC'
 
-# for g in [xchgs[2]]:
 # 	g.cur = 'USD'
 # 	g.Desc = 'BitFinex'
 # 	g.desc = 'bitfinex'
 # 	g.desc_short = 'bfx'
 # 	g.tc.url = 'https://api.bitfinex.com/v1/pubticker/btcusd'
-# 	g.poll_secs = 60
-# 	g.cur_sign = '$'
-# 	g.xcur_sign = '¥'
-# 	g.fiat_precision = 2
-# 	g.hi_alrm = 999999
-# 	g.lo_alrm = 1
-# 	g.cc_unit = 'BTC'
+
+# Gemini - available symbols: btcusd ethbtc ethusd
+# 	g.cur = 'USD'
+# 	g.Desc = 'Gemini'
+# 	g.desc = 'gemini'
+# 	g.desc_short = 'gem'
+# 	g.tc.url = 'https://api.gemini.com/v1/pubticker/btcusd'
 
 opts_data = {
 	'prog_name': sys.argv[0].split('/')[-1],
@@ -569,6 +572,7 @@ def get_market_data(g,d,connfail_msg='full'):
 		fn = 'debug_market_data/%s_ticker.json' % g.desc
 		try:
 			with open(fn) as f: text = f.read()
+			log(3,'get_market_data(): {} {}'.format(g.desc,text))
 			return eval(text)
 		except:
 			die(2,'Unable to open datafile %s' % fn)
@@ -643,6 +647,7 @@ def ticker_loop(g):
 	d = g.tc
 	while True:
 		ret = get_market_data(g,d)
+		log(3,'get_market_data() returned: {}'.format(repr(ret)))
 
 		if not ret: # kill flag was set
 			if quit: break
@@ -650,6 +655,7 @@ def ticker_loop(g):
 
 		errmsg = 'ticker_loop: HTTP returned bad data'
 		with dlock:
+			millisec = False
 			if g.desc == 'bitfinex':
 				a = ret
 				bal = 'bid','ask','last_price'
@@ -657,21 +663,30 @@ def ticker_loop(g):
 			elif g.desc == 'gemini':
 				a = ret
 				bal = 'bid','ask','last'
-				ts = ret['volume']['timestamp']
-			elif g.desc in ('okcoin','huobi'):
+				try:
+					ts = ret['volume']['timestamp']
+				except:
+					log(1,errmsg); continue
+				millisec = True
+			elif g.desc in ('okcoin_usd','okcoin_cny','huobi'):
 				try:
 					a = ret['ticker']
 				except:
 					log(1,errmsg); continue
 				bal = 'buy','sell','last'
-				ts = ret[('time','date')[g.desc=='okcoin']]
-# okc: {"date":"1477932232","ticker":{"buy":"4844.13","high":"4873.36","last":"4844.16","low":"4660.0","sell":"4844.14","vol":"2992115.73393084"}}
+				ts = ret[('time','date')[g.desc[:6]=='okcoin']]
+			else:
+				die(1,"Can't handle symbol '{}'".format(g.desc))
+# okcoin.cn CNY: {"date":"1477932232","ticker":{"buy":"4844.13","high":"4873.36","last":"4844.16","low":"4660.0","sell":"4844.14","vol":"2992115.73393084"}}
 # gemini: {"bid":"1025.64","ask":"1026.93","volume":{"BTC":"1710.8752181914","USD":"1734356.065049020336","timestamp":1486377600000},"last":"1026.93"}
+# okcoin.com USD {"date":"1486581152","ticker":{"buy":"1057.59","high":"1070.0","last":"1059.63","low":"1002.51","sell":"1058.34","vol":"4118.856"}}
 
 			try:
 				d.timestamp = int(float(ts))
 			except:
 				log(1,errmsg); continue
+
+			if millisec: d.timestamp /= 1000
 
 			d.save_bal = d.bal
 			try:
