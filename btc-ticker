@@ -33,6 +33,8 @@ from mmgen.node_tools.Util import *
 from mmgen.node_tools.Sound import *
 from mmgen.node_tools.Term import *
 
+die_pause(1,'Ticker temporarily disabled') # DEBUG
+
 from mmgen.color import *
 init_color()
 
