@@ -39,7 +39,12 @@ setup(
 		platforms    = 'Linux, MS Windows, Raspberry Pi',
 		keywords     = g.keywords,
 		packages     = ['mmgen.node_tools'],
-		scripts      = ['btc-ticker','mmnode-play-sound'],
+		scripts      = [
+			'btc-ticker',
+			'mmnode-play-sound',
+			'mmnode-netrate',
+			'mmnode-peerblocks',
+			],
 		data_files = [('share/mmgen/node_tools/audio', [
 				'data_files/audio/ringtone.wav',     # source files must have 0644 mode
 				'data_files/audio/Positive.wav',
