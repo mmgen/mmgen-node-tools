@@ -1,0 +1,39 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+
+import time
+from mmgen.common import *
+
+opts_data = {
+	'desc':    'Bitcoin daemon network rate monitor',
+	'usage':   '[opts]',
+	'options': """
+-h, --help      Print this help message
+--, --longhelp  Print help message for long options (common options)
+"""
+}
+
+cmd_args = opts.init(opts_data)
+
+ERASE_LINE,CUR_UP = '\033[K','\033[1A'
+c = bitcoin_connection()
+
+def do_loop():
+	def get_data():
+		d = c.getnettotals()
+		return [float(e) for e in (d['totalbytesrecv'],d['totalbytessent'],d['timemillis'])]
+
+	r,s,t = get_data()
+	time.sleep(0.2)
+	while True:
+		rs,ss,ts = r,s,t
+		r,s,t = get_data()
+		td = t-ts
+		sys.stderr.write('\rrcvd: {:9.2f} kB/s\nsent: {:9.2f} kB/s '.format((r-rs)/td,(s-ss)/td))
+		time.sleep(2)
+		sys.stderr.write('{}{}{}'.format(ERASE_LINE,CUR_UP,ERASE_LINE))
+
+try:
+	do_loop()
+except KeyboardInterrupt:
+	sys.stderr.write('\n')

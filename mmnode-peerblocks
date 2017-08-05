@@ -1,0 +1,97 @@
+#!/usr/bin/env python
+# -*- coding: UTF-8 -*-
+
+import time,threading
+from mmgen.common import *
+
+opts_data = {
+	'desc':    'List blocks in flight, disconnect stalling nodes',
+	'usage':   '[opts]',
+	'options': """
+-h, --help      Print this help message
+--, --longhelp  Print help message for long options (common options)
+"""
+}
+
+cmd_args = opts.init(opts_data)
+
+colors = ['\033[38;5;%s;1m' % c for c in 238,240,242,244,246,247,249,251,253,255]
+_red,_reset = '\033[31m','\033[0m'
+
+ERASE_ALL,ERASE_LINE,CUR_HOME,CUR_HIDE,CUR_SHOW = \
+	'\033[J','\033[K','\033[H','\033[?25l','\033[?25h'
+
+import atexit
+def at_exit():
+	import os
+	os.system('stty sane')
+	sys.stderr.write('\n')
+atexit.register(at_exit)
+
+bc = bitcoin_connection()
+
+msg_r(CUR_HOME+ERASE_ALL)
+
+def do_display():
+	from mmgen.term import get_terminal_size
+	global data
+	count = 1
+	while True:
+		twid = get_terminal_size()[0]
+		data = bc.getpeerinfo()
+		min_t = None
+		lines = []
+		with lock:
+			msg('{}{}{}ACTIVE PEERS ({}) - poll {}'.format(
+				CUR_HOME,ERASE_ALL,CUR_HOME,len(data),count))
+			for d in data:
+				line = { 'id': d['id'], 'data': [] }
+				if 'inflight' in d and d['inflight']:
+					blks = [str(e) for e in d['inflight']]
+					min_p = min(e for e in d['inflight'])
+					if not min_t or min_t > min_p: min_t = min_p
+					line_d = ' '.join(blks)[:twid-6]
+					blks = blks[:len(line_d) - len(line_d.replace(' ','')) + 1]
+					blks[-1] = blks[-1][:len(line_d.split(' ')[-1])]
+					line['data'] = [[colors[int(i)%10],i,_reset] for i in blks if i]
+				else:
+					line['data'] = []
+				lines.append(line)
+			for line in lines:
+				d = ' '.join([(a,_red)[int(b)==min_t]+b+c for a,b,c in line['data']])
+				sys.stderr.write('\r{} {:>3}: {}\n'.format(ERASE_LINE,line['id'],d))
+			msg_r(ERASE_ALL+'Hit ENTER for disconnect prompt: ')
+		time.sleep(2)
+		count += 1
+
+lock = threading.Lock()
+data = {}
+
+t = threading.Thread(target=do_display,name='display')
+t.daemon = True
+t.start()
+
+def do_loop():
+	global data
+	while True:
+		raw_input()
+		with lock:
+			ids = [str(d['id']) for d in data]
+			msg('{}{}{}ACTIVE PEERS ({})'.format(CUR_HOME,ERASE_ALL,CUR_HOME,len(data)))
+			msg(' '+'\n '.join(['{:>3}: {:30} {}'.format(*[d[k] for k in 'id','addr','subver']) for d in data]))
+			reply = raw_input('Enter a peer number to disconnect> ')
+			if reply == '':
+				pass
+			elif reply in ids:
+				idx = ids.index(reply)
+				msg("Disconnecting peer {} ('{}')".format(reply,data[idx]['addr']))
+				bc.disconnectnode(data[idx]['addr'])
+				time.sleep(1.5)
+			else:
+				msg("'{}': invalid peer number".format(reply))
+				time.sleep(0.5)
+
+try:
+	do_loop()
+except KeyboardInterrupt:
+	pass
