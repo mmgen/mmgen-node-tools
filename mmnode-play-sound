@@ -26,7 +26,7 @@ from mmgen.node_tools.Sound import *
 from mmgen.share import Opts
 volume = 100
 
-opts_data = {
+opts_data = lambda: {
 	'prog_name': sys.argv[0].split('/')[-1],
 	'desc': 'Play a sound file at controlled volume',
 	'usage': '[opts]',

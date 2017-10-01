@@ -4,7 +4,7 @@
 import time
 from mmgen.common import *
 
-opts_data = {
+opts_data = lambda: {
 	'desc':    'Bitcoin daemon network rate monitor',
 	'usage':   '[opts]',
 	'options': """
