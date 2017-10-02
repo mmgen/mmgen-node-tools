@@ -1,0 +1,167 @@
+#!/usr/bin/env python
+#
+# mmgen = Multi-Mode GENerator, command-line Bitcoin cold storage solution
+# Copyright (C)2013-2017 Philemon <mmgen-py@yandex.com>
+#
+# This program is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+# FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+# details.
+#
+# You should have received a copy of the GNU General Public License along with
+# this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+mmgen-blocks-info: Display information about a block or range of blocks
+"""
+
+import time,re
+from mmgen.common import *
+
+opts_data = lambda: {
+	'desc':    'Display information about or find a transaction within a range of blocks',
+	'usage':   '[opts] +<last n blocks>|<block num>|<block num range>',
+	'options': """
+-h, --help            Print this help message
+--, --longhelp        Print help message for long options (common options)
+-H, --hashes          Display only block numbers and hashes
+-m, --miner-info      Display miner info in coinbase transaction
+-M, --raw-miner-info  Display miner info in uninterpreted form
+-s, --summary         Print the summary only
+-t, --transaction=t   Search for transaction 't' in specified block range
+
+If no block number is specified, the current block is assumed
+"""
+}
+
+cmd_args = opts.init(opts_data)
+
+if len(cmd_args) not in (0,1): opts.usage()
+if opt.raw_miner_info: opt.miner_info = True
+
+c = rpc_connection()
+cur_blk = c.getblockcount()
+
+arg = cmd_args[0] if cmd_args else None
+
+if not arg:
+	first = last = cur_blk
+elif arg[0] == '+' and is_int(arg[1:]):
+	last = cur_blk
+	first = last - int(arg[1:]) + 1
+elif is_int(arg):
+	first = last = int(arg)
+else:
+	try:
+		a,b = arg.split('-')
+		assert is_int(a) and is_int(b)
+		first,last = int(a),int(b)
+	except:
+		opts.usage()
+
+if first > last:
+	die(2,'{}: invalid block range'.format(arg))
+if last > cur_blk:
+	die(2,'Requested block number ({}) greater than current block height'.format(last))
+
+if opt.summary:
+	pass
+elif opt.transaction:
+	if len(opt.transaction) != 64 or not is_hex_str(opt.transaction):
+		die(2,'{}: invalid transaction id'.format(opt.transaction))
+elif opt.hashes:
+	Msg('{:<7} {}'.format('BLOCK','HASH'))
+else:
+	if opt.miner_info:
+		fs='{:<6} {:<19}{:>9} {:>6} {:>7} {:8} {}'
+		Msg(fs.format('BLOCK','DATE','INTERVAL','CONFS','SIZE','VERSION','MINER'))
+	else:
+		fs='{:<6} {:<19}{:>9} {:>6} {:>7} {}'
+		Msg(fs.format('BLOCK','DATE','INTERVAL','CONFS','SIZE','VERSION'))
+
+miner_strings = {
+	'Bixin':'Bixin',
+	'AntPool':'AntPool',
+	'Bitfury':'Bitfury',
+	'BTCC':'BTCC',
+	'BTC.COM':'BTC.COM',
+	'BTPOOL':'BTPOOL',
+	'ViaBTC':'ViaBTC',
+	'slush':'Slush',
+	'BitMinter':'BitMinter',
+	'BW.COM':'BW.COM',
+	'gbminers':'GBMiners',
+	'BitClub Network':'BitClub Network',
+	'bitcoin.com':'bitcoin.com',
+	'KanoPool':'KanoPool',
+	'BTC.TOP':'BTC.TOP',
+}
+
+total,prev_time = 0,None
+for i in range(first,last+1):
+	b = c.getblock(c.getblockhash(i))
+	total += b['size']
+	if opt.transaction:
+		if opt.transaction in b['tx']:
+			Msg('Requested transaction is in block {}'.format(i))
+			sys.exit(0)
+ 		msg('Checking block {}'.format(i))
+	else:
+		gmt = time.gmtime(b['mediantime'])
+		date = '{}-{:02}-{:02} {:02}:{:02}:{:02}'.format(*gmt[:6])
+		if prev_time == None:
+			b_prev = b if i == 0 else c.getblock(c.getblockhash(i-1))
+			first_time = prev_time = b_prev['mediantime']
+ 		et = b['mediantime'] - prev_time
+		prev_time = b['mediantime']
+		if opt.summary:
+			continue
+		if opt.hashes:
+			Msg('{:<7} {}'.format(i,b['hash']))
+		else:
+			d = (i,date,'{}:{:02}'.format(et/60,et%60),b['confirmations'],b['size'],b['versionHex'])
+			if opt.miner_info:
+				bd = c.getrawtransaction(b['tx'][0],1,on_fail='silent')
+				if type(bd) == tuple:
+					Msg(fs.format(*(d+('---',))))
+				else:
+					cb = unhexlify(bd['vin'][0]['coinbase'])
+					scb = re.sub('[^\w /-:,;.]','',cb)[1:]
+					if opt.raw_miner_info:
+						Msg(fs.format(*(d+(scb,))))
+					else:
+						for ms in miner_strings:
+							if ms in scb:
+								s = miner_strings[ms]
+								break
+						else:
+							if re.search('mined by',scb,flags=re.I):
+								s = scb.split('Mined by')[1].strip()
+							else:
+								s = '??'
+						Msg(fs.format(*(d+(('    ','NYA ')['NYA' in scb]+s,))))
+			else:
+				Msg(fs.format(*d))
+
+if opt.transaction:
+	from mmgen.rpc import rpc_error
+	if rpc_error(c.getmempoolentry(opt.transaction,on_fail='silent')):
+		Msg('\rTransaction not found in block range {}-{} or in mempool'.format(first,last))
+	else:
+		Msg('\rTransaction is in mempool')
+else:
+	blocks = last - first + 1
+	if blocks > 1:
+		fs2 = '{:<15} {}\n'
+ 		et = b['mediantime'] - first_time
+ 		ac = et / blocks
+		if not opt.summary: Msg('')
+		Msg_r(fs2.format('Range:','{}-{} ({} blocks)'.format(first,last,blocks)) +
+			  fs2.format('Avg size:',total/blocks) +
+			  fs2.format('MB/hr:','{:0.5f}'.format(float(total)*36/10000/et)) +
+			  fs2.format('Avg conf time:','{}:{:02}'.format(ac/60,ac%60)))
