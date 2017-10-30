@@ -45,7 +45,7 @@ cmd_args = opts.init(opts_data)
 if len(cmd_args) not in (0,1): opts.usage()
 if opt.raw_miner_info: opt.miner_info = True
 
-c = rpc_connection()
+c = rpc_init()
 cur_blk = c.getblockcount()
 
 arg = cmd_args[0] if cmd_args else None

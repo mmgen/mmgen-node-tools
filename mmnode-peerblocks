@@ -48,7 +48,7 @@ def at_exit():
 	sys.stderr.write('\n')
 atexit.register(at_exit)
 
-bc = rpc_connection()
+bc = rpc_init()
 
 msg_r(CUR_HOME+ERASE_ALL)
 
