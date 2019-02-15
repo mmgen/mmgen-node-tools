@@ -125,26 +125,26 @@ for i in range(first,last+1):
 		if opt.hashes:
 			Msg('{:<7} {}'.format(i,b['hash']))
 		else:
-			d = (i,date,'{}:{:02}'.format(et/60,et%60),b['confirmations'],b['size'],b['versionHex'])
+			d = (i,date,'{}:{:02}'.format(et//60,et%60),b['confirmations'],b['size'],b['versionHex'])
 			if opt.miner_info:
 				bd = c.getrawtransaction(b['tx'][0],1,on_fail='silent')
 				if type(bd) == tuple:
 					Msg(fs.format(*(d+('---',))))
 				else:
 					cb = unhexlify(bd['vin'][0]['coinbase'])
-					scb = re.sub('[^\w /-:,;.]','',cb)[1:]
+					scb = re.sub(b'[^\w /-:,;.]',b'',cb)[1:]
 					if opt.raw_miner_info:
-						Msg(fs.format(*(d+(scb,))))
+						Msg(fs.format(*(d+(scb.decode(),))))
 					else:
 						for ms in miner_strings:
-							if ms in scb:
+							if ms.encode() in scb:
 								s = miner_strings[ms]
 								break
 						else:
 							try:    s = scb.split('ined by')[1].strip()
 							except: s = '??'
-						nya_str = ('    ','NYA ')['NYA' in scb] if opt.nya else ''
-						Msg(fs.format(*(d+(nya_str+s,))))
+						nya_str = (b'    ',b'NYA ')[b'NYA' in scb] if opt.nya else b''
+						Msg(fs.format(*(d+(nya_str.decode()+s,))))
 			else:
 				Msg(fs.format(*d))
 
@@ -159,9 +159,9 @@ else:
 	if blocks > 1:
 		fs2 = '{:<15} {}\n'
 		et = b['mediantime'] - first_time
-		ac = et / blocks
+		ac = int(et / blocks)
 		if not opt.summary: Msg('')
 		Msg_r(  fs2.format('Range:','{}-{} ({} blocks)'.format(first,last,blocks)) +
-				fs2.format('Avg size:',total/blocks) +
+				fs2.format('Avg size:','{} bytes'.format(total//blocks)) +
 				fs2.format('MB/hr:','{:0.5f}'.format(float(total)*36/10000/et)) +
-				fs2.format('Avg conf time:','{}:{:02}'.format(ac/60,ac%60)))
+				fs2.format('Avg conf time:','{}:{:02}'.format(ac//60,ac%60)))

@@ -102,12 +102,12 @@ big_digits = {
 }
 
 _bnums_c,_bpunc_c = [[l.strip('\n') + ' ' * (big_digits[m]*big_digits['n'])
-	for l in big_digits[k][1:].decode('utf8').split('\n')]
-		for k,m in ('nums','w'),('punc','pw')]
+	for l in big_digits[k][1:].split('\n')]
+		for k,m in (('nums','w'),('punc','pw'))]
 
 _bnums_n,_bpunc_n = [[[l[0+(j*w):w+(j*w)] for l in i]
 					for j in range(big_digits[n])] for n,w,i in
-						('n',big_digits['w'],_bnums_c),('pn',big_digits['pw'],_bpunc_c)]
+						(('n',big_digits['w'],_bnums_c),('pn',big_digits['pw'],_bpunc_c))]
 
 def display_big_digits(s,pre='',suf=''):
 	s = [int((d,10,11)[(d in '.:')+(d==':')]) for d in s]

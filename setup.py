@@ -40,7 +40,6 @@ setup(
 		keywords     = g.keywords,
 		packages     = ['mmgen.node_tools'],
 		scripts      = [
-			'btc-ticker',
 			'mmnode-play-sound',
 			'mmnode-netrate',
 			'mmnode-peerblocks',
