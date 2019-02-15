@@ -35,7 +35,7 @@ opts_data = lambda: {
 
 cmd_args = opts.init(opts_data)
 
-colors = ['\033[38;5;%s;1m' % c for c in 238,240,242,244,246,247,249,251,253,255]
+colors = ['\033[38;5;%s;1m' % c for c in (238,240,242,244,246,247,249,251,253,255)]
 _red,_reset = '\033[31m','\033[0m'
 
 ERASE_ALL,ERASE_LINE,CUR_HOME,CUR_HIDE,CUR_SHOW = \
@@ -94,12 +94,12 @@ t.start()
 def do_loop():
 	global data
 	while True:
-		raw_input()
+		input()
 		with lock:
 			ids = [str(d['id']) for d in data]
 			msg('{}{}{}ACTIVE PEERS ({})'.format(CUR_HOME,ERASE_ALL,CUR_HOME,len(data)))
-			msg(' '+'\n '.join(['{:>3}: {:30} {}'.format(*[d[k] for k in 'id','addr','subver']) for d in data]))
-			reply = raw_input('Enter a peer number to disconnect> ')
+			msg(' '+'\n '.join(['{:>3}: {:30} {}'.format(*[d[k] for k in ('id','addr','subver')]) for d in data]))
+			reply = input('Enter a peer number to disconnect> ')
 			if reply == '':
 				pass
 			elif reply in ids:

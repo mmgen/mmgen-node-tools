@@ -42,12 +42,12 @@ def do_system(cmd,testing=False,shell=False):
 
 def get_url(url,gzip_ok=False,proxy=None,timeout=60,verbose=False,debug=False):
 	if debug:
-		print 'get_url():'
-		print '  url', url
-		print '  gzip_ok:',gzip_ok, 'proxy:',proxy, 'timeout:',timeout, 'verbose:',verbose
-	import pycurl,cStringIO
+		print('get_url():')
+		print('  url', url)
+		print('  gzip_ok:',gzip_ok, 'proxy:',proxy, 'timeout:',timeout, 'verbose:',verbose)
+	import pycurl,io
 	c = pycurl.Curl()
-	c_out = cStringIO.StringIO()
+	c_out = io.StringIO()
 	c.setopt(pycurl.WRITEFUNCTION,c_out.write)
 	c.setopt(pycurl.TIMEOUT,timeout)
 	c.setopt(pycurl.FOLLOWLOCATION,True)
@@ -118,4 +118,4 @@ def display_big_digits(s,pre='',suf=''):
 
 if __name__ == '__main__':
 	num = '2345.17'
-	print display_big_digits(num,pre='+ ',suf='  +')
+	print(display_big_digits(num,pre='+ ',suf='  +'))

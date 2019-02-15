@@ -25,7 +25,7 @@ class my_install_data(install_data):
 	def run(self):
 		sdir = os.path.join('data_files','audio')
 		for f in [e for e in os.listdir(sdir) if e[-4:] == '.wav']:
-			os.chmod(os.path.join(sdir,f),0644)
+			os.chmod(os.path.join(sdir,f),0o644)
 		install_data.run(self)
 
 setup(
