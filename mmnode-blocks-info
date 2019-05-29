@@ -23,10 +23,11 @@ mmgen-blocks-info: Display information about a block or range of blocks
 import time,re
 from mmgen.common import *
 
-opts_data = lambda: {
-	'desc':    'Display information about or find a transaction within a range of blocks',
-	'usage':   '[opts] +<last n blocks>|<block num>|<block num range>',
-	'options': """
+opts_data = {
+	'text': {
+		'desc':    'Display information about or find a transaction within a range of blocks',
+		'usage':   '[opts] +<last n blocks>|<block num>|<block num range>',
+		'options': """
 -h, --help            Print this help message
 --, --longhelp        Print help message for long options (common options)
 -H, --hashes          Display only block numbers and hashes
@@ -38,6 +39,7 @@ opts_data = lambda: {
 
 If no block number is specified, the current block is assumed
 """
+	}
 }
 
 cmd_args = opts.init(opts_data)

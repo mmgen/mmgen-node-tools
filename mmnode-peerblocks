@@ -23,13 +23,15 @@ mmgen-peerblocks: List blocks in flight, disconnect stalling nodes
 import time,threading
 from mmgen.common import *
 
-opts_data = lambda: {
-	'desc':    'List blocks in flight, disconnect stalling nodes',
-	'usage':   '[opts]',
-	'options': """
+opts_data = {
+	'text': {
+		'desc': 'List blocks in flight, disconnect stalling nodes',
+		'usage':   '[opts]',
+		'options': """
 -h, --help      Print this help message
 --, --longhelp  Print help message for long options (common options)
 """
+	}
 }
 
 cmd_args = opts.init(opts_data)

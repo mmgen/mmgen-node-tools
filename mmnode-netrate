@@ -23,13 +23,15 @@ mmgen-netrate: Bitcoin daemon network rate monitor
 import time
 from mmgen.common import *
 
-opts_data = lambda: {
-	'desc':    'Bitcoin daemon network rate monitor',
-	'usage':   '[opts]',
-	'options': """
+opts_data = {
+	'text': {
+		'desc': 'Bitcoin daemon network rate monitor',
+		'usage':   '[opts]',
+		'options': """
 -h, --help      Print this help message
 --, --longhelp  Print help message for long options (common options)
 """
+	}
 }
 
 cmd_args = opts.init(opts_data)
