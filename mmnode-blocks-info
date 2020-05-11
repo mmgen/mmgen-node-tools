@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 # mmgen = Multi-Mode GENerator, command-line Bitcoin cold storage solution
-# Copyright (C)2013-2017 Philemon <mmgen-py@yandex.com>
+# Copyright (C)2013-2020 The MMGen Project <mmgen@tuta.io>
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -21,9 +21,12 @@ mmgen-blocks-info: Display information about a block or range of blocks
 """
 
 import time,re
+from collections import namedtuple
 from mmgen.common import *
+from decimal import Decimal
 
 opts_data = {
+	'sets': [('raw_miner_info',True,'miner_info',True)],
 	'text': {
 		'desc':    'Display information about or find a transaction within a range of blocks',
 		'usage':   '[opts] +<last n blocks>|<block num>|<block num range>',
@@ -32,9 +35,10 @@ opts_data = {
 --, --longhelp        Print help message for long options (common options)
 -H, --hashes          Display only block numbers and hashes
 -m, --miner-info      Display miner info in coinbase transaction
--n, --nya             Display NYA (New York Agreement) support
 -M, --raw-miner-info  Display miner info in uninterpreted form
+-o, --fields=         Display the specified fields
 -s, --summary         Print the summary only
+-S, --no-summary      Don't print the summary
 -t, --transaction=t   Search for transaction 't' in specified block range
 
 If no block number is specified, the current block is assumed
@@ -42,128 +46,284 @@ If no block number is specified, the current block is assumed
 	}
 }
 
+class local_vars: pass
+
+class BlocksInfo:
+
+	first = None
+	last = None
+	nblocks = None
+	sum_fs = '{:<15} {}\n'
+
+	def __init__(self):
+		self.get_block_range()
+		self.post_init()
+
+	def get_block_range(self):
+
+		if not cmd_args:
+			first = last = c.blockcount
+		else:
+			arg = cmd_args[0]
+			if arg.startswith('+') and is_int(arg[1:]):
+				last = c.blockcount
+				first = last - int(arg[1:]) + 1
+			elif is_int(arg):
+				first = last = int(arg)
+			else:
+				try:
+					first,last = [int(ep) for ep in arg.split('-')]
+				except:
+					opts.usage()
+
+		if first > last:
+			die(2,f'{first}-{last}: invalid block range')
+
+		if last > c.blockcount:
+			die(2,f'Requested block number ({last}) greater than current block height')
+
+		self.first = first
+		self.last = last
+		self.nblocks = last - first + 1
+
+	def post_init(self): pass
+
+	async def run(self):
+
+		for height in range(self.first,self.last+1):
+			await self.process_block(height,await c.call('getblockhash',height))
+
+		return
+
+		# WIP
+		heights = range(self.first,self.last+1)
+		hashes = await c.gathered_call('getblockhash',[(height,) for height in heights])
+		print(hashes)
+		stats = await c.gathered_call('getblockheader',[(H,) for H in hashes])
+		pdie(stats)
+
+	def print_header(self): pass
+
+	async def print_summary(self):
+		if not opt.summary:
+			Msg('')
+		Msg_r(
+			self.sum_fs.format('Current height:', c.blockcount) +
+			self.sum_fs.format('Range:',          f'{self.first}-{self.last} ({self.nblocks} blocks)')
+		)
+
+class BlocksInfoOverview(BlocksInfo):
+
+	total_bytes = 0
+	t_start  = None
+	t_prev   = None
+	t_cur    = None
+
+	bf = namedtuple('block_info_fields',['hdr1','hdr2','fs','bs_key','varname','deps','key'])
+	# bs=getblockstats(), bh=getblockheader()
+	# If 'bs_key' is set, it's included in self.bs_keys instead of 'key'
+	fields = {
+		'block':     bf('',     'Block',    '{:<6}',  None,                 'height',[],    None),
+		'hash':      bf('',     'Hash',     '{:<64}', None,                 'H',     [],    None),
+		'date':      bf('',     'Date',     '{:<19}', None,                 'df',    ['bs'],None),
+		'interval':  bf('Solve','Time ',    '{:>5}',  None,                 'if',    ['bs'],None),
+		'size':      bf('',     'Size',     '{:>7}',  None,                 'bs',    [],    'total_size'),
+		'weight':    bf('',     'Weight',   '{:>7}',  None,                 'bs',    [],    'total_weight'),
+		'utxo_inc':  bf(' UTXO',' Incr',    '{:>5}',  None,                 'bs',    [],    'utxo_increase'),
+		'fee10':     bf('10%',  'Fee',      '{:>3}',  'feerate_percentiles','fp',    ['bs'],0),
+		'fee25':     bf('25%',  'Fee',      '{:>3}',  'feerate_percentiles','fp',    ['bs'],1),
+		'fee50':     bf('50%',  'Fee',      '{:>3}',  'feerate_percentiles','fp',    ['bs'],2),
+		'fee75':     bf('75%',  'Fee',      '{:>3}',  'feerate_percentiles','fp',    ['bs'],3),
+		'fee90':     bf('90%',  'Fee',      '{:>3}',  'feerate_percentiles','fp',    ['bs'],4),
+		'fee_avg':   bf('Avg',  'Fee',      '{:>3}',  None,                 'bs',    [],    'avgfeerate'),
+		'fee_min':   bf('Min',  'Fee',      '{:>3}',  None,                 'bs',    [],    'minfeerate'),
+		'totalfee':  bf('',     'Total Fee',' {:>10}','totalfee',           'tf',    ['bs'],None),
+		'outputs':   bf('Out-', 'puts',     '{:>5}',  None,                 'bs',    [],    'outs'),
+		'inputs':    bf('In- ', 'puts',     '{:>5}',  None,                 'bs',    [],    'ins'),
+		'version':   bf('',     'Version',  '{:8}',   None,                 'bh',    [],    'versionHex'),
+		'nTx':       bf('',     'nTx   ',   '{:>5}',  None,                 'bh',    [],    'nTx'),
+		'subsidy':   bf('',     'Subsidy',  '{:7}',   'subsidy',            'su',    ['bs'], None),
+	}
+	dfl_fields  = ['block','date','interval','subsidy','size','weight','fee50','fee25','fee10','version']
+	funcs = {
+		'df': lambda self,loc: time.strftime('%Y-%m-%d %X',time.gmtime(self.t_cur)),
+		'if': lambda self,loc: '{:02}:{:02}'.format(loc.t_diff//60,loc.t_diff%60),
+		'tf': lambda self,loc: '{:.8f}'.format(loc.bs["totalfee"] * Decimal('0.00000001')),
+		'bh': lambda self,loc: c.call('getblockheader',loc.H),
+		'fp': lambda self,loc: loc.bs['feerate_percentiles'],
+		'su': lambda self,loc: str(loc.bs['subsidy'] * Decimal('0.00000001')).rstrip('0'),
+	}
+
+	def __init__(self):
+
+		super().__init__()
+
+		if opt.fields:
+			fnames = opt.fields.split(',') 
+			for n in fnames:
+				if n not in self.fields:
+					die(1,f'{n!r}: unrecognized field')
+		else:
+			fnames = self.dfl_fields
+
+		self.fvals = list(self.fields[k] for k in fnames if k in self.fields)
+		self.fs    = '  '.join( v.fs for v in self.fvals )
+		hdr1       = [v.hdr1 for v in self.fvals]
+		hdr2       = [v.hdr2 for v in self.fvals]
+		self.deps  = set(' '.join(v.varname + ' ' + ' '.join(v.deps) for v in self.fvals).split())
+
+		self.bs_keys = [(v.bs_key or v.key) for v in self.fvals if v.bs_key or v.varname == 'bs']
+		self.bs_keys.extend(['total_size','time'])
+
+		self.ufuncs = {v.varname:self.funcs[v.varname] for v in self.fvals if v.varname in self.funcs}
+
+		if opt.miner_info:
+			self.fs += '  {}'
+			hdr1.append('     ')
+			hdr2.append('Miner')
+			self.miner_pats = [re.compile(pat) for pat in (
+				r'([a-zA-Z0-9. ]+/Mined by [a-zA-Z0-9. ]+)',
+				r'Mined by ([a-zA-Z0-9. ]+)',
+				r'/([a-zA-Z0-9&. ]+)/',
+			)]
+		else:
+			self.miner_pats = None
+
+		if not opt.summary:
+			Msg(self.fs.format(*hdr1))
+			Msg(self.fs.format(*hdr2))
+
+	async def get_miner_string(self,H):
+		tx0 = (await c.call('getblock',H))['tx'][0]
+		bd = await c.call('getrawtransaction',tx0,1)
+		if type(bd) == tuple:
+			ret = '---'
+		else:
+			cb = bytes.fromhex(bd['vin'][0]['coinbase'])
+			ret = ''.join(chr(b) for b in cb if 31 < b < 128)
+			if not opt.raw_miner_info:
+				for pat in self.miner_pats:
+					m = pat.search(ret)
+					if m:
+						ret = m[1]
+						break
+		return ret
+
+	async def process_block(self,height,H):
+		loc = local_vars()
+		loc.H = H
+		loc.height = height
+		if 'bs' in self.deps:
+			loc.bs = await c.call('getblockstats',H,self.bs_keys)
+			#pdie(loc.bs)
+			self.total_bytes += loc.bs['total_size']
+			self.t_cur = loc.bs['time']
+			if self.t_prev == None:
+				if height == 0:
+					b_prev = loc.bs
+				else:
+					bh = await c.call('getblockhash',height-1)
+					b_prev = await c.call('getblockstats',bh)
+				self.t_start = self.t_prev = b_prev['time']
+			loc.t_diff = self.t_cur - self.t_prev
+			self.t_prev = self.t_cur
+
+		if opt.summary:
+			return
+
+		for varname,func in self.ufuncs.items():
+			ret = func(self,loc)
+			if type(ret).__name__ == 'coroutine':
+				ret = await ret
+			setattr(loc,varname,ret)
+
+		if opt.miner_info:
+			miner_info = await self.get_miner_string(H)
+
+		def gen():
+			for v in self.fvals:
+				if v.key is None:
+					yield getattr(loc,v.varname)
+				else:
+					yield getattr(loc,v.varname)[v.key]
+			if opt.miner_info:
+				yield miner_info
+
+		Msg(self.fs.format(*gen()))
+
+	async def print_summary(self):
+		if 'bs' in self.deps:
+			await super().print_summary()
+			if self.nblocks > 1:
+				elapsed = self.t_cur - self.t_start
+				ac = int(elapsed / self.nblocks)
+				rate = (self.total_bytes / 10000) / (elapsed / 36)
+				Msg_r (
+					self.sum_fs.format('Avg size:',       f'{self.total_bytes//self.nblocks} bytes') +
+					self.sum_fs.format('MB/hr:',          f'{rate:0.4f}') +
+					self.sum_fs.format('Avg conf time:',  f'{ac//60}:{ac%60:02}')
+				)
+
+class BlocksInfoTxFind(BlocksInfo):
+
+	found_tx = False
+
+	def post_init(self):
+		if len(opt.transaction) != 64 or not is_hex_str(opt.transaction):
+			die(2,f'{opt.transaction}: invalid transaction id')
+
+	async def process_block(self,height,H):
+		if opt.transaction in (await c.call('getblock',H))['tx']:
+			Msg('\rRequested transaction is in block {} ({} confirmations)'.format(height,c.blockcount-height+1))
+			return True
+		msg_r('\rChecking block {} '.format(height))
+
+	async def print_summary(self):
+		if self.found_tx:
+			try:
+				await c.call('getmempoolentry',opt.transaction) # ,on_fail='silent')):
+			except:
+				Msg('\rTransaction not found in block range {}-{} or in mempool'.format(self.first,self.last))
+			else:
+				Msg('\rTransaction is in mempool')
+
+	async def run(self):
+		for height in range(self.first,self.last+1):
+			H = await c.call('getblockhash',height)
+			if await self.process_block(height,H): # returns True when finished
+				break
+		else:
+			self.found_tx = True
+
+class BlocksInfoHashes(BlocksInfo):
+
+	def print_header(self):
+		Msg('{:<7} {}'.format('BLOCK','HASH'))
+
+	async def run(self):
+		heights = range(self.first,self.last+1)
+		hashes = await c.gathered_call('getblockhash',[(height,) for height in heights])
+		Msg('\n'.join('{:<7} {}'.format(height,H) for height,H in zip(heights,hashes)))
+
 cmd_args = opts.init(opts_data)
 
-if len(cmd_args) not in (0,1): opts.usage()
-if opt.raw_miner_info: opt.miner_info = True
+if len(cmd_args) not in (0,1):
+	opts.usage()
 
-c = rpc_init()
-cur_blk = c.getblockcount()
+async def main():
+	from mmgen.rpc import rpc_init
+	global c
+	c = await rpc_init()
 
-arg = cmd_args[0] if cmd_args else None
-
-if not arg:
-	first = last = cur_blk
-elif arg[0] == '+' and is_int(arg[1:]):
-	last = cur_blk
-	first = last - int(arg[1:]) + 1
-elif is_int(arg):
-	first = last = int(arg)
-else:
-	try:
-		a,b = arg.split('-')
-		assert is_int(a) and is_int(b)
-		first,last = int(a),int(b)
-	except:
-		opts.usage()
-
-if first > last:
-	die(2,'{}: invalid block range'.format(arg))
-if last > cur_blk:
-	die(2,'Requested block number ({}) greater than current block height'.format(last))
-
-if opt.summary:
-	pass
-elif opt.transaction:
-	if len(opt.transaction) != 64 or not is_hex_str(opt.transaction):
-		die(2,'{}: invalid transaction id'.format(opt.transaction))
-elif opt.hashes:
-	Msg('{:<7} {}'.format('BLOCK','HASH'))
-else:
-	if opt.miner_info:
-		fs='{:<6} {:<19}{:>9} {:>6} {:>7} {:8} {}'
-		Msg(fs.format('BLOCK','DATE','INTERVAL','CONFS','SIZE','VERSION','MINER'))
-	else:
-		fs='{:<6} {:<19}{:>9} {:>6} {:>7} {}'
-		Msg(fs.format('BLOCK','DATE','INTERVAL','CONFS','SIZE','VERSION'))
-
-miner_strings = {
-	'Bixin':'Bixin',
-	'AntPool':'AntPool',
-	'Bitfury':'Bitfury',
-	'BTCC':'BTCC',
-	'BTC.COM':'BTC.COM',
-	'BTPOOL':'BTPOOL',
-	'ViaBTC':'ViaBTC',
-	'slush':'Slush',
-	'BitMinter':'BitMinter',
-	'BW.COM':'BW.COM',
-	'gbminers':'GBMiners',
-	'BitClub Network':'BitClub Network',
-	'bitcoin.com':'bitcoin.com',
-	'KanoPool':'KanoPool',
-	'BTC.TOP':'BTC.TOP',
-}
-
-total,prev_time = 0,None
-for i in range(first,last+1):
-	b = c.getblock(c.getblockhash(i))
-	total += b['size']
 	if opt.transaction:
-		if opt.transaction in b['tx']:
-			Msg('Requested transaction is in block {}'.format(i))
-			sys.exit(0)
-		msg('Checking block {}'.format(i))
+		m = BlocksInfoTxFind()
+	elif opt.hashes:
+		m = BlocksInfoHashes()
 	else:
-		gmt = time.gmtime(b['mediantime'])
-		date = '{}-{:02}-{:02} {:02}:{:02}:{:02}'.format(*gmt[:6])
-		if prev_time == None:
-			b_prev = b if i == 0 else c.getblock(c.getblockhash(i-1))
-			first_time = prev_time = b_prev['mediantime']
-		et = b['mediantime'] - prev_time
-		prev_time = b['mediantime']
-		if opt.summary:
-			continue
-		if opt.hashes:
-			Msg('{:<7} {}'.format(i,b['hash']))
-		else:
-			d = (i,date,'{}:{:02}'.format(et//60,et%60),b['confirmations'],b['size'],b['versionHex'])
-			if opt.miner_info:
-				bd = c.getrawtransaction(b['tx'][0],1,on_fail='silent')
-				if type(bd) == tuple:
-					Msg(fs.format(*(d+('---',))))
-				else:
-					cb = unhexlify(bd['vin'][0]['coinbase'])
-					scb = re.sub(b'[^\w /-:,;.]',b'',cb)[1:]
-					if opt.raw_miner_info:
-						Msg(fs.format(*(d+(scb.decode(),))))
-					else:
-						for ms in miner_strings:
-							if ms.encode() in scb:
-								s = miner_strings[ms]
-								break
-						else:
-							try:    s = scb.split('ined by')[1].strip()
-							except: s = '??'
-						nya_str = (b'    ',b'NYA ')[b'NYA' in scb] if opt.nya else b''
-						Msg(fs.format(*(d+(nya_str.decode()+s,))))
-			else:
-				Msg(fs.format(*d))
+		m = BlocksInfoOverview()
 
-if opt.transaction:
-	from mmgen.rpc import rpc_error
-	if rpc_error(c.getmempoolentry(opt.transaction,on_fail='silent')):
-		Msg('\rTransaction not found in block range {}-{} or in mempool'.format(first,last))
-	else:
-		Msg('\rTransaction is in mempool')
-else:
-	blocks = last - first + 1
-	if blocks > 1:
-		fs2 = '{:<15} {}\n'
-		et = b['mediantime'] - first_time
-		ac = int(et / blocks)
-		if not opt.summary: Msg('')
-		Msg_r(  fs2.format('Range:','{}-{} ({} blocks)'.format(first,last,blocks)) +
-				fs2.format('Avg size:','{} bytes'.format(total//blocks)) +
-				fs2.format('MB/hr:','{:0.5f}'.format(float(total)*36/10000/et)) +
-				fs2.format('Avg conf time:','{}:{:02}'.format(ac//60,ac%60)))
+	m.print_header()
+	await m.run()
+	await m.print_summary()
+
+run_session(main())
