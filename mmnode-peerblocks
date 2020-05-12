@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 # mmgen = Multi-Mode GENerator, command-line Bitcoin cold storage solution
-# Copyright (C)2013-2017 Philemon <mmgen-py@yandex.com>
+# Copyright (C)2013-2020 The MMGen Project <mmgen@tuta.io>
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -20,7 +20,7 @@
 mmgen-peerblocks: List blocks in flight, disconnect stalling nodes
 """
 
-import time,threading
+import asyncio
 from mmgen.common import *
 
 opts_data = {
@@ -34,85 +34,119 @@ opts_data = {
 	}
 }
 
-cmd_args = opts.init(opts_data)
+opts.init(opts_data)
 
-colors = ['\033[38;5;%s;1m' % c for c in (238,240,242,244,246,247,249,251,253,255)]
-_red,_reset = '\033[31m','\033[0m'
+async def inflight_display(rpc):
 
-ERASE_ALL,ERASE_LINE,CUR_HOME,CUR_HIDE,CUR_SHOW = \
-	'\033[J','\033[K','\033[H','\033[?25l','\033[?25h'
+	def gen_peers(peerinfo):
+		global min_height
+		min_height = None
+		for d in peerinfo:
+			if 'inflight' in d and d['inflight']:
+				blks = d['inflight']
+				if not min_height or min_height > blks[0]:
+					min_height = blks[0]
+				blks_trunc = ' '.join(map(str,blks))[:term_width-6].split()
+				trim = blks_trunc[-1] != str(blks[len(blks_trunc)-1])
+				blks = blks[:len(blks_trunc)-trim]
+			else:
+				blks = []
+			yield { 'id': d['id'], 'data': blks }
 
-import atexit
-def at_exit():
-	import os
-	os.system('stty sane')
-	sys.stderr.write('\n')
-atexit.register(at_exit)
+	def gen_line(peer):
+		for blk in peer['data']:
+			if blk == min_height:
+				yield RED + str(blk) + RESET
+			else:
+				yield COLORS[blk % 10] + str(blk) + RESET
 
-bc = rpc_init()
-
-msg_r(CUR_HOME+ERASE_ALL)
-
-def do_display():
 	from mmgen.term import get_terminal_size
-	global data
+	term_width = get_terminal_size()[0]
+
 	count = 1
 	while True:
-		twid = get_terminal_size()[0]
-		data = bc.getpeerinfo()
-		min_t = None
-		lines = []
-		with lock:
-			msg('{}{}{}ACTIVE PEERS ({}) - poll {}'.format(
-				CUR_HOME,ERASE_ALL,CUR_HOME,len(data),count))
-			for d in data:
-				line = { 'id': d['id'], 'data': [] }
-				if 'inflight' in d and d['inflight']:
-					blks = [str(e) for e in d['inflight']]
-					min_p = min(e for e in d['inflight'])
-					if not min_t or min_t > min_p: min_t = min_p
-					line_d = ' '.join(blks)[:twid-6]
-					blks = blks[:len(line_d) - len(line_d.replace(' ','')) + 1]
-					blks[-1] = blks[-1][:len(line_d.split(' ')[-1])]
-					line['data'] = [[colors[int(i)%10],i,_reset] for i in blks if i]
-				else:
-					line['data'] = []
-				lines.append(line)
-			for line in lines:
-				d = ' '.join([(a,_red)[int(b)==min_t]+b+c for a,b,c in line['data']])
-				sys.stderr.write('\r{} {:>3}: {}\n'.format(ERASE_LINE,line['id'],d))
-			msg_r(ERASE_ALL+'Hit ENTER for disconnect prompt: ')
-		time.sleep(2)
+		info = await rpc.call('getpeerinfo')
+
+		msg_r(CUR_HOME+ERASE_ALL+CUR_HOME)
+		msg(f'ACTIVE PEERS ({len(info)}) - poll {count}')
+
+		for peer in gen_peers(info):
+			sys.stderr.write('\r{} {:>3}: {}\n'.format(
+				ERASE_LINE,
+				peer['id'],
+				' '.join(gen_line(peer)) ))
+
+		msg_r(ERASE_ALL+'Hit ENTER for disconnect prompt: ')
+		await asyncio.sleep(2)
 		count += 1
 
-lock = threading.Lock()
-data = {}
+async def do_inflight(rpc):
+	task = asyncio.ensure_future(inflight_display(rpc)) # Python 3.7+: create_task()
+	from select import select
 
-t = threading.Thread(target=do_display,name='display')
-t.daemon = True
-t.start()
-
-def do_loop():
-	global data
 	while True:
-		input()
-		with lock:
-			ids = [str(d['id']) for d in data]
-			msg('{}{}{}ACTIVE PEERS ({})'.format(CUR_HOME,ERASE_ALL,CUR_HOME,len(data)))
-			msg(' '+'\n '.join(['{:>3}: {:30} {}'.format(*[d[k] for k in ('id','addr','subver')]) for d in data]))
-			reply = input('Enter a peer number to disconnect> ')
-			if reply == '':
-				pass
-			elif reply in ids:
-				idx = ids.index(reply)
-				msg("Disconnecting peer {} ('{}')".format(reply,data[idx]['addr']))
-				bc.disconnectnode(data[idx]['addr'])
-				time.sleep(1.5)
-			else:
-				msg("'{}': invalid peer number".format(reply))
-				time.sleep(0.5)
+		key = select([sys.stdin], [], [], 0.1)[0]
+		if key:
+			sys.stdin.read(1)
+			task.cancel()
+			break
+		await asyncio.sleep(0.1)
+
+	try:
+		await task
+	except asyncio.CancelledError:
+		pass
+
+async def do_disconnect_menu(rpc):
+
+	while True:
+		peerinfo = await rpc.call('getpeerinfo')
+		ids = [str(d['id']) for d in peerinfo]
+
+		msg_r(CUR_HOME+ERASE_ALL+CUR_HOME)
+		msg(f'ACTIVE PEERS ({len(peerinfo)})')
+
+		if peerinfo:
+			msg('\n'.join([f"{d['id']:>3}: {d['addr']:30} {d['subver']}" for d in peerinfo]))
+
+		reply = input("Peer number to disconnect, ENTER to quit menu, 'u' to update peer list> ")
+
+		if reply == '':
+			return
+		elif reply == 'u':
+			msg(f'Updating peer list')
+			await asyncio.sleep(0.5)
+		elif reply in ids:
+			addr = peerinfo[ids.index(reply)]['addr']
+			msg(f'Disconnecting peer {reply} ({addr})')
+			try:
+				await rpc.call('disconnectnode',addr)
+			except RPCFailure:
+				msg(f'Unable to disconnect peer {addr}')
+			await asyncio.sleep(1.5)
+		else:
+			msg(f'{reply!r}: invalid peer number')
+			await asyncio.sleep(0.5)
+
+async def main():
+
+	msg_r(CUR_HOME+ERASE_ALL)
+
+	from mmgen.rpc import rpc_init
+	rpc = await rpc_init()
+
+	while True:
+		await do_inflight(rpc)
+		await do_disconnect_menu(rpc)
+
+RED,RESET = ('\033[31m','\033[0m')
+COLORS = ['\033[38;5;%s;1m' % c for c in (238,240,242,244,246,247,249,251,253,255)]
+ERASE_ALL,ERASE_LINE,CUR_HOME,CUR_HIDE,CUR_SHOW = (
+	'\033[J','\033[K','\033[H','\033[?25l','\033[?25h')
 
 try:
-	do_loop()
-except KeyboardInterrupt:
-	pass
+	run_session(main(),do_rpc_init=False)
+except:
+	from subprocess import run
+	run(['stty','sane'])
+	msg('')

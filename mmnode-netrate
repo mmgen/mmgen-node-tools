@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 #
 # mmgen = Multi-Mode GENerator, command-line Bitcoin cold storage solution
-# Copyright (C)2013-2017 Philemon <mmgen-py@yandex.com>
+# Copyright (C)2013-2020 The MMGen Project <mmgen@tuta.io>
 #
 # This program is free software: you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free Software
@@ -37,24 +37,33 @@ opts_data = {
 cmd_args = opts.init(opts_data)
 
 ERASE_LINE,CUR_UP = '\033[K','\033[1A'
-c = rpc_init()
 
-def do_loop():
-	def get_data():
-		d = c.getnettotals()
+async def main():
+	from mmgen.rpc import rpc_init
+	c = await rpc_init()
+
+	async def get_data():
+		d = await c.call('getnettotals')
 		return [float(e) for e in (d['totalbytesrecv'],d['totalbytessent'],d['timemillis'])]
 
-	r,s,t = get_data()
-	time.sleep(0.2)
+	rs = None
 	while True:
-		rs,ss,ts = r,s,t
-		r,s,t = get_data()
-		td = t-ts
-		sys.stderr.write('\rrcvd: {:9.2f} kB/s\nsent: {:9.2f} kB/s '.format((r-rs)/td,(s-ss)/td))
+		r,s,t = await get_data()
+
+		if rs is not None:
+			sys.stderr.write(
+				'\rrcvd: {:9.2f} kB/s\nsent: {:9.2f} kB/s '.format(
+					(r-rs)/(t-ts),
+					(s-ss)/(t-ts) ))
+
 		time.sleep(2)
-		sys.stderr.write('{}{}{}'.format(ERASE_LINE,CUR_UP,ERASE_LINE))
+
+		if rs is not None:
+			sys.stderr.write('{}{}{}'.format(ERASE_LINE,CUR_UP,ERASE_LINE))
+
+		rs,ss,ts = r,s,t
 
 try:
-	do_loop()
+	run_session(main(),do_rpc_init=False)
 except KeyboardInterrupt:
 	sys.stderr.write('\n')

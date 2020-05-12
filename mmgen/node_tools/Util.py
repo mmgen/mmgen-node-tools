@@ -20,6 +20,7 @@ mmgen.node_tools.Util: utility functions for MMGen node tools
 """
 
 import time,subprocess
+from mmgen.util import msg
 
 def get_hms(t=None,utc=False,no_secs=False):
 	secs = t or time.time()

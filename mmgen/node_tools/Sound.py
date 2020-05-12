@@ -42,22 +42,22 @@ def parse_repeat_spec(rs):
 def init_sound():
 	def _restore_sound():
 #	msg('Restoring sound volume')
-		do_system('alsactl restore -f ' + _alsa_config_file)
+		do_system('sudo alsactl restore -f ' + _alsa_config_file)
 		os.unlink(_alsa_config_file)
 	import atexit
 	atexit.register(_restore_sound)
-	do_system('alsactl store -f ' + _alsa_config_file)
+	do_system('sudo alsactl store -f ' + _alsa_config_file)
 
 def play_sound(fn,vol,repeat_spec='',remote_host='',kill_flg=None,testing=False):
 	if not remote_host:
-		do_system('alsactl store -f ' + _alsa_config_file)
+		do_system('sudo alsactl store -f ' + _alsa_config_file)
 		for k in 'Master','Speaker','Headphone':
-			do_system(('amixer -q set %s on' % k),testing)
+			do_system(('sudo amixer -q set %s on' % k),testing)
 #		do_system('amixer -q set Headphone off')
 
 		vols = dict([(k,int(_dvols[k] * float(vol) / 100)) for k in _dvols])
 		for k in vols:
-			do_system('amixer -q set %s %s' % (k,vols[k]),testing)
+			do_system('sudo amixer -q set %s %s' % (k,vols[k]),testing)
 
 	fn = os.path.expanduser(fn)
 	cmd = (
@@ -72,9 +72,9 @@ def play_sound(fn,vol,repeat_spec='',remote_host='',kill_flg=None,testing=False)
 				do_system(cmd,testing)
 				if kill_flg.wait(interval):
 					if not remote_host:
-						do_system('alsactl restore -f ' + _alsa_config_file)
+						do_system('sudo alsactl restore -f ' + _alsa_config_file)
 					return
 	else: # Play once
 		do_system(cmd,testing)
 		if not remote_host:
-			do_system('alsactl restore -f ' + _alsa_config_file)
+			do_system('sudo alsactl restore -f ' + _alsa_config_file)
