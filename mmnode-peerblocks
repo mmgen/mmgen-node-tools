@@ -21,6 +21,7 @@ mmgen-peerblocks: List blocks in flight, disconnect stalling nodes
 """
 
 import asyncio
+from collections import namedtuple
 from mmgen.common import *
 
 opts_data = {
@@ -34,49 +35,53 @@ opts_data = {
 	}
 }
 
-opts.init(opts_data)
+def format_peer_info(peerinfo):
 
-async def inflight_display(rpc):
+	pd = namedtuple('peer_data',['id','blocks_data','screen_width'])
 
 	def gen_peers(peerinfo):
 		global min_height
 		min_height = None
 		for d in peerinfo:
 			if 'inflight' in d and d['inflight']:
-				blks = d['inflight']
-				if not min_height or min_height > blks[0]:
-					min_height = blks[0]
-				blks_trunc = ' '.join(map(str,blks))[:term_width-6].split()
-				trim = blks_trunc[-1] != str(blks[len(blks_trunc)-1])
-				blks = blks[:len(blks_trunc)-trim]
+				blocks = d['inflight']
+				if not min_height or min_height > blocks[0]:
+					min_height = blocks[0]
+				line = ' '.join(map(str,blocks))[:term_width - 2 - id_width]
+				blocks_disp = line.split()
+				yield pd(
+					d['id'],
+					[(blocks[i],blocks_disp[i]) for i in range(len(blocks_disp))],
+					len(line) )
 			else:
-				blks = []
-			yield { 'id': d['id'], 'data': blks }
+				yield pd( d['id'], [], 0 )
 
 	def gen_line(peer):
-		for blk in peer['data']:
+		for blk,blk_disp in peer.blocks_data:
 			if blk == min_height:
-				yield RED + str(blk) + RESET
+				yield RED + blk_disp + RESET
 			else:
-				yield COLORS[blk % 10] + str(blk) + RESET
+				yield COLORS[blk % 10] + blk_disp + RESET
 
-	from mmgen.term import get_terminal_size
-	term_width = get_terminal_size()[0]
+	id_width = max(2,max(len(str(i['id'])) for i in peerinfo))
+
+	for peer in gen_peers(peerinfo):
+		line = '{:>{iw}}: {}'.format(
+			peer.id,
+			' '.join(gen_line(peer)),
+			iw = id_width )
+		yield line + ' ' * (term_width - 2 - id_width - peer.screen_width)
+
+async def inflight_display(rpc):
 
 	count = 1
 	while True:
 		info = await rpc.call('getpeerinfo')
-
-		msg_r(CUR_HOME+ERASE_ALL+CUR_HOME)
-		msg(f'ACTIVE PEERS ({len(info)}) - poll {count}')
-
-		for peer in gen_peers(info):
-			sys.stderr.write('\r{} {:>3}: {}\n'.format(
-				ERASE_LINE,
-				peer['id'],
-				' '.join(gen_line(peer)) ))
-
-		msg_r(ERASE_ALL+'Hit ENTER for disconnect prompt: ')
+		msg_r(
+			CUR_HOME
+			+ f'ACTIVE PEERS ({len(info)}) Blocks in Flight - poll {count}    \n'
+			+ ('\n'.join(format_peer_info(info)) + '\n' if info else '')
+			+ ERASE_ALL + 'Hit ENTER for disconnect menu: ' )
 		await asyncio.sleep(2)
 		count += 1
 
@@ -103,13 +108,19 @@ async def do_disconnect_menu(rpc):
 		peerinfo = await rpc.call('getpeerinfo')
 		ids = [str(d['id']) for d in peerinfo]
 
-		msg_r(CUR_HOME+ERASE_ALL+CUR_HOME)
-		msg(f'ACTIVE PEERS ({len(peerinfo)})')
+		msg(f'{CUR_HOME}ACTIVE PEERS ({len(peerinfo)}) Disconnect Menu' + ' '*16)
+
+		def gen_peerinfo():
+			for d in peerinfo:
+				line = f"{d['id']:>{id_width}}: {d['addr']:30} {d['subver']}"
+				yield line + ' ' * (term_width - len(line))
 
 		if peerinfo:
-			msg('\n'.join([f"{d['id']:>3}: {d['addr']:30} {d['subver']}" for d in peerinfo]))
+			id_width = max(2,max(len(str(i['id'])) for i in peerinfo))
+			msg('\n'.join(gen_peerinfo()))
 
-		reply = input("Peer number to disconnect, ENTER to quit menu, 'u' to update peer list> ")
+		msg_r(ERASE_ALL)
+		reply = input("Type peer number to disconnect, ENTER to quit menu, 'u' to update peer list: ")
 
 		if reply == '':
 			return
@@ -139,8 +150,13 @@ async def main():
 		await do_inflight(rpc)
 		await do_disconnect_menu(rpc)
 
+opts.init(opts_data)
+
+from mmgen.term import get_terminal_size
+term_width = get_terminal_size()[0]
+
 RED,RESET = ('\033[31m','\033[0m')
-COLORS = ['\033[38;5;%s;1m' % c for c in (238,240,242,244,246,247,249,251,253,255)]
+COLORS = ['\033[38;5;%s;1m' % c for c in (247,248,249,250,251,252,253,254,255,231)]
 ERASE_ALL,ERASE_LINE,CUR_HOME,CUR_HIDE,CUR_SHOW = (
 	'\033[J','\033[K','\033[H','\033[?25l','\033[?25h')
 

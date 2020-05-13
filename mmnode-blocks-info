@@ -159,7 +159,7 @@ class BlocksInfoOverview(BlocksInfo):
 		super().__init__()
 
 		if opt.fields:
-			fnames = opt.fields.split(',') 
+			fnames = opt.fields.split(',')
 			for n in fnames:
 				if n not in self.fields:
 					die(1,f'{n!r}: unrecognized field')
