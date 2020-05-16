@@ -99,8 +99,8 @@ class BlocksInfo:
 		heights = range(self.first,self.last+1)
 		hashes = await c.gathered_call('getblockhash',[(height,) for height in heights])
 		print(hashes)
-		stats = await c.gathered_call('getblockheader',[(H,) for H in hashes])
-		pdie(stats)
+		header = await c.gathered_call('getblockheader',[(H,) for H in hashes])
+		pdie(header)
 
 	def print_header(self): pass
 
@@ -137,14 +137,14 @@ class BlocksInfoOverview(BlocksInfo):
 		'fee90':     bf('90%',  'Fee',      '{:>3}',  'feerate_percentiles','fp',    ['bs'],4),
 		'fee_avg':   bf('Avg',  'Fee',      '{:>3}',  None,                 'bs',    [],    'avgfeerate'),
 		'fee_min':   bf('Min',  'Fee',      '{:>3}',  None,                 'bs',    [],    'minfeerate'),
-		'totalfee':  bf('',     'Total Fee',' {:>10}','totalfee',           'tf',    ['bs'],None),
+		'totalfee':  bf('',     'Total Fee','{:>10}', 'totalfee',           'tf',    ['bs'],None),
 		'outputs':   bf('Out-', 'puts',     '{:>5}',  None,                 'bs',    [],    'outs'),
 		'inputs':    bf('In- ', 'puts',     '{:>5}',  None,                 'bs',    [],    'ins'),
 		'version':   bf('',     'Version',  '{:8}',   None,                 'bh',    [],    'versionHex'),
 		'nTx':       bf('',     'nTx   ',   '{:>5}',  None,                 'bh',    [],    'nTx'),
 		'subsidy':   bf('',     'Subsidy',  '{:7}',   'subsidy',            'su',    ['bs'], None),
 	}
-	dfl_fields  = ['block','date','interval','subsidy','size','weight','fee50','fee25','fee10','version']
+	dfl_fields  = ['block','date','interval','subsidy','totalfee','size','weight','fee50','fee25','fee10','version']
 	funcs = {
 		'df': lambda self,loc: time.strftime('%Y-%m-%d %X',time.gmtime(self.t_cur)),
 		'if': lambda self,loc: '{:02}:{:02}'.format(loc.t_diff//60,loc.t_diff%60),

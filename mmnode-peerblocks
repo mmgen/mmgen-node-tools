@@ -57,20 +57,27 @@ def format_peer_info(peerinfo):
 				yield pd( d['id'], [], 0 )
 
 	def gen_line(peer):
-		for blk,blk_disp in peer.blocks_data:
-			if blk == min_height:
-				yield RED + blk_disp + RESET
-			else:
+		if peer.blocks_data:
+			if peer.blocks_data[0][0] == min_height:
+				yield RED + peer.blocks_data[0][1] + RESET
+				peer.blocks_data.pop(0)
+			for blk,blk_disp in peer.blocks_data:
 				yield COLORS[blk % 10] + blk_disp + RESET
 
 	id_width = max(2,max(len(str(i['id'])) for i in peerinfo))
 
-	for peer in gen_peers(peerinfo):
+	for peer in tuple(gen_peers(peerinfo)):
 		line = '{:>{iw}}: {}'.format(
 			peer.id,
 			' '.join(gen_line(peer)),
 			iw = id_width )
 		yield line + ' ' * (term_width - 2 - id_width - peer.screen_width)
+
+def test_format():
+	import json
+	info = json.loads(open('test_data/peerinfo.json').read())
+	print('\n'.join(format_peer_info(info)) + '\n')
+	sys.exit(0)
 
 async def inflight_display(rpc):
 
