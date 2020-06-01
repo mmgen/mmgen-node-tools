@@ -311,9 +311,13 @@ if len(cmd_args) not in (0,1):
 	opts.usage()
 
 async def main():
+
+	from mmgen.protocol import init_proto_from_opts
+	proto = init_proto_from_opts()
+
 	from mmgen.rpc import rpc_init
 	global c
-	c = await rpc_init()
+	c = await rpc_init(proto)
 
 	if opt.transaction:
 		m = BlocksInfoTxFind()

@@ -150,8 +150,11 @@ async def main():
 
 	msg_r(CUR_HOME+ERASE_ALL)
 
+	from mmgen.protocol import init_proto_from_opts
+	proto = init_proto_from_opts()
+
 	from mmgen.rpc import rpc_init
-	rpc = await rpc_init()
+	rpc = await rpc_init(proto)
 
 	while True:
 		await do_inflight(rpc)
@@ -168,7 +171,7 @@ ERASE_ALL,ERASE_LINE,CUR_HOME,CUR_HIDE,CUR_SHOW = (
 	'\033[J','\033[K','\033[H','\033[?25l','\033[?25h')
 
 try:
-	run_session(main(),do_rpc_init=False)
+	run_session(main())
 except:
 	from subprocess import run
 	run(['stty','sane'])
