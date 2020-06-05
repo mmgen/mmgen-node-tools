@@ -126,7 +126,7 @@ class BlocksInfoOverview(BlocksInfo):
 		'block':     bf('',     'Block',    '{:<6}',  None,                 'height',[],    None),
 		'hash':      bf('',     'Hash',     '{:<64}', None,                 'H',     [],    None),
 		'date':      bf('',     'Date',     '{:<19}', None,                 'df',    ['bs'],None),
-		'interval':  bf('Solve','Time ',    '{:>5}',  None,                 'if',    ['bs'],None),
+		'interval':  bf('Solve','Time ',    '{:>6}',  None,                 'if',    ['bs'],None),
 		'size':      bf('',     'Size',     '{:>7}',  None,                 'bs',    [],    'total_size'),
 		'weight':    bf('',     'Weight',   '{:>7}',  None,                 'bs',    [],    'total_weight'),
 		'utxo_inc':  bf(' UTXO',' Incr',    '{:>5}',  None,                 'bs',    [],    'utxo_increase'),
@@ -145,9 +145,12 @@ class BlocksInfoOverview(BlocksInfo):
 		'subsidy':   bf('',     'Subsidy',  '{:7}',   'subsidy',            'su',    ['bs'], None),
 	}
 	dfl_fields  = ['block','date','interval','subsidy','totalfee','size','weight','fee50','fee25','fee10','version']
+
 	funcs = {
 		'df': lambda self,loc: time.strftime('%Y-%m-%d %X',time.gmtime(self.t_cur)),
-		'if': lambda self,loc: '{:02}:{:02}'.format(loc.t_diff//60,loc.t_diff%60),
+		'if': lambda self,loc: (
+			'-{:02}:{:02}'.format(abs(loc.t_diff)//60,abs(loc.t_diff)%60) if loc.t_diff < 0 else
+			' {:02}:{:02}'.format(loc.t_diff//60,loc.t_diff%60) ),
 		'tf': lambda self,loc: '{:.8f}'.format(loc.bs["totalfee"] * Decimal('0.00000001')),
 		'bh': lambda self,loc: c.call('getblockheader',loc.H),
 		'fp': lambda self,loc: loc.bs['feerate_percentiles'],
