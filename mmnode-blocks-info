@@ -115,6 +115,7 @@ class BlocksInfo:
 class BlocksInfoOverview(BlocksInfo):
 
 	total_bytes = 0
+	total_weight = 0
 	t_start  = None
 	t_prev   = None
 	t_cur    = None
@@ -185,9 +186,12 @@ class BlocksInfoOverview(BlocksInfo):
 			hdr1.append('     ')
 			hdr2.append('Miner')
 			self.miner_pats = [re.compile(pat) for pat in (
-				r'([a-zA-Z0-9. ]+/Mined by [a-zA-Z0-9. ]+)',
-				r'Mined by ([a-zA-Z0-9. ]+)',
-				r'/([a-zA-Z0-9&. ]+)/',
+				rb'[\xe3\xe4\xe5][\^/](.*?)\xfa',
+				rb'([a-zA-Z0-9&. -]+/Mined by [a-zA-Z0-9. ]+)',
+				rb'\x08/(.*Mined by [a-zA-Z0-9. ]+)',
+				rb'Mined by ([a-zA-Z0-9. ]+)',
+				rb'[/^]([a-zA-Z0-9&. /-]{5,})',
+				rb'[/^]([a-zA-Z0-9&. /-]+)/',
 			)]
 		else:
 			self.miner_pats = None
@@ -200,17 +204,16 @@ class BlocksInfoOverview(BlocksInfo):
 		tx0 = (await c.call('getblock',H))['tx'][0]
 		bd = await c.call('getrawtransaction',tx0,1)
 		if type(bd) == tuple:
-			ret = '---'
+			return '---'
 		else:
 			cb = bytes.fromhex(bd['vin'][0]['coinbase'])
-			ret = ''.join(chr(b) for b in cb if 31 < b < 128)
-			if not opt.raw_miner_info:
+			if opt.raw_miner_info:
+				return repr(cb)
+			else:
 				for pat in self.miner_pats:
-					m = pat.search(ret)
+					m = pat.search(cb)
 					if m:
-						ret = m[1]
-						break
-		return ret
+						return ''.join(chr(b) for b in m[1] if 31 < b < 127).strip('^').strip('/').replace('/',' ')
 
 	async def process_block(self,height,H):
 		loc = local_vars()
@@ -220,6 +223,7 @@ class BlocksInfoOverview(BlocksInfo):
 			loc.bs = await c.call('getblockstats',H,self.bs_keys)
 			#pdie(loc.bs)
 			self.total_bytes += loc.bs['total_size']
+			self.total_weight += loc.bs['total_weight']
 			self.t_cur = loc.bs['time']
 			if self.t_prev == None:
 				if height == 0:
@@ -262,9 +266,10 @@ class BlocksInfoOverview(BlocksInfo):
 				ac = int(elapsed / self.nblocks)
 				rate = (self.total_bytes / 10000) / (elapsed / 36)
 				Msg_r (
-					self.sum_fs.format('Avg size:',       f'{self.total_bytes//self.nblocks} bytes') +
-					self.sum_fs.format('MB/hr:',          f'{rate:0.4f}') +
-					self.sum_fs.format('Avg conf time:',  f'{ac//60}:{ac%60:02}')
+					self.sum_fs.format('Avg size:     ', f'{self.total_bytes//self.nblocks} bytes') +
+					self.sum_fs.format('Avg weight:   ', f'{self.total_weight//self.nblocks} bytes') +
+					self.sum_fs.format('MB/hr:',         f'{rate:0.4f}') +
+					self.sum_fs.format('Avg conf time:', f'{ac//60}:{ac%60:02}')
 				)
 
 class BlocksInfoTxFind(BlocksInfo):
