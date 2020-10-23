@@ -57,6 +57,7 @@ opts.init({
 -l, --log             Log JSON-RPC mempool data to 'mempool.json'
 -p, --precision=P     Use 'P' decimal points of precision for megabyte amts
                       (min: {min_prec}, max: {max_prec}, default: {dfl_prec})
+-P, --pager           Pipe the output to a pager
 -r, --ranges          Display fee brackets as ranges
 -s, --show-mb-col     Display column with each fee bracket’s megabyte count
 -w, --width=W         Force output width of 'W' columns (default: term width)
@@ -141,26 +142,26 @@ def create_data(coin_amt,mempool):
 
 	return out
 
-def print_header(host,blockcount):
-	print('MEMPOOL FEE STRUCTURE ({})\n{} UTC\nBlock {}'.format(
+def gen_header(host,blockcount):
+	yield('MEMPOOL FEE STRUCTURE ({})\n{} UTC\nBlock {}'.format(
 		host,
 		make_timestr(),
 		blockcount,
 		))
 	if opt.show_empty:
-		print('Displaying all fee brackets')
+		yield('Displaying all fee brackets')
 	elif opt.ignore_below:
-		print('Ignoring fee brackets with less than {} bytes ({})'.format(
+		yield('Ignoring fee brackets with less than {} bytes ({})'.format(
 			ignore_below,
 			int2bytespec(ignore_below,'MB','0.6'),
 			))
 	if opt.include_current:
-		print('Including transactions in current fee bracket in Total MB amounts')
+		yield('Including transactions in current fee bracket in Total MB amounts')
 
 def fmt_mb(n):
 	return int2bytespec(n,'MB',f'0.{precision}',False)
 
-def print_body(data):
+def gen_body(data):
 	tx_bytes_max = max(i.tx_bytes for i in data)
 	top_max = max(i.top for i in data if not i.skip)
 	bot_max = max(i.bottom for i in data if not i.skip)
@@ -173,7 +174,7 @@ def print_body(data):
 	else:
 		fs = '{a:<%i} {c:>%i} {d}' % (col1_w,col3_w)
 
-	print(
+	yield(
 		'\n' + fs.format(a='',      b='',                  c=f'{"Total":<{col3_w}}', d='') +
 		'\n' + fs.format(a='sat/B', b=f'{"MB":<{col2_w}}', c=f'{"MB":<{col3_w}}',    d='')
 	)
@@ -181,13 +182,13 @@ def print_body(data):
 	for i in data:
 		if not i.skip:
 			cum_bytes = i.tx_bytes_cum + i.tx_bytes if opt.include_current else i.tx_bytes_cum
-			print(fs.format(
+			yield(fs.format(
 				a = '{}-{}'.format(i.bottom,i.top) if opt.ranges else i.top,
 				b = fmt_mb(i.tx_bytes),
 				c = fmt_mb(cum_bytes),
 				d = '-' * int(col4_w * ( i.tx_bytes / tx_bytes_max )) ))
 
-	print(fs.format(
+	yield(fs.format(
 		a = 'TOTAL',
 		b = '',
 		c = fmt_mb(data[-1].tx_bytes_cum + data[-1].tx_bytes),
@@ -209,7 +210,9 @@ async def main():
 		log(mempool,'mempool.json')
 
 	data = create_data(proto.coin_amt,mempool)
-	print_header(c.host,await c.call('getblockcount'))
-	print_body(data)
+	(do_pager if opt.pager else print)(
+		'\n'.join(gen_header(c.host,await c.call('getblockcount'))) + '\n' +
+		'\n'.join(gen_body(data))
+		)
 
 run_session(main())
