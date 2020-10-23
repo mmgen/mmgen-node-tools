@@ -40,10 +40,12 @@ setup(
 		keywords     = g.keywords,
 		packages     = ['mmgen.node_tools'],
 		scripts      = [
-			'mmnode-play-sound',
+			'mmnode-blocks-info',
+			'mmnode-feeview',
+			'mmnode-halving-calculator',
 			'mmnode-netrate',
 			'mmnode-peerblocks',
-			'mmnode-blocks-info',
+			'mmnode-play-sound',
 			],
 		data_files = [('share/mmgen/node_tools/audio', [
 				'data_files/audio/ringtone.wav',     # source files must have 0644 mode

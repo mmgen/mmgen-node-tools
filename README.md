@@ -1,12 +1,20 @@
 # MMGen node tools
 
-Optional helper programs for the [MMGen online/offline Bitcoin wallet][6]
+Helper utilities for Bitcoin and forkcoin full nodes.
 
-Included in: https://github.com/mmgen/MMGenLive
+Requires modules from the [MMGen online/offline cryptocurrency wallet][6].
 
-Requires: https://github.com/mmgen/mmgen
+Currently tested on Linux only.  Some scripts may not work under Windows/MSYS2.
 
-The node tools are Linux-only for now
+## Install:
+
+First, install [MMGen][6].
+
+Then,
+
+    $ git clone https://github.com/mmgen/mmgen-node-tools
+    $ cd mmgen-node-tools
+    $ sudo ./setup.py install
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -15,5 +23,5 @@ The node tools are Linux-only for now
 Donate: 15TLdmi5NYLdqmtCqczUs5pBPkJDXRs83w
 
 [4]: https://bitcointalk.org/index.php?topic=567069.0
-[5]: https://github.com/mmgen/mmgen/wiki/MMGen-Signing-Key
+[5]: https://github.com/mmgen/mmgen/wiki/MMGen-Signing-Keys
 [6]: https://github.com/mmgen/mmgen/
