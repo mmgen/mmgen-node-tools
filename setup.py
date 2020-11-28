@@ -45,7 +45,6 @@ setup(
 			'mmnode-halving-calculator',
 			'mmnode-netrate',
 			'mmnode-peerblocks',
-			'mmnode-play-sound',
 			],
 		data_files = [('share/mmgen/node_tools/audio', [
 				'data_files/audio/ringtone.wav',     # source files must have 0644 mode
