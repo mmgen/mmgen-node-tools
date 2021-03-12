@@ -17,7 +17,7 @@
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-mmgen-txfind: Find a transaction in the blockchain or mempool
+mmnode-txfind: Find a transaction in the blockchain or mempool
 """
 
 from mmgen.common import *
