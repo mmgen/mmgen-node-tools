@@ -123,8 +123,8 @@ class BlocksInfo:
 		rel = tip % 2016
 
 		if rel:
-			H1,H2,HA,HB = await c.gathered_call('getblockhash',[[self.first],[self.last],[tip-rel],[tip]])
-			h1,h2,hA,hB = await c.gathered_call('getblockheader',[[H1],[H2],[HA],[HB]])
+			HA,HB = await c.gathered_call('getblockhash',([tip-rel],[tip]))
+			hA,hB = await c.gathered_call('getblockheader',([HA],[HB]))
 			bdi =  (hB['time']-hA['time']) / rel
 			adj_pct = ((600 / bdi) - 1) * 100
 			Msg_r(fmt(f"""
@@ -134,8 +134,6 @@ class BlocksInfo:
 				Est. diff adjust: {adj_pct:+.2f}%
 				"""))
 		else:
-			H1,H2 = await c.gathered_call('getblockhash',[[self.first],[self.last]])
-			h1,h2 = await c.gathered_call('getblockheader',[[H1],[H2]])
 			Msg_r(fmt(f"""
 				Current height:    {tip}
 				Next diff adjust:  {tip-rel+2016} (in {2016-rel} blocks)
@@ -145,7 +143,7 @@ class BlocksInfo:
 			self.first,
 			self.last,
 			self.nblocks,
-			secs_to_hms(h2['time'] - h1['time']) ))
+			secs_to_hms(self.t_cur - self.t_start) ))
 
 class BlocksInfoOverview(BlocksInfo):
 
@@ -252,13 +250,14 @@ class BlocksInfoOverview(BlocksInfo):
 			self.total_bytes += loc.bs['total_size']
 			self.total_weight += loc.bs['total_weight']
 			self.t_cur = loc.bs['time']
-			if self.t_prev == None:
+			if self.t_start == None:
 				if height == 0:
 					b_prev = loc.bs
 				else:
 					bH = await c.call('getblockhash',height-1)
 					b_prev = await c.call('getblockstats',bH)
-				self.t_start = self.t_prev = b_prev['time']
+				self.t_start = loc.bs['time']
+				self.t_prev = b_prev['time']
 			loc.t_diff = self.t_cur - self.t_prev
 			self.t_prev = self.t_cur
 
