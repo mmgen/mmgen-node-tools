@@ -36,11 +36,20 @@ opts_data = {
 -H, --hashes          Display only block numbers and hashes
 -m, --miner-info      Display miner info in coinbase transaction
 -M, --raw-miner-info  Display miner info in uninterpreted form
+-n, --no-header       Don't print the column header
 -o, --fields=         Display the specified fields
 -s, --summary         Print the summary only
 -S, --no-summary      Don't print the summary
+""",
+	'notes': """
+If no block number is specified, the current block is assumed.
 
-If no block number is specified, the current block is assumed
+In addition to information about the requested range of blocks, an estimate
+of the next difficulty adjustment is also displayed based on the average
+Block Discovery Interval from the beginning of the current 2016-block period
+to the chain tip.
+
+Requires --txindex for correct operation.
 """
 	}
 }
@@ -52,7 +61,6 @@ class BlocksInfo:
 	first = None
 	last = None
 	nblocks = None
-	sum_fs = '{:<15} {}\n'
 
 	def __init__(self):
 		self.get_block_range()
@@ -104,12 +112,37 @@ class BlocksInfo:
 	def print_header(self): pass
 
 	async def print_summary(self):
+		from mmgen.util import secs_to_hms
 		if not opt.summary:
 			Msg('')
-		Msg_r(
-			self.sum_fs.format('Current height:', c.blockcount) +
-			self.sum_fs.format('Range:',          f'{self.first}-{self.last} ({self.nblocks} blocks)')
-		)
+
+		tip = c.blockcount
+		rel = tip % 2016
+
+		if rel:
+			H1,H2,HA,HB = await c.gathered_call('getblockhash',[[self.first],[self.last],[tip-rel],[tip]])
+			h1,h2,hA,hB = await c.gathered_call('getblockheader',[[H1],[H2],[HA],[HB]])
+			bdi =  (hB['time']-hA['time']) / rel
+			adj_pct = ((600 / bdi) - 1) * 100
+			Msg_r(fmt(f"""
+				Current height:    {tip}
+				Next diff adjust:  {tip-rel+2016} (in {2016-rel} blocks [{((2016-rel)*bdi)/86400:.2f} days])
+				BDI (cur period):  {bdi/60:.2f} min
+				Est. diff adjust: {adj_pct:+.2f}%
+				"""))
+		else:
+			H1,H2 = await c.gathered_call('getblockhash',[[self.first],[self.last]])
+			h1,h2 = await c.gathered_call('getblockheader',[[H1],[H2]])
+			Msg_r(fmt(f"""
+				Current height:    {tip}
+				Next diff adjust:  {tip-rel+2016} (in {2016-rel} blocks)
+				"""))
+
+		Msg('\nRange:      {}-{} ({} blocks [{}])'.format(
+			self.first,
+			self.last,
+			self.nblocks,
+			secs_to_hms(h2['time'] - h1['time']) ))
 
 class BlocksInfoOverview(BlocksInfo):
 
@@ -195,7 +228,7 @@ class BlocksInfoOverview(BlocksInfo):
 		else:
 			self.miner_pats = None
 
-		if not opt.summary:
+		if not (opt.summary or opt.no_header):
 			Msg(self.fs.format(*hdr1))
 			Msg(self.fs.format(*hdr2))
 
@@ -264,12 +297,12 @@ class BlocksInfoOverview(BlocksInfo):
 				elapsed = self.t_cur - self.t_start
 				ac = int(elapsed / self.nblocks)
 				rate = (self.total_bytes / 10000) / (elapsed / 36)
-				Msg_r (
-					self.sum_fs.format('Avg size:     ', f'{self.total_bytes//self.nblocks} bytes') +
-					self.sum_fs.format('Avg weight:   ', f'{self.total_weight//self.nblocks} bytes') +
-					self.sum_fs.format('MB/hr:',         f'{rate:0.4f}') +
-					self.sum_fs.format('Avg conf time:', f'{ac//60}:{ac%60:02}')
-				)
+				Msg_r (fmt(f"""
+					Avg size:   {self.total_bytes//self.nblocks} bytes
+					Avg weight: {self.total_weight//self.nblocks} bytes
+					MB/hr:      {rate:0.4f}
+					Avg BDI:    {ac/60:.2f} min
+					"""))
 
 class BlocksInfoHashes(BlocksInfo):
 
@@ -300,8 +333,12 @@ async def main():
 	else:
 		m = BlocksInfoOverview()
 
-	m.print_header()
+	if not opt.no_header:
+		m.print_header()
+
 	await m.run()
-	await m.print_summary()
+
+	if not opt.no_summary:
+		await m.print_summary()
 
 run_session(main())
