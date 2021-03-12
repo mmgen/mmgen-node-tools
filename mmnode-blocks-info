@@ -26,7 +26,11 @@ from mmgen.common import *
 from decimal import Decimal
 
 opts_data = {
-	'sets': [('raw_miner_info',True,'miner_info',True)],
+	'sets': [
+		('raw_miner_info',True,'miner_info',True),
+		('summary',True,'raw_miner_info',False),
+		('summary',True,'miner_info',False)
+	],
 	'text': {
 		'desc':    'Display information about a range of blocks',
 		'usage':   '[opts] +<last n blocks>|<block num>|<block num range>',
@@ -97,25 +101,24 @@ class BlocksInfo:
 
 	async def run(self):
 
-		for height in range(self.first,self.last+1):
-			await self.process_block(height,await c.call('getblockhash',height))
-
-		return
-
-		# WIP
 		heights = range(self.first,self.last+1)
 		hashes = await c.gathered_call('getblockhash',[(height,) for height in heights])
-		print(hashes)
-		header = await c.gathered_call('getblockheader',[(H,) for H in hashes])
-		pdie(header)
+		hdrs   = await c.gathered_call('getblockheader',[(H,) for H in hashes])
 
-	def print_header(self): pass
+		for height in heights:
+			await self.process_block(height,hashes.pop(0),hdrs.pop(0))
+
+	def print_header(self):
+		hdr1 = [v.hdr1 for v in self.fvals]
+		hdr2 = [v.hdr2 for v in self.fvals]
+		if opt.miner_info:
+			hdr1.append('     ')
+			hdr2.append('Miner')
+		Msg(self.fs.format(*hdr1))
+		Msg(self.fs.format(*hdr2))
 
 	async def print_summary(self):
 		from mmgen.util import secs_to_hms
-		if not opt.summary:
-			Msg('')
-
 		tip = c.blockcount
 		rel = tip % 2016
 
@@ -185,7 +188,7 @@ class BlocksInfoOverview(BlocksInfo):
 			'-{:02}:{:02}'.format(abs(loc.t_diff)//60,abs(loc.t_diff)%60) if loc.t_diff < 0 else
 			' {:02}:{:02}'.format(loc.t_diff//60,loc.t_diff%60) ),
 		'tf': lambda self,loc: '{:.8f}'.format(loc.bs["totalfee"] * Decimal('0.00000001')),
-		'bh': lambda self,loc: c.call('getblockheader',loc.H),
+		'bh': lambda self,loc: loc.hdr,
 		'fp': lambda self,loc: loc.bs['feerate_percentiles'],
 		'su': lambda self,loc: str(loc.bs['subsidy'] * Decimal('0.00000001')).rstrip('0'),
 	}
@@ -204,8 +207,6 @@ class BlocksInfoOverview(BlocksInfo):
 
 		self.fvals = list(self.fields[k] for k in fnames if k in self.fields)
 		self.fs    = '  '.join( v.fs for v in self.fvals )
-		hdr1       = [v.hdr1 for v in self.fvals]
-		hdr2       = [v.hdr2 for v in self.fvals]
 		self.deps  = set(' '.join(v.varname + ' ' + ' '.join(v.deps) for v in self.fvals).split())
 
 		self.bs_keys = [(v.bs_key or v.key) for v in self.fvals if v.bs_key or v.varname == 'bs']
@@ -215,8 +216,6 @@ class BlocksInfoOverview(BlocksInfo):
 
 		if opt.miner_info:
 			self.fs += '  {}'
-			hdr1.append('     ')
-			hdr2.append('Miner')
 			self.miner_pats = [re.compile(pat) for pat in (
 				rb'[\xe3\xe4\xe5][\^/](.*?)\xfa',
 				rb'([a-zA-Z0-9&. -]+/Mined by [a-zA-Z0-9. ]+)',
@@ -227,10 +226,6 @@ class BlocksInfoOverview(BlocksInfo):
 			)]
 		else:
 			self.miner_pats = None
-
-		if not (opt.summary or opt.no_header):
-			Msg(self.fs.format(*hdr1))
-			Msg(self.fs.format(*hdr2))
 
 	async def get_miner_string(self,H):
 		tx0 = (await c.call('getblock',H))['tx'][0]
@@ -247,13 +242,13 @@ class BlocksInfoOverview(BlocksInfo):
 					if m:
 						return ''.join(chr(b) for b in m[1] if 31 < b < 127).strip('^').strip('/').replace('/',' ')
 
-	async def process_block(self,height,H):
+	async def process_block(self,height,H,hdr):
 		loc = local_vars()
-		loc.H = H
 		loc.height = height
+		loc.H = H
+		loc.hdr = hdr
 		if 'bs' in self.deps:
 			loc.bs = await c.call('getblockstats',H,self.bs_keys)
-			#pdie(loc.bs)
 			self.total_bytes += loc.bs['total_size']
 			self.total_weight += loc.bs['total_weight']
 			self.t_cur = loc.bs['time']
@@ -261,8 +256,8 @@ class BlocksInfoOverview(BlocksInfo):
 				if height == 0:
 					b_prev = loc.bs
 				else:
-					bh = await c.call('getblockhash',height-1)
-					b_prev = await c.call('getblockstats',bh)
+					bH = await c.call('getblockhash',height-1)
+					b_prev = await c.call('getblockstats',bH)
 				self.t_start = self.t_prev = b_prev['time']
 			loc.t_diff = self.t_cur - self.t_prev
 			self.t_prev = self.t_cur
@@ -333,12 +328,14 @@ async def main():
 	else:
 		m = BlocksInfoOverview()
 
-	if not opt.no_header:
+	if not (opt.summary or opt.no_header):
 		m.print_header()
 
 	await m.run()
 
 	if not opt.no_summary:
+		if not opt.summary:
+			Msg('')
 		await m.print_summary()
 
 run_session(main())
