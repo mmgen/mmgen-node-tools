@@ -20,32 +20,30 @@
 mmnode-blocks-info: Display information about a block or range of blocks
 """
 
-import time,re
+import re
 from collections import namedtuple
+from time import strftime,gmtime
+
 from mmgen.common import *
+from mmgen.util import secs_to_hms
 from decimal import Decimal
 
 class local_vars: pass
 
 class BlocksInfo:
 
-	first = None
-	last = None
-	nblocks = None
 	total_bytes = 0
 	total_weight = 0
-	t_start  = None
-	t_prev   = None
-	t_cur    = None
 
 	bf = namedtuple('block_info_fields',['hdr1','hdr2','fs','bs_key','varname','deps','key'])
 	# bs=getblockstats(), bh=getblockheader()
+	# 'getblockstats' raises exception on Genesis Block!
 	# If 'bs_key' is set, it's included in self.bs_keys instead of 'key'
 	fields = {
 		'block':     bf('',     'Block',    '{:<6}',  None,                 'height',[],     None),
 		'hash':      bf('',     'Hash',     '{:<64}', None,                 'H',     [],     None),
-		'date':      bf('',     'Date',     '{:<19}', None,                 'df',    ['bs'], None),
-		'interval':  bf('Solve','Time ',    '{:>6}',  None,                 'if',    ['bs'], None),
+		'date':      bf('',     'Date',     '{:<19}', None,                 'df',    [],     None),
+		'interval':  bf('Solve','Time ',    '{:>6}',  None,                 'td',    [],     None),
 		'size':      bf('',     'Size',     '{:>7}',  None,                 'bs',    [],     'total_size'),
 		'weight':    bf('',     'Weight',   '{:>7}',  None,                 'bs',    [],     'total_weight'),
 		'utxo_inc':  bf(' UTXO',' Incr',    '{:>5}',  None,                 'bs',    [],     'utxo_increase'),
@@ -66,16 +64,14 @@ class BlocksInfo:
 	dfl_fields  = ['block','date','interval','subsidy','totalfee','size','weight','fee50','fee25','fee10','version']
 
 	funcs = {
-		'df': lambda self,loc: time.strftime('%Y-%m-%d %X',time.gmtime(self.t_cur)),
-		'if': lambda self,loc: (
-			'-{:02}:{:02}'.format(abs(loc.t_diff)//60,abs(loc.t_diff)%60) if loc.t_diff < 0 else
-			' {:02}:{:02}'.format(loc.t_diff//60,loc.t_diff%60) ),
+		'df': lambda self,loc: strftime('%Y-%m-%d %X',gmtime(self.t_cur)),
+		'td': lambda self,loc: (
+			'-{:02}:{:02}'.format(abs(self.t_diff)//60,abs(self.t_diff)%60) if self.t_diff < 0 else
+			' {:02}:{:02}'.format(self.t_diff//60,self.t_diff%60) ),
 		'tf': lambda self,loc: '{:.8f}'.format(loc.bs["totalfee"] * Decimal('0.00000001')),
-		'bh': lambda self,loc: loc.hdr,
 		'fp': lambda self,loc: loc.bs['feerate_percentiles'],
-		'su': lambda self,loc: str(loc.bs['subsidy'] * Decimal('0.00000001')).rstrip('0'),
+		'su': lambda self,loc: str(loc.bs['subsidy'] * Decimal('0.00000001')).rstrip('0').rstrip('.'),
 	}
-
 
 	def __init__(self):
 
@@ -94,7 +90,7 @@ class BlocksInfo:
 		self.deps  = set(' '.join(v.varname + ' ' + ' '.join(v.deps) for v in self.fvals).split())
 
 		self.bs_keys = [(v.bs_key or v.key) for v in self.fvals if v.bs_key or v.varname == 'bs']
-		self.bs_keys.extend(['total_size','time'])
+		self.bs_keys.extend(['total_size','total_weight'])
 
 		self.ufuncs = {v.varname:self.funcs[v.varname] for v in self.fvals if v.varname in self.funcs}
 
@@ -136,13 +132,18 @@ class BlocksInfo:
 
 		self.first = first
 		self.last = last
-		self.nblocks = last - first + 1
 
 	async def run(self):
 
 		heights = range(self.first,self.last+1)
 		hashes = await c.gathered_call('getblockhash',[(height,) for height in heights])
 		hdrs   = await c.gathered_call('getblockheader',[(H,) for H in hashes])
+
+		self.t_start = hdrs[0]['time']
+		self.t_cur = (
+			self.t_start if heights[0] == 0 else
+			(await c.call('getblockheader',await c.call('getblockhash',heights[0]-1)))['time']
+		)
 
 		for height in heights:
 			await self.process_block(height,hashes.pop(0),hdrs.pop(0))
@@ -151,31 +152,21 @@ class BlocksInfo:
 		loc = local_vars()
 		loc.height = height
 		loc.H = H
-		loc.hdr = hdr
+		loc.bh = hdr
+		
+		self.t_diff = hdr['time'] - self.t_cur
+		self.t_cur  = hdr['time']
+
 		if 'bs' in self.deps:
 			loc.bs = await c.call('getblockstats',H,self.bs_keys)
 			self.total_bytes += loc.bs['total_size']
 			self.total_weight += loc.bs['total_weight']
-			self.t_cur = loc.bs['time']
-			if self.t_start == None:
-				if height == 0:
-					b_prev = loc.bs
-				else:
-					bH = await c.call('getblockhash',height-1)
-					b_prev = await c.call('getblockstats',bH)
-				self.t_start = loc.bs['time']
-				self.t_prev = b_prev['time']
-			loc.t_diff = self.t_cur - self.t_prev
-			self.t_prev = self.t_cur
 
 		if opt.summary:
 			return
 
 		for varname,func in self.ufuncs.items():
-			ret = func(self,loc)
-			if type(ret).__name__ == 'coroutine':
-				ret = await ret
-			setattr(loc,varname,ret)
+			setattr(loc,varname,func(self,loc))
 
 		if opt.miner_info:
 			miner_info = await self.get_miner_string(H)
@@ -212,79 +203,85 @@ class BlocksInfo:
 		if opt.miner_info:
 			hdr1.append('     ')
 			hdr2.append('Miner')
-		Msg(self.fs.format(*hdr1))
+		if ''.join(hdr1).replace(' ',''):
+			Msg(self.fs.format(*hdr1))
 		Msg(self.fs.format(*hdr2))
 
 	async def print_summary(self):
-		from mmgen.util import secs_to_hms
 		tip = c.blockcount
-		rel = tip % 2016
 
-		if rel:
-			HA,HB = await c.gathered_call('getblockhash',([tip-rel],[tip]))
-			hA,hB = await c.gathered_call('getblockheader',([HA],[HB]))
-			bdi =  (hB['time']-hA['time']) / rel
-			adj_pct = ((600 / bdi) - 1) * 100
-			Msg_r(fmt(f"""
-				Current height:    {tip}
-				Next diff adjust:  {tip-rel+2016} (in {2016-rel} blocks [{((2016-rel)*bdi)/86400:.2f} days])
-				BDI (cur period):  {bdi/60:.2f} min
-				Est. diff adjust: {adj_pct:+.2f}%
-				"""))
-		else:
-			Msg_r(fmt(f"""
-				Current height:    {tip}
-				Next diff adjust:  {tip-rel+2016} (in {2016-rel} blocks)
-				"""))
+		if self.last == tip:
+			rel = tip % 2016
+			if rel:
+				HA,HB = await c.gathered_call('getblockhash',([tip-rel],[tip]))
+				hA,hB = await c.gathered_call('getblockheader',([HA],[HB]))
+				bdi =  (hB['time']-hA['time']) / rel
+				adj_pct = ((600 / bdi) - 1) * 100
+				Msg(fmt(f"""
+					Current height:    {tip}
+					Next diff adjust:  {tip-rel+2016} (in {2016-rel} blocks [{((2016-rel)*bdi)/86400:.2f} days])
+					BDI (cur period):  {bdi/60:.2f} min
+					Est. diff adjust: {adj_pct:+.2f}%
+					"""))
+			else:
+				Msg(fmt(f"""
+					Current height:    {tip}
+					Next diff adjust:  {tip-rel+2016} (in {2016-rel} blocks)
+					"""))
 
-		Msg('\nRange:      {}-{} ({} blocks [{}])'.format(
+		nblocks = self.last - self.first + 1
+
+		Msg('Range:      {}-{} ({} blocks [{}])'.format(
 			self.first,
 			self.last,
-			self.nblocks,
+			nblocks,
 			secs_to_hms(self.t_cur - self.t_start) ))
 
-		if 'bs' in self.deps:
-			if self.nblocks > 1:
-				elapsed = self.t_cur - self.t_start
-				ac = int(elapsed / self.nblocks)
-				rate = (self.total_bytes / 10000) / (elapsed / 36)
-				Msg_r (fmt(f"""
-					Avg size:   {self.total_bytes//self.nblocks} bytes
-					Avg weight: {self.total_weight//self.nblocks} bytes
-					MB/hr:      {rate:0.4f}
-					Avg BDI:    {ac/60:.2f} min
-					"""))
+		if 'bs' in self.deps and nblocks > 1:
+			elapsed = self.t_cur - self.t_start
+			ac = int(elapsed / nblocks)
+			rate = (self.total_bytes / 10000) / (elapsed / 36)
+			Msg_r(fmt(f"""
+				Avg size:   {self.total_bytes//nblocks} bytes
+				Avg weight: {self.total_weight//nblocks} bytes
+				MB/hr:      {rate:0.4f}
+				Avg BDI:    {ac/60:.2f} min
+				"""))
 
 opts_data = {
 	'sets': [
-		('raw_miner_info',True,'miner_info',True),
-		('summary',True,'raw_miner_info',False),
-		('summary',True,'miner_info',False)
+		('raw_miner_info', True, 'miner_info',     True),
+		('summary',        True, 'raw_miner_info', False),
+		('summary',        True, 'miner_info',     False),
+		('hashes',         True, 'fields',         'block,hash'),
+		('hashes',         True, 'no_summary',     True),
 	],
 	'text': {
-		'desc':    'Display information about a range of blocks',
-		'usage':   '[opts] +<last n blocks>|<block num>|<block num range>',
+		'desc':    'Display information about a block or range of blocks',
+		'usage':   '[opts] +<last N blocks>|<block num>[-<block num>]',
 		'options': """
 -h, --help            Print this help message
 --, --longhelp        Print help message for long options (common options)
 -H, --hashes          Display only block numbers and hashes
 -m, --miner-info      Display miner info in coinbase transaction
 -M, --raw-miner-info  Display miner info in uninterpreted form
--n, --no-header       Don't print the column header
--o, --fields=         Display the specified fields
+-n, --no-header       Don’t print the column header
+-o, --fields=         Display the specified fields (comma-separated list)
+                      See AVAILABLE FIELDS below.
 -s, --summary         Print the summary only
--S, --no-summary      Don't print the summary
+-S, --no-summary      Don’t print the summary
 """,
 	'notes': """
 If no block number is specified, the current block is assumed.
 
-In addition to information about the requested range of blocks, an estimate
-of the next difficulty adjustment is also displayed based on the average
-Block Discovery Interval from the beginning of the current 2016-block period
-to the chain tip.
+If the requested range ends at the current chain tip, an estimate of the next
+difficulty adjustment is also displayed. The estimate is based on the average
+Block Discovery Interval from the beginning of the current 2016-block period.
 
-Requires --txindex for correct operation.
-"""
+AVAILABLE FIELDS: {}
+
+This program requires a txindex-enabled daemon for correct operation.
+""".format(fmt_list(BlocksInfo.fields,fmt='bare'))
 	}
 }
 
