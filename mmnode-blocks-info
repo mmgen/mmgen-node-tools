@@ -25,39 +25,6 @@ from collections import namedtuple
 from mmgen.common import *
 from decimal import Decimal
 
-opts_data = {
-	'sets': [
-		('raw_miner_info',True,'miner_info',True),
-		('summary',True,'raw_miner_info',False),
-		('summary',True,'miner_info',False)
-	],
-	'text': {
-		'desc':    'Display information about a range of blocks',
-		'usage':   '[opts] +<last n blocks>|<block num>|<block num range>',
-		'options': """
--h, --help            Print this help message
---, --longhelp        Print help message for long options (common options)
--H, --hashes          Display only block numbers and hashes
--m, --miner-info      Display miner info in coinbase transaction
--M, --raw-miner-info  Display miner info in uninterpreted form
--n, --no-header       Don't print the column header
--o, --fields=         Display the specified fields
--s, --summary         Print the summary only
--S, --no-summary      Don't print the summary
-""",
-	'notes': """
-If no block number is specified, the current block is assumed.
-
-In addition to information about the requested range of blocks, an estimate
-of the next difficulty adjustment is also displayed based on the average
-Block Discovery Interval from the beginning of the current 2016-block period
-to the chain tip.
-
-Requires --txindex for correct operation.
-"""
-	}
-}
-
 class local_vars: pass
 
 class BlocksInfo:
@@ -307,6 +274,39 @@ class BlocksInfoHashes(BlocksInfo):
 		heights = range(self.first,self.last+1)
 		hashes = await c.gathered_call('getblockhash',[(height,) for height in heights])
 		Msg('\n'.join('{:<7} {}'.format(height,H) for height,H in zip(heights,hashes)))
+
+opts_data = {
+	'sets': [
+		('raw_miner_info',True,'miner_info',True),
+		('summary',True,'raw_miner_info',False),
+		('summary',True,'miner_info',False)
+	],
+	'text': {
+		'desc':    'Display information about a range of blocks',
+		'usage':   '[opts] +<last n blocks>|<block num>|<block num range>',
+		'options': """
+-h, --help            Print this help message
+--, --longhelp        Print help message for long options (common options)
+-H, --hashes          Display only block numbers and hashes
+-m, --miner-info      Display miner info in coinbase transaction
+-M, --raw-miner-info  Display miner info in uninterpreted form
+-n, --no-header       Don't print the column header
+-o, --fields=         Display the specified fields
+-s, --summary         Print the summary only
+-S, --no-summary      Don't print the summary
+""",
+	'notes': """
+If no block number is specified, the current block is assumed.
+
+In addition to information about the requested range of blocks, an estimate
+of the next difficulty adjustment is also displayed based on the average
+Block Discovery Interval from the beginning of the current 2016-block period
+to the chain tip.
+
+Requires --txindex for correct operation.
+"""
+	}
+}
 
 cmd_args = opts.init(opts_data)
 
