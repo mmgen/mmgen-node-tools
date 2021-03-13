@@ -32,88 +32,6 @@ class BlocksInfo:
 	first = None
 	last = None
 	nblocks = None
-
-	def __init__(self):
-		self.get_block_range()
-		self.post_init()
-
-	def get_block_range(self):
-
-		if not cmd_args:
-			first = last = c.blockcount
-		else:
-			arg = cmd_args[0]
-			if arg.startswith('+') and is_int(arg[1:]):
-				last = c.blockcount
-				first = last - int(arg[1:]) + 1
-			elif is_int(arg):
-				first = last = int(arg)
-			else:
-				try:
-					first,last = [int(ep) for ep in arg.split('-')]
-				except:
-					opts.usage()
-
-		if first > last:
-			die(2,f'{first}-{last}: invalid block range')
-
-		if last > c.blockcount:
-			die(2,f'Requested block number ({last}) greater than current block height')
-
-		self.first = first
-		self.last = last
-		self.nblocks = last - first + 1
-
-	def post_init(self): pass
-
-	async def run(self):
-
-		heights = range(self.first,self.last+1)
-		hashes = await c.gathered_call('getblockhash',[(height,) for height in heights])
-		hdrs   = await c.gathered_call('getblockheader',[(H,) for H in hashes])
-
-		for height in heights:
-			await self.process_block(height,hashes.pop(0),hdrs.pop(0))
-
-	def print_header(self):
-		hdr1 = [v.hdr1 for v in self.fvals]
-		hdr2 = [v.hdr2 for v in self.fvals]
-		if opt.miner_info:
-			hdr1.append('     ')
-			hdr2.append('Miner')
-		Msg(self.fs.format(*hdr1))
-		Msg(self.fs.format(*hdr2))
-
-	async def print_summary(self):
-		from mmgen.util import secs_to_hms
-		tip = c.blockcount
-		rel = tip % 2016
-
-		if rel:
-			HA,HB = await c.gathered_call('getblockhash',([tip-rel],[tip]))
-			hA,hB = await c.gathered_call('getblockheader',([HA],[HB]))
-			bdi =  (hB['time']-hA['time']) / rel
-			adj_pct = ((600 / bdi) - 1) * 100
-			Msg_r(fmt(f"""
-				Current height:    {tip}
-				Next diff adjust:  {tip-rel+2016} (in {2016-rel} blocks [{((2016-rel)*bdi)/86400:.2f} days])
-				BDI (cur period):  {bdi/60:.2f} min
-				Est. diff adjust: {adj_pct:+.2f}%
-				"""))
-		else:
-			Msg_r(fmt(f"""
-				Current height:    {tip}
-				Next diff adjust:  {tip-rel+2016} (in {2016-rel} blocks)
-				"""))
-
-		Msg('\nRange:      {}-{} ({} blocks [{}])'.format(
-			self.first,
-			self.last,
-			self.nblocks,
-			secs_to_hms(self.t_cur - self.t_start) ))
-
-class BlocksInfoOverview(BlocksInfo):
-
 	total_bytes = 0
 	total_weight = 0
 	t_start  = None
@@ -158,9 +76,10 @@ class BlocksInfoOverview(BlocksInfo):
 		'su': lambda self,loc: str(loc.bs['subsidy'] * Decimal('0.00000001')).rstrip('0'),
 	}
 
+
 	def __init__(self):
 
-		super().__init__()
+		self.get_block_range()
 
 		if opt.fields:
 			fnames = opt.fields.split(',')
@@ -192,20 +111,41 @@ class BlocksInfoOverview(BlocksInfo):
 		else:
 			self.miner_pats = None
 
-	async def get_miner_string(self,H):
-		tx0 = (await c.call('getblock',H))['tx'][0]
-		bd = await c.call('getrawtransaction',tx0,1)
-		if type(bd) == tuple:
-			return '---'
+	def get_block_range(self):
+
+		if not cmd_args:
+			first = last = c.blockcount
 		else:
-			cb = bytes.fromhex(bd['vin'][0]['coinbase'])
-			if opt.raw_miner_info:
-				return repr(cb)
+			arg = cmd_args[0]
+			if arg.startswith('+') and is_int(arg[1:]):
+				last = c.blockcount
+				first = last - int(arg[1:]) + 1
+			elif is_int(arg):
+				first = last = int(arg)
 			else:
-				for pat in self.miner_pats:
-					m = pat.search(cb)
-					if m:
-						return ''.join(chr(b) for b in m[1] if 31 < b < 127).strip('^').strip('/').replace('/',' ')
+				try:
+					first,last = [int(ep) for ep in arg.split('-')]
+				except:
+					opts.usage()
+
+		if first > last:
+			die(2,f'{first}-{last}: invalid block range')
+
+		if last > c.blockcount:
+			die(2,f'Requested block number ({last}) greater than current block height')
+
+		self.first = first
+		self.last = last
+		self.nblocks = last - first + 1
+
+	async def run(self):
+
+		heights = range(self.first,self.last+1)
+		hashes = await c.gathered_call('getblockhash',[(height,) for height in heights])
+		hdrs   = await c.gathered_call('getblockheader',[(H,) for H in hashes])
+
+		for height in heights:
+			await self.process_block(height,hashes.pop(0),hdrs.pop(0))
 
 	async def process_block(self,height,H,hdr):
 		loc = local_vars()
@@ -251,9 +191,59 @@ class BlocksInfoOverview(BlocksInfo):
 
 		Msg(self.fs.format(*gen()))
 
+	async def get_miner_string(self,H):
+		tx0 = (await c.call('getblock',H))['tx'][0]
+		bd = await c.call('getrawtransaction',tx0,1)
+		if type(bd) == tuple:
+			return '---'
+		else:
+			cb = bytes.fromhex(bd['vin'][0]['coinbase'])
+			if opt.raw_miner_info:
+				return repr(cb)
+			else:
+				for pat in self.miner_pats:
+					m = pat.search(cb)
+					if m:
+						return ''.join(chr(b) for b in m[1] if 31 < b < 127).strip('^').strip('/').replace('/',' ')
+
+	def print_header(self):
+		hdr1 = [v.hdr1 for v in self.fvals]
+		hdr2 = [v.hdr2 for v in self.fvals]
+		if opt.miner_info:
+			hdr1.append('     ')
+			hdr2.append('Miner')
+		Msg(self.fs.format(*hdr1))
+		Msg(self.fs.format(*hdr2))
+
 	async def print_summary(self):
+		from mmgen.util import secs_to_hms
+		tip = c.blockcount
+		rel = tip % 2016
+
+		if rel:
+			HA,HB = await c.gathered_call('getblockhash',([tip-rel],[tip]))
+			hA,hB = await c.gathered_call('getblockheader',([HA],[HB]))
+			bdi =  (hB['time']-hA['time']) / rel
+			adj_pct = ((600 / bdi) - 1) * 100
+			Msg_r(fmt(f"""
+				Current height:    {tip}
+				Next diff adjust:  {tip-rel+2016} (in {2016-rel} blocks [{((2016-rel)*bdi)/86400:.2f} days])
+				BDI (cur period):  {bdi/60:.2f} min
+				Est. diff adjust: {adj_pct:+.2f}%
+				"""))
+		else:
+			Msg_r(fmt(f"""
+				Current height:    {tip}
+				Next diff adjust:  {tip-rel+2016} (in {2016-rel} blocks)
+				"""))
+
+		Msg('\nRange:      {}-{} ({} blocks [{}])'.format(
+			self.first,
+			self.last,
+			self.nblocks,
+			secs_to_hms(self.t_cur - self.t_start) ))
+
 		if 'bs' in self.deps:
-			await super().print_summary()
 			if self.nblocks > 1:
 				elapsed = self.t_cur - self.t_start
 				ac = int(elapsed / self.nblocks)
@@ -264,16 +254,6 @@ class BlocksInfoOverview(BlocksInfo):
 					MB/hr:      {rate:0.4f}
 					Avg BDI:    {ac/60:.2f} min
 					"""))
-
-class BlocksInfoHashes(BlocksInfo):
-
-	def print_header(self):
-		Msg('{:<7} {}'.format('BLOCK','HASH'))
-
-	async def run(self):
-		heights = range(self.first,self.last+1)
-		hashes = await c.gathered_call('getblockhash',[(height,) for height in heights])
-		Msg('\n'.join('{:<7} {}'.format(height,H) for height,H in zip(heights,hashes)))
 
 opts_data = {
 	'sets': [
@@ -322,10 +302,7 @@ async def main():
 	global c
 	c = await rpc_init(proto)
 
-	if opt.hashes:
-		m = BlocksInfoHashes()
-	else:
-		m = BlocksInfoOverview()
+	m = BlocksInfo()
 
 	if not (opt.summary or opt.no_header):
 		m.print_header()
