@@ -60,6 +60,7 @@ class BlocksInfo:
 		'version':   bf('',     'Version',  '{:8}',   None,                 'bh',    [],     'versionHex'),
 		'nTx':       bf('',     'nTx   ',   '{:>5}',  None,                 'bh',    [],     'nTx'),
 		'subsidy':   bf('',     'Subsidy',  '{:7}',   'subsidy',            'su',    ['bs'],  None),
+		'difficulty':bf('Diffi-','culty',   '{:8}',   None,                 'di',    [],      None),
 	}
 	dfl_fields  = ['block','date','interval','subsidy','totalfee','size','weight','fee50','fee25','fee10','version']
 
@@ -71,21 +72,24 @@ class BlocksInfo:
 		'tf': lambda self,loc: '{:.8f}'.format(loc.bs["totalfee"] * Decimal('0.00000001')),
 		'fp': lambda self,loc: loc.bs['feerate_percentiles'],
 		'su': lambda self,loc: str(loc.bs['subsidy'] * Decimal('0.00000001')).rstrip('0').rstrip('.'),
+		'di': lambda self,loc: '{:.2e}'.format(loc.bh['difficulty']),
 	}
 
 	def __init__(self):
 
+		def get_fields():
+			if opt.fields:
+				ufields = opt.fields.lstrip('+').split(',')
+				for field in ufields:
+					if field not in self.fields:
+						die(1,f'{field!r}: unrecognized field')
+				return self.dfl_fields + ufields if opt.fields[0] == '+' else ufields
+			else:
+				return self.dfl_fields
+
 		self.get_block_range()
 
-		if opt.fields:
-			fnames = opt.fields.split(',')
-			for n in fnames:
-				if n not in self.fields:
-					die(1,f'{n!r}: unrecognized field')
-		else:
-			fnames = self.dfl_fields
-
-		self.fvals = list(self.fields[k] for k in fnames if k in self.fields)
+		self.fvals = list(self.fields[k] for k in get_fields())
 		self.fs    = '  '.join( v.fs for v in self.fvals )
 		self.deps  = set(' '.join(v.varname + ' ' + ' '.join(v.deps) for v in self.fvals).split())
 
@@ -138,6 +142,7 @@ class BlocksInfo:
 		heights = range(self.first,self.last+1)
 		hashes = await c.gathered_call('getblockhash',[(height,) for height in heights])
 		hdrs   = await c.gathered_call('getblockheader',[(H,) for H in hashes])
+		self.last_hdr = hdrs[-1]
 
 		self.t_start = hdrs[0]['time']
 		self.t_cur = (
@@ -153,7 +158,7 @@ class BlocksInfo:
 		loc.height = height
 		loc.H = H
 		loc.bh = hdr
-		
+
 		self.t_diff = hdr['time'] - self.t_cur
 		self.t_cur  = hdr['time']
 
@@ -211,21 +216,23 @@ class BlocksInfo:
 		tip = c.blockcount
 
 		if self.last == tip:
+			cur_diff_disp = f'Cur difficulty:    {self.last_hdr["difficulty"]:.2e}'
 			rel = tip % 2016
 			if rel:
-				HA,HB = await c.gathered_call('getblockhash',([tip-rel],[tip]))
-				hA,hB = await c.gathered_call('getblockheader',([HA],[HB]))
-				bdi =  (hB['time']-hA['time']) / rel
+				rel_hdr = await c.call('getblockheader',await c.call('getblockhash',tip-rel))
+				bdi =  (self.last_hdr['time']-rel_hdr['time']) / rel
 				adj_pct = ((600 / bdi) - 1) * 100
 				Msg(fmt(f"""
 					Current height:    {tip}
 					Next diff adjust:  {tip-rel+2016} (in {2016-rel} blocks [{((2016-rel)*bdi)/86400:.2f} days])
 					BDI (cur period):  {bdi/60:.2f} min
+					{cur_diff_disp}
 					Est. diff adjust: {adj_pct:+.2f}%
 					"""))
 			else:
 				Msg(fmt(f"""
 					Current height:    {tip}
+					{cur_diff_disp}
 					Next diff adjust:  {tip-rel+2016} (in {2016-rel} blocks)
 					"""))
 
@@ -267,7 +274,8 @@ opts_data = {
 -M, --raw-miner-info  Display miner info in uninterpreted form
 -n, --no-header       Don’t print the column header
 -o, --fields=         Display the specified fields (comma-separated list)
-                      See AVAILABLE FIELDS below.
+                      See AVAILABLE FIELDS below.  If the first character
+                      is '+', fields are appended to the defaults.
 -s, --summary         Print the summary only
 -S, --no-summary      Don’t print the summary
 """,
