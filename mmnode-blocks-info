@@ -146,20 +146,24 @@ class BlocksInfo:
 			first = last = c.blockcount
 		else:
 			arg = args[0]
+			from_current = arg[0] == '-'
+			if arg[0] == '-':
+				arg = arg[1:]
 			ps = arg.split('+')
 			if len(ps) == 2 and is_int(ps[1]):
-				if not ps[0]:
+				if not ps[0] and not from_current:
 					last = c.blockcount
 					first = last - int(arg[1:]) + 1
 				elif is_int(ps[0]):
-					first = int(ps[0])
+					first = (c.blockcount - int(ps[0])) if from_current else int(ps[0])
 					last = first + int(ps[1]) - 1
 				else:
 					opts.usage()
 			elif is_int(arg):
-				first = last = int(arg)
+				first = last = (c.blockcount - int(arg)) if from_current else int(arg)
 			else:
 				try:
+					assert not from_current
 					first,last = [int(ep) for ep in arg.split('-')]
 				except:
 					opts.usage()
@@ -301,7 +305,7 @@ opts_data = {
 	],
 	'text': {
 		'desc':    'Display information about a block or range of blocks',
-		'usage':   '[opts] [<block num>]+<N blocks>|<block num>[-<block num>]',
+		'usage':   '[opts] [<block num>|-<N blocks>]+<N blocks>|<block num>[-<block num>]',
 		'options': """
 -h, --help            Print this help message
 --, --longhelp        Print help message for long options (common options)
@@ -334,6 +338,9 @@ EXAMPLES:
 
     # Display default info for 20 blocks beginning from block 600000
     {p} 600000+20
+
+    # Display default info for 12 blocks beginning 100 blocks from chain tip
+    {p} -- -100+12
 
     # Display info for block 152817, adding miner field:
     {p} --miner-info 152817
