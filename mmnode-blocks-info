@@ -134,8 +134,9 @@ class BlocksInfo:
 				rb'([a-zA-Z0-9&. -]+/Mined by [a-zA-Z0-9. ]+)',
 				rb'\x08/(.*Mined by [a-zA-Z0-9. ]+)',
 				rb'Mined by ([a-zA-Z0-9. ]+)',
-				rb'[/^]([a-zA-Z0-9&. /-]{5,})',
-				rb'[/^]([a-zA-Z0-9&. /-]+)/',
+				rb'[`]([_a-zA-Z0-9&. #/-]+)[/\xfa]',
+				rb'[/^]([a-zA-Z0-9&. #/-]{5,})',
+				rb'[/^]([_a-zA-Z0-9&. #/-]+)/',
 			)]
 		else:
 			self.miner_pats = None
