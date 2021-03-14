@@ -43,7 +43,7 @@ class BlocksInfo:
 		'block':     bf('',     'Block',    '{:<6}',  None,                 'height',[],     None),
 		'hash':      bf('',     'Hash',     '{:<64}', None,                 'H',     [],     None),
 		'date':      bf('',     'Date',     '{:<19}', None,                 'df',    [],     None),
-		'interval':  bf('Solve','Time ',    '{:>6}',  None,                 'td',    [],     None),
+		'interval':  bf('Solve','Time ',    '{:>7}',  None,                 'td',    [],     None),
 		'size':      bf('',     'Size',     '{:>7}',  None,                 'bs',    [],     'total_size'),
 		'weight':    bf('',     'Weight',   '{:>7}',  None,                 'bs',    [],     'total_weight'),
 		'utxo_inc':  bf(' UTXO',' Incr',    '{:>5}',  None,                 'bs',    [],     'utxo_increase'),
@@ -58,11 +58,27 @@ class BlocksInfo:
 		'outputs':   bf('Out-', 'puts',     '{:>5}',  None,                 'bs',    [],     'outs'),
 		'inputs':    bf('In- ', 'puts',     '{:>5}',  None,                 'bs',    [],     'ins'),
 		'version':   bf('',     'Version',  '{:8}',   None,                 'bh',    [],     'versionHex'),
-		'nTx':       bf('',     'nTx   ',   '{:>5}',  None,                 'bh',    [],     'nTx'),
-		'subsidy':   bf('',     'Subsidy',  '{:7}',   'subsidy',            'su',    ['bs'],  None),
+		'nTx':       bf('',     ' nTx ',    '{:>5}',  None,                 'bh',    [],     'nTx'),
+		'subsidy':   bf('Sub-', 'sidy',     '{:5}',   'subsidy',            'su',    ['bs'],  None),
 		'difficulty':bf('Diffi-','culty',   '{:8}',   None,                 'di',    [],      None),
 	}
 	dfl_fields  = ['block','date','interval','subsidy','totalfee','size','weight','fee50','fee25','fee10','version']
+	fixed_fields = [
+		'block',      # until ≈ 09/01/2028 (block 1000000)
+		'hash',
+		'date',
+		'size',       # until ≈ 6x block size increase
+		'weight',     # until ≈ 2.5x block size increase
+		'version',
+		'subsidy',    # until ≈ 01/04/2028 (increases by 1 digit per halving until 9th halving [max 10 digits])
+		'difficulty', # until 1.00e+100 (i.e. never)
+	]
+	# column width adjustment data:
+	fs_lsqueeze = ['interval','totalfee','inputs','outputs','nTx']
+	fs_rsqueeze = []
+	fs_groups = [
+		('fee10','fee25','fee50','fee75','fee90','fee_avg','fee_min'),
+	]
 
 	funcs = {
 		'df': lambda self,loc: strftime('%Y-%m-%d %X',gmtime(self.t_cur)),
@@ -87,10 +103,23 @@ class BlocksInfo:
 			else:
 				return self.dfl_fields
 
+		def gen_fs(fnames):
+			for i in range(len(fnames)):
+				name = fnames[i]
+				ls = (' ','')[name in self.fs_lsqueeze]
+				rs = (' ','')[name in self.fs_rsqueeze]
+				if i:
+					for group in self.fs_groups:
+						if name in group and fnames[i-1] in group:
+							ls = ''
+							break
+				yield ls + self.fields[name].fs + rs
+
 		self.get_block_range()
 
-		self.fvals = list(self.fields[k] for k in get_fields())
-		self.fs    = '  '.join( v.fs for v in self.fvals )
+		fnames     = get_fields()
+		self.fvals = list(self.fields[name] for name in fnames)
+		self.fs    = ''.join(gen_fs(fnames)).strip()
 		self.deps  = set(' '.join(v.varname + ' ' + ' '.join(v.deps) for v in self.fvals).split())
 
 		self.bs_keys = [(v.bs_key or v.key) for v in self.fvals if v.bs_key or v.varname == 'bs']

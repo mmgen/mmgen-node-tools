@@ -145,7 +145,7 @@ async def main():
 				b = 'BLOCK',
 				c = 'DATE',
 				d = '',
-				e = f'BDI (min)',
+				e = f'BDI (mins)',
 				f = f'SUBSIDY ({proto.coin})',
 				g = f'MINED ({proto.coin})',
 				h = f'TOTAL MINED ({proto.coin})'
