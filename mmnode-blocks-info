@@ -115,7 +115,7 @@ class BlocksInfo:
 							break
 				yield ls + self.fields[name].fs + rs
 
-		self.get_block_range()
+		self.get_block_range(cmd_args)
 
 		fnames     = get_fields()
 		self.fvals = list(self.fields[name] for name in fnames)
@@ -140,15 +140,22 @@ class BlocksInfo:
 		else:
 			self.miner_pats = None
 
-	def get_block_range(self):
+	def get_block_range(self,args):
 
-		if not cmd_args:
+		if not args:
 			first = last = c.blockcount
 		else:
-			arg = cmd_args[0]
-			if arg.startswith('+') and is_int(arg[1:]):
-				last = c.blockcount
-				first = last - int(arg[1:]) + 1
+			arg = args[0]
+			ps = arg.split('+')
+			if len(ps) == 2 and is_int(ps[1]):
+				if not ps[0]:
+					last = c.blockcount
+					first = last - int(arg[1:]) + 1
+				elif is_int(ps[0]):
+					first = int(ps[0])
+					last = first + int(ps[1]) - 1
+				else:
+					opts.usage()
 			elif is_int(arg):
 				first = last = int(arg)
 			else:
@@ -157,11 +164,11 @@ class BlocksInfo:
 				except:
 					opts.usage()
 
-		if first > last:
-			die(2,f'{first}-{last}: invalid block range')
+			if first > last:
+				die(2,f'{first}-{last}: invalid block range')
 
-		if last > c.blockcount:
-			die(2,f'Requested block number ({last}) greater than current block height')
+			if last > c.blockcount:
+				die(2,f'Requested block number ({last}) greater than current block height')
 
 		self.first = first
 		self.last = last
@@ -294,7 +301,7 @@ opts_data = {
 	],
 	'text': {
 		'desc':    'Display information about a block or range of blocks',
-		'usage':   '[opts] +<last N blocks>|<block num>[-<block num>]',
+		'usage':   '[opts] [<block num>]+<N blocks>|<block num>[-<block num>]',
 		'options': """
 -h, --help            Print this help message
 --, --longhelp        Print help message for long options (common options)
@@ -315,10 +322,33 @@ If the requested range ends at the current chain tip, an estimate of the next
 difficulty adjustment is also displayed. The estimate is based on the average
 Block Discovery Interval from the beginning of the current 2016-block period.
 
-AVAILABLE FIELDS: {}
+AVAILABLE FIELDS: {f}
+
+EXAMPLES:
+
+    # Display default info for current block:
+    {p}
+
+    # Display default info for blocks 1-200
+    {p} 1-200
+
+    # Display default info for 20 blocks beginning from block 600000
+    {p} 600000+20
+
+    # Display info for block 152817, adding miner field:
+    {p} --miner-info 152817
+
+    # Display info for last 10 blocks, adding 'inputs' and 'nTx' fields:
+    {p} -o +inputs,nTx +10
+
+    # Display 'block', 'date', 'version' and 'hash' fields for blocks 0-10:
+    # Note: these are the only supported fields for the Genesis Block
+    {p} -o block,date,version,hash 0-10
 
 This program requires a txindex-enabled daemon for correct operation.
-""".format(fmt_list(BlocksInfo.fields,fmt='bare'))
+""".format(
+		f = fmt_list(BlocksInfo.fields,fmt='bare'),
+		p = g.prog_name )
 	}
 }
 
