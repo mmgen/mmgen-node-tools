@@ -42,7 +42,7 @@ class BlocksInfo:
 		'block':     bf('',     'Block',    '{:<6}',  None,                 'height',[],     None),
 		'hash':      bf('',     'Hash',     '{:<64}', None,                 'H',     [],     None),
 		'date':      bf('',     'Date',     '{:<19}', None,                 'df',    [],     None),
-		'interval':  bf('Solve','Time ',    '{:>7}',  None,                 'td',    [],     None),
+		'interval':  bf('Solve','Time ',    '{:>8}',  None,                 'td',    [],     None),
 		'size':      bf('',     'Size',     '{:>7}',  None,                 'bs',    [],     'total_size'),
 		'weight':    bf('',     'Weight',   '{:>7}',  None,                 'bs',    [],     'total_weight'),
 		'utxo_inc':  bf(' UTXO',' Incr',    '{:>5}',  None,                 'bs',    [],     'utxo_increase'),
@@ -53,6 +53,7 @@ class BlocksInfo:
 		'fee90':     bf('90%',  'Fee',      '{:>3}',  'feerate_percentiles','fp',    ['bs'], 4),
 		'fee_avg':   bf('Avg',  'Fee',      '{:>3}',  None,                 'bs',    [],     'avgfeerate'),
 		'fee_min':   bf('Min',  'Fee',      '{:>3}',  None,                 'bs',    [],     'minfeerate'),
+		'fee_max':   bf('Max',  'Fee',      '{:>5}',  None,                 'bs',    [],     'maxfeerate'),
 		'totalfee':  bf('',     'Total Fee','{:>10}', 'totalfee',           'tf',    ['bs'], None),
 		'outputs':   bf('Out-', 'puts',     '{:>5}',  None,                 'bs',    [],     'outs'),
 		'inputs':    bf('In- ', 'puts',     '{:>5}',  None,                 'bs',    [],     'ins'),
@@ -61,7 +62,21 @@ class BlocksInfo:
 		'subsidy':   bf('Sub-', 'sidy',     '{:5}',   'subsidy',            'su',    ['bs'],  None),
 		'difficulty':bf('Diffi-','culty',   '{:8}',   None,                 'di',    [],      None),
 	}
-	dfl_fields  = ['block','date','interval','subsidy','totalfee','size','weight','fee50','fee25','fee10','version']
+	dfl_fields  = [
+		'block',
+		'date',
+		'interval',
+		'subsidy',
+		'totalfee',
+		'size',
+		'weight',
+		'fee50',
+		'fee25',
+		'fee10',
+		'fee_avg',
+		'fee_min',
+		'version',
+	]
 	fixed_fields = [
 		'block',      # until ≈ 09/01/2028 (block 1000000)
 		'hash',
@@ -73,11 +88,12 @@ class BlocksInfo:
 		'difficulty', # until 1.00e+100 (i.e. never)
 	]
 	# column width adjustment data:
-	fs_lsqueeze = ['interval','totalfee','inputs','outputs','nTx']
+	fs_lsqueeze = ['totalfee','inputs','outputs','nTx']
 	fs_rsqueeze = []
 	fs_groups = [
-		('fee10','fee25','fee50','fee75','fee90','fee_avg','fee_min'),
+		('fee10','fee25','fee50','fee75','fee90','fee_avg','fee_min','fee_max'),
 	]
+	fs_lsqueeze2 = ['interval']
 
 	funcs = {
 		'df': lambda self,loc: strftime('%Y-%m-%d %X',gmtime(self.t_cur)),
@@ -105,8 +121,10 @@ class BlocksInfo:
 		def gen_fs(fnames):
 			for i in range(len(fnames)):
 				name = fnames[i]
-				ls = (' ','')[name in self.fs_lsqueeze]
+				ls = (' ','')[name in self.fs_lsqueeze + self.fs_lsqueeze2]
 				rs = (' ','')[name in self.fs_rsqueeze]
+				if i < len(fnames) - 1 and fnames[i+1] in self.fs_lsqueeze2:
+					rs = ''
 				if i:
 					for group in self.fs_groups:
 						if name in group and fnames[i-1] in group:
@@ -325,6 +343,8 @@ If no block number is specified, the current block is assumed.
 If the requested range ends at the current chain tip, an estimate of the next
 difficulty adjustment is also displayed. The estimate is based on the average
 Block Discovery Interval from the beginning of the current 2016-block period.
+
+All fee fields except for 'totalfee' are in satoshis per virtual byte.
 
 AVAILABLE FIELDS: {f}
 
