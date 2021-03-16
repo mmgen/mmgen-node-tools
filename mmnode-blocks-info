@@ -37,7 +37,6 @@ class BlocksInfo:
 
 	bf = namedtuple('block_info_fields',['hdr1','hdr2','fs','bs_key','varname','deps','key'])
 	# bs=getblockstats(), bh=getblockheader()
-	# 'getblockstats' raises exception on Genesis Block!
 	# If 'bs_key' is set, it's included in self.bs_keys instead of 'key'
 	fields = {
 		'block':     bf('',     'Block',    '{:<6}',  None,                 'height',[],     None),
@@ -204,7 +203,7 @@ class BlocksInfo:
 		self.t_cur  = hdr['time']
 
 		if 'bs' in self.deps:
-			loc.bs = await c.call('getblockstats',H,self.bs_keys)
+			loc.bs = genesis_stats if height == 0 else await c.call('getblockstats',H,self.bs_keys)
 			self.total_bytes += loc.bs['total_size']
 			self.total_weight += loc.bs['total_weight']
 
@@ -215,7 +214,7 @@ class BlocksInfo:
 			setattr(loc,varname,func(self,loc))
 
 		if opt.miner_info:
-			miner_info = await self.get_miner_string(H)
+			miner_info = '-' if height == 0 else await self.get_miner_string(H)
 
 		def gen():
 			for v in self.fvals:
@@ -350,7 +349,6 @@ EXAMPLES:
     {p} -o +inputs,nTx +10
 
     # Display 'block', 'date', 'version' and 'hash' fields for blocks 0-10:
-    # Note: these are the only supported fields for the Genesis Block
     {p} -o block,date,version,hash 0-10
 
 This program requires a txindex-enabled daemon for correct operation.
@@ -364,6 +362,36 @@ cmd_args = opts.init(opts_data)
 
 if len(cmd_args) not in (0,1):
 	opts.usage()
+
+# 'getblockstats' RPC raises exception on Genesis Block, so provide our own stats:
+genesis_stats = {
+	'avgfee': 0,
+	'avgfeerate': 0,
+	'avgtxsize': 0,
+	'feerate_percentiles': [ 0, 0, 0, 0, 0 ],
+	'height': 0,
+	'ins': 0,
+	'maxfee': 0,
+	'maxfeerate': 0,
+	'maxtxsize': 0,
+	'medianfee': 0,
+	'mediantxsize': 0,
+	'minfee': 0,
+	'minfeerate': 0,
+	'mintxsize': 0,
+	'outs': 1,
+	'subsidy': 5000000000,
+	'swtotal_size': 0,
+	'swtotal_weight': 0,
+	'swtxs': 0,
+	'total_out': 0,
+	'total_size': 0,
+	'total_weight': 0,
+	'totalfee': 0,
+	'txs': 1,
+	'utxo_increase': 1,
+	'utxo_size_inc': 117
+}
 
 async def main():
 
