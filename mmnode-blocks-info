@@ -165,8 +165,13 @@ class BlocksInfo:
 		def conv_blkspec(arg):
 			if arg == 'cur':
 				return c.blockcount
-			elif is_int(arg) and int(arg) >= 0:
-				return int(arg)
+			elif is_int(arg):
+				if int(arg) < 0:
+					die(1,f'{arg}: block number must be non-negative')
+				elif int(arg) > c.blockcount:
+					die(1,f'{arg}: requested block greater than current chain tip!')
+				else:
+					return int(arg)
 			else:
 				die(1,f'{arg}: invalid block specifier')
 
@@ -183,24 +188,23 @@ class BlocksInfo:
 					return ret
 
 				def parse_from_tip(self):
-					m = re.match(r'-(\d+)(.*)',self.arg)
+					m = re.match(r'-([0-9]+)(.*)',self.arg)
 					if m:
 						self.arg = m[2]
-						assert int(m[1]) > 0, 'block count cannot be zero'
-						return int(m[1])
+						res = int(m[1])
+						assert res > 0, 'block count cannot be zero'
+						assert res <= c.blockcount, f"'+{m[1]}': block count must be less than current chain height"
+						return res
 
 				def parse_range(self):
-					if self.arg and self.arg[0] == '-':
-						opts.usage()
-					else:
-						m = re.match(r'([^+-]+)(-([^+-]+))*(.*)',self.arg)
-						if m:
-							if debug: print(m.groups())
-							self.arg = m[4]
-							return (
-								conv_blkspec(m[1]),
-								conv_blkspec(m[3]) if m[3] else None
-							)
+					m = re.match(r'([^+-]+)(-([^+-]+))*(.*)',self.arg)
+					if m:
+						if debug: print(m.groups())
+						self.arg = m[4]
+						return (
+							conv_blkspec(m[1]),
+							conv_blkspec(m[3]) if m[3] else None
+						)
 					return (None,None)
 
 				def parse_add(self):
@@ -220,6 +224,8 @@ class BlocksInfo:
 			p = RangeParser(arg)
 			# parsing order must be preserved!
 			from_tip   = p.parse('from_tip')
+			if p.arg.startswith('-'):
+				opts.usage()
 			first,last = p.parse('range')
 			add1       = p.parse('add')
 			add2       = p.parse('add')
@@ -247,24 +253,14 @@ class BlocksInfo:
 
 			if debug: print(range_spec(first,last,from_tip,nblocks,step))
 
+			first = conv_blkspec(first)
+			last  = conv_blkspec(last)
+
 			if first > last:
 				die(1,f'{first}-{last}: invalid block range')
 
-			if last > c.blockcount:
-				die(1,f'Requested block number {last} greater than current chain height')
-
 			block_list = list(range(first,last+1,step)) if step else None
 			return (block_list, first, last)
-
-		def parse_blocklist(args):
-			for arg in args:
-				if arg != 'cur':
-					if not is_int(arg):
-						die(1,f'{arg!r}: invalid block number (not an integer)')
-					if int(arg) > c.blockcount:
-						die(1,f'Requested block number {arg} greater than current chain height')
-
-			return [conv_blkspec(a) for a in args]
 
 		# return (block_list,first,last)
 		if not args:
@@ -272,7 +268,7 @@ class BlocksInfo:
 		elif len(args) == 1:
 			return parse_rangespec(args[0])
 		else:
-			return (parse_blocklist(args),None,None)
+			return ([conv_blkspec(a) for a in args],None,None)
 
 	async def run(self):
 		heights = self.block_list or range(self.first,self.last+1)
