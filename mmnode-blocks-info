@@ -169,37 +169,46 @@ class BlocksInfo:
 				if int(arg) < 0:
 					die(1,f'{arg}: block number must be non-negative')
 				elif int(arg) > c.blockcount:
-					die(1,f'{arg}: requested block greater than current chain tip!')
+					die(1,f'{arg}: requested block height greater than current chain tip!')
 				else:
 					return int(arg)
 			else:
 				die(1,f'{arg}: invalid block specifier')
 
+		def check_nblocks(arg):
+			if arg <= 0:
+				die(1,'nBlocks must be a positive integer')
+			if arg > c.blockcount:
+				die(1, f"'{arg}': nBlocks must be less than current chain height")
+			return arg
+
 		def parse_rangespec(arg):
 
 			class RangeParser:
+				debug = True
 
 				def __init__(self,arg):
-					self.arg = arg
+					self.arg = self.orig_arg = arg
 
 				def parse(self,target):
 					ret = getattr(self,'parse_'+target)()
-					if debug: print(f'after parse({target}): {self.arg}')
+					if self.debug: print(f'arg after parse({target}): {self.arg}')
 					return ret
+
+				def finalize(self):
+					if self.arg:
+						die(1,f'{self.orig_arg!r}: invalid range specifier')
 
 				def parse_from_tip(self):
 					m = re.match(r'-([0-9]+)(.*)',self.arg)
 					if m:
-						self.arg = m[2]
-						res = int(m[1])
-						assert res > 0, 'block count cannot be zero'
-						assert res <= c.blockcount, f"'+{m[1]}': block count must be less than current chain height"
-						return res
+						res,self.arg = (m[1],m[2])
+						return check_nblocks(int(res))
 
-				def parse_range(self):
-					m = re.match(r'([^+-]+)(-([^+-]+))*(.*)',self.arg)
+				def parse_abs_range(self):
+					m = re.match(r'([^+-]+)(-([^+-]+)){0,1}(.*)',self.arg)
 					if m:
-						if debug: print(m.groups())
+						if self.debug: print(f'abs_range parse: first={m[1]}, last={m[3]}')
 						self.arg = m[4]
 						return (
 							conv_blkspec(m[1]),
@@ -210,63 +219,54 @@ class BlocksInfo:
 				def parse_add(self):
 					m = re.match(r'\+([0-9*]+)(.*)',self.arg)
 					if m:
-						self.arg = m[2]
-						assert m[1].strip('*') == m[1], f"'+{m[1]}': malformed nBlocks specifier"
-						assert len(m[1]) <= 30,         f"'+{m[1]}': overly long nBlocks specifier"
-						res = eval(m[1]) # m[1] is only digits plus '*', so safe
-						assert res > 0, "'+0' not allowed"
-						assert res <= c.blockcount, f"'+{m[1]}': nBlocks must be less than current chain height"
-						return res
+						res,self.arg = (m[1],m[2])
+						if res.strip('*') != res:
+							die(1,f"'+{res}': malformed nBlocks specifier")
+						if len(res) > 30:
+							die(1,f"'+{res}': overly long nBlocks specifier")
+						return check_nblocks(eval(res)) # res is only digits plus '*', so eval safe
 
-			debug = False
-			range_spec = namedtuple('parsed_range_spec',['first','last','from_tip','nblocks','step'])
+			range_data = namedtuple('parsed_range_data',['first','last','from_tip','nblocks','step'])
 
 			p = RangeParser(arg)
-			# parsing order must be preserved!
 			from_tip   = p.parse('from_tip')
-			if p.arg.startswith('-'):
-				opts.usage()
-			first,last = p.parse('range')
+			first,last = (c.blockcount-from_tip,None) if from_tip else p.parse('abs_range')
 			add1       = p.parse('add')
 			add2       = p.parse('add')
+			p.finalize()
 
-			if p.arg or (from_tip and first):
-				opts.usage()
+			if add2 and last is not None:
+				die(1,f'{arg!r}: invalid range specifier')
 
-			if last:
-				nblocks,step = (None,add1)
-				if add2:
-					opts.usage()
-			else:
-				nblocks,step = (add1,add2)
+			nblocks,step = (add1,add2) if last is None else (None,add1)
 
-			if debug: print(range_spec(first,last,from_tip,nblocks,step))
+			if p.debug: print(range_data(first,last,from_tip,nblocks,step))
 
-			if from_tip:
-				first = c.blockcount - from_tip
 			if nblocks:
-				if not first:
+				if first == None:
 					first = c.blockcount - nblocks + 1
 				last = first + nblocks - 1
-			if not last:
-				last = first
-
-			if debug: print(range_spec(first,last,from_tip,nblocks,step))
 
 			first = conv_blkspec(first)
-			last  = conv_blkspec(last)
+			last  = conv_blkspec(last or first)
+
+			if p.debug: print(range_data(first,last,from_tip,nblocks,step))
 
 			if first > last:
 				die(1,f'{first}-{last}: invalid block range')
 
-			block_list = list(range(first,last+1,step)) if step else None
-			return (block_list, first, last)
+			return range_data(first,last,from_tip,nblocks,step)
 
 		# return (block_list,first,last)
 		if not args:
 			return (None,c.blockcount,c.blockcount)
 		elif len(args) == 1:
-			return parse_rangespec(args[0])
+			r = parse_rangespec(args[0])
+			return (
+				list(range(r.first,r.last+1,r.step)) if r.step else None,
+				r.first,
+				r.last
+			)
 		else:
 			return ([conv_blkspec(a) for a in args],None,None)
 
