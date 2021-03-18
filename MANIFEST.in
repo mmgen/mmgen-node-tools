@@ -1,0 +1,3 @@
+include README.md LICENSE
+include test/test-release.sh
+include test/unit_tests_d/*.py
