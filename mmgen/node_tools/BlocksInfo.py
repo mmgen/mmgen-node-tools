@@ -388,32 +388,31 @@ class BlocksInfo:
 		if self.last != self.tip:
 			return
 
-		cur_diff_disp = 'Cur difficulty:    {:.2e}'.format(self.hdrs[-1]['difficulty'])
 		rel = self.tip % 2016
 
-		if rel:
+		tip_hdr = (
+			self.hdrs[-1] if self.hdrs[-1]['height'] == self.tip else
+			await c.call('getblockheader',await c.call('getblockhash',self.tip))
+		)
+
+		bdi_avg_blks = 144
+		bdi_avg_hdr = await c.call('getblockheader',await c.call('getblockhash',self.tip-bdi_avg_blks))
+		bdi_avg = ( tip_hdr['time'] - bdi_avg_hdr['time'] ) / bdi_avg_blks
+
+		if rel > bdi_avg_blks:
 			rel_hdr = await c.call('getblockheader',await c.call('getblockhash',self.tip-rel))
-			tip_time = (
-				self.hdrs[-1]['time'] if self.hdrs[-1]['height'] == self.tip else
-				(await c.call('getblockheader',await c.call('getblockhash',self.tip)))['time']
-			)
-			tdiff = tip_time - rel_hdr['time']
-			if tdiff: # if the 2 timestamps are equal (very unlikely), skip display to avoid div-by-zero error
-				bdi = tdiff / rel
-				adj_pct = ((600 / bdi) - 1) * 100
-				Msg_r(fmt(f"""
-					Current height:    {self.tip}
-					Next diff adjust:  {self.tip-rel+2016} (in {2016-rel} blocks [{self.t_fmt((2016-rel)*bdi)}])
-					BDI (cur period):  {bdi/60:.2f} min
-					{cur_diff_disp}
-					Est. diff adjust: {adj_pct:+.2f}%
-					"""))
+			bdi = ( tip_hdr['time'] - rel_hdr['time'] ) / rel
 		else:
-			Msg_r(fmt(f"""
-				Current height:    {self.tip}
-				{cur_diff_disp}
-				Next diff adjust:  {self.tip-rel+2016} (in {2016-rel} blocks)
-				"""))
+			bdi_adj = float(tip_hdr['difficulty'] / bdi_avg_hdr['difficulty'])
+			bdi = bdi_avg * ( (bdi_adj * (bdi_avg_blks-rel)) + rel ) / bdi_avg_blks
+
+		Msg_r(fmt(f"""
+			Current height:    {self.tip}
+			Next diff adjust:  {self.tip-rel+2016} (in {2016-rel} blocks [{self.t_fmt((2016-rel)*bdi_avg)}])
+			BDI (cur period):  {bdi/60:.2f} min
+			Cur difficulty:    {tip_hdr['difficulty']:.2e}
+			Est. diff adjust: {((600 / bdi) - 1) * 100:+.2f}%
+			"""))
 
 	# 'getblockstats' RPC raises exception on Genesis Block, so provide our own stats:
 	genesis_stats = {
