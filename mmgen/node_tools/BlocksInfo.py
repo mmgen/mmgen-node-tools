@@ -93,6 +93,9 @@ class BlocksInfo:
 	]
 	fs_lsqueeze2 = ['interval']
 
+	all_stats = ['range','diff']
+	dfl_stats = ['range','diff']
+
 	funcs = {
 		'df': lambda self,loc: strftime('%Y-%m-%d %X',gmtime(self.t_cur)),
 		'td': lambda self,loc: (
@@ -110,15 +113,24 @@ class BlocksInfo:
 
 	def __init__(self,cmd_args,opt,rpc):
 
+		def parse_cslist(uarg,full_set,dfl_set,desc):
+			usr_set = uarg.lstrip('+').split(',')
+			for e in usr_set:
+				if e not in full_set:
+					die(1,f'{e!r}: unrecognized {desc}')
+			res = dfl_set + usr_set if uarg[0] == '+' else usr_set
+			# display elements in order:
+			return [e for e in full_set if e in res]
+
 		def get_fields():
-			if opt.fields:
-				ufields = opt.fields.lstrip('+').split(',')
-				for field in ufields:
-					if field not in self.fields:
-						die(1,f'{field!r}: unrecognized field')
-				return self.dfl_fields + ufields if opt.fields[0] == '+' else ufields
-			else:
-				return self.dfl_fields
+			return parse_cslist(opt.fields,self.fields,self.dfl_fields,'field')
+
+		def get_stats():
+			arg = opt.stats.lower()
+			return (
+				self.all_stats if arg == 'all' else [] if arg == 'none' else
+				parse_cslist(arg,self.all_stats,self.dfl_stats,'stat')
+			)
 
 		def gen_fs(fnames):
 			for i in range(len(fnames)):
@@ -153,7 +165,8 @@ class BlocksInfo:
 
 		self.block_list,self.first,self.last = parse_cmd_args()
 
-		fnames     = get_fields()
+		fnames = get_fields() if opt.fields else self.dfl_fields
+
 		self.fvals = list(self.fields[name] for name in fnames)
 		self.fs    = ''.join(gen_fs(fnames)).strip()
 		self.deps  = set(' '.join(v.varname + ' ' + ' '.join(v.deps) for v in self.fvals).split())
@@ -180,6 +193,7 @@ class BlocksInfo:
 			self.miner_pats = None
 
 		self.block_data = namedtuple('block_data',fnames)
+		self.stats = get_stats() if opt.stats else self.dfl_stats
 
 	def conv_blkspec(self,arg):
 		if arg == 'cur':
@@ -297,7 +311,7 @@ class BlocksInfo:
 			if self.block_list:
 				await init(n)
 			ret = await self.process_block(heights[n],hashes[n],self.hdrs[n])
-			if self.opt.summary:
+			if opt.stats_only:
 				continue
 			else:
 				Msg(self.fs.format(*ret))
@@ -361,6 +375,9 @@ class BlocksInfo:
 			Msg(self.fs.format(*hdr1))
 		Msg(self.fs.format(*hdr2))
 
+	def print_stats(self,name):
+		return getattr(self,f'print_{name}_stats')()
+
 	async def print_range_stats(self):
 
 		# These figures don’t include the Genesis Block:
@@ -388,11 +405,6 @@ class BlocksInfo:
 	async def print_diff_stats(self):
 
 		c = self.rpc
-
-		# Only display stats if user-requested range ends with chain tip
-		if self.last != self.tip:
-			return
-
 		rel = self.tip % 2016
 
 		tip_hdr = (
