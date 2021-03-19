@@ -55,10 +55,10 @@ class BlocksInfo:
 		'totalfee':  bf('',     'Total Fee','{:>10}', 'totalfee',           'tf',    ['bs'], None),
 		'outputs':   bf('Out-', 'puts',     '{:>5}',  None,                 'bs',    [],     'outs'),
 		'inputs':    bf('In- ', 'puts',     '{:>5}',  None,                 'bs',    [],     'ins'),
-		'version':   bf('',     'Version',  '{:8}',   None,                 'bh',    [],     'versionHex'),
+		'version':   bf('',     'Version',  '{:<8}',  None,                 'bh',    [],     'versionHex'),
 		'nTx':       bf('',     ' nTx ',    '{:>5}',  None,                 'bh',    [],     'nTx'),
-		'subsidy':   bf('Sub-', 'sidy',     '{:5}',   'subsidy',            'su',    ['bs'],  None),
-		'difficulty':bf('Diffi-','culty',   '{:8}',   None,                 'di',    [],      None),
+		'subsidy':   bf('Sub-', 'sidy',     '{:<5}',  'subsidy',            'su',    ['bs'],  None),
+		'difficulty':bf('Diffi-','culty',   '{:<8}',  None,                 'di',    [],      None),
 	}
 	dfl_fields  = [
 		'block',
@@ -106,7 +106,7 @@ class BlocksInfo:
 
 	range_data = namedtuple('parsed_range_data',['first','last','from_tip','nblocks','step'])
 
-	t_fmt = lambda self,t: f'{t/86400:.2f} days' if t > 172800 else secs_to_hms(int(t))
+	t_fmt = lambda self,t: f'{t/86400:.2f} days' if t > 172800 else f'{t/3600:.2f} hrs'
 
 	def __init__(self,cmd_args,opt,rpc):
 
@@ -164,7 +164,8 @@ class BlocksInfo:
 		self.ufuncs = {v.varname:self.funcs[v.varname] for v in self.fvals if v.varname in self.funcs}
 
 		if opt.miner_info:
-			self.fs += '  {}'
+			fnames.append('miner')
+			self.fs += '  {:<5}'
 			self.miner_pats = [re.compile(pat) for pat in (
 				rb'`/([_a-zA-Z0-9&. #/-]+)/',
 				rb'[\xe3\xe4\xe5][\^/](.*?)\xfa',
@@ -177,6 +178,8 @@ class BlocksInfo:
 			)]
 		else:
 			self.miner_pats = None
+
+		self.block_data = namedtuple('block_data',fnames)
 
 	def conv_blkspec(self,arg):
 		if arg == 'cur':
@@ -208,7 +211,7 @@ class BlocksInfo:
 
 			def parse(rp,target):
 				ret = getattr(rp,'parse_'+target)()
-				if rp.debug: print(f'arg after parse({target}): {rp.arg}')
+				if rp.debug: msg(f'arg after parse({target}): {rp.arg}')
 				return ret
 
 			def finalize(rp):
@@ -224,7 +227,7 @@ class BlocksInfo:
 			def parse_abs_range(rp):
 				m = re.match(r'([^+-]+)(-([^+-]+)){0,1}(.*)',rp.arg)
 				if m:
-					if rp.debug: print(f'abs_range parse: first={m[1]}, last={m[3]}')
+					if rp.debug: msg(f'abs_range parse: first={m[1]}, last={m[3]}')
 					rp.arg = m[4]
 					return (
 						self.conv_blkspec(m[1]),
@@ -254,7 +257,7 @@ class BlocksInfo:
 
 		nblocks,step = (add1,add2) if last is None else (None,add1)
 
-		if p.debug: print(self.range_data(first,last,from_tip,nblocks,step))
+		if p.debug: msg(repr(self.range_data(first,last,from_tip,nblocks,step)))
 
 		if nblocks:
 			if first == None:
@@ -264,7 +267,7 @@ class BlocksInfo:
 		first = self.conv_blkspec(first)
 		last  = self.conv_blkspec(last or first)
 
-		if p.debug: print(self.range_data(first,last,from_tip,nblocks,step))
+		if p.debug: msg(repr(self.range_data(first,last,from_tip,nblocks,step)))
 
 		if first > last:
 			die(1,f'{first}-{last}: invalid block range')
@@ -293,7 +296,11 @@ class BlocksInfo:
 		for n in range(len(heights)):
 			if self.block_list:
 				await init(n)
-			await self.process_block(heights[n],hashes[n],self.hdrs[n])
+			ret = await self.process_block(heights[n],hashes[n],self.hdrs[n])
+			if self.opt.summary:
+				continue
+			else:
+				Msg(self.fs.format(*ret))
 
 	async def process_block(self,height,H,hdr):
 		class local_vars: pass
@@ -311,9 +318,6 @@ class BlocksInfo:
 			self.total_bytes += loc.bs['total_size']
 			self.total_weight += loc.bs['total_weight']
 
-		if self.opt.summary:
-			return
-
 		for varname,func in self.ufuncs.items():
 			setattr(loc,varname,func(self,loc))
 
@@ -329,7 +333,7 @@ class BlocksInfo:
 			if self.opt.miner_info:
 				yield miner_info
 
-		Msg(self.fs.format(*gen()))
+		return self.block_data(*gen())
 
 	async def get_miner_string(self,H):
 		tx0 = (await self.rpc.call('getblock',H))['tx'][0]
@@ -345,6 +349,7 @@ class BlocksInfo:
 					m = pat.search(cb)
 					if m:
 						return ''.join(chr(b) for b in m[1] if 31 < b < 127).strip('^').strip('/').replace('/',' ')
+			return ''
 
 	def print_header(self):
 		hdr1 = [v.hdr1 for v in self.fvals]
@@ -395,7 +400,7 @@ class BlocksInfo:
 			await c.call('getblockheader',await c.call('getblockhash',self.tip))
 		)
 
-		bdi_avg_blks = 144
+		bdi_avg_blks = 432 # ≈3 days
 		bdi_avg_hdr = await c.call('getblockheader',await c.call('getblockhash',self.tip-bdi_avg_blks))
 		bdi_avg = ( tip_hdr['time'] - bdi_avg_hdr['time'] ) / bdi_avg_blks
 
@@ -406,9 +411,10 @@ class BlocksInfo:
 			bdi_adj = float(tip_hdr['difficulty'] / bdi_avg_hdr['difficulty'])
 			bdi = bdi_avg * ( (bdi_adj * (bdi_avg_blks-rel)) + rel ) / bdi_avg_blks
 
+		rem = 2016 - rel
 		Msg_r(fmt(f"""
 			Current height:    {self.tip}
-			Next diff adjust:  {self.tip-rel+2016} (in {2016-rel} blocks [{self.t_fmt((2016-rel)*bdi_avg)}])
+			Next diff adjust:  {self.tip+rem} (in {rem} block{suf(rem)} [{self.t_fmt((rem)*bdi_avg)}])
 			BDI (cur period):  {bdi/60:.2f} min
 			Cur difficulty:    {tip_hdr['difficulty']:.2e}
 			Est. diff adjust: {((600 / bdi) - 1) * 100:+.2f}%
