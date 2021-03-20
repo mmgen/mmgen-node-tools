@@ -378,33 +378,44 @@ class BlocksInfo:
 		Msg(self.fs.format(*hdr2))
 
 	def process_stats(self,name):
-		return getattr(self,f'print_{name}_stats')()
+		return self.output_stats(getattr(self,f'create_{name}_stats')())
 
-	async def print_range_stats(self):
+	async def output_stats(self,res):
+		name,data = await res
+		Msg(
+			capfirst(name) + ' Statistics:\n' +
+			'\n'.join([('  '+d[0]).format(**d[1]) if len(d) == 2 else ('  '+d[0]).format(d[2]) for d in data])
+		)
 
+	async def create_range_stats(self):
 		# These figures don’t include the Genesis Block:
 		elapsed = self.hdrs[-1]['time'] - self.first_prev_hdr['time']
 		nblocks = self.hdrs[-1]['height'] - self.first_prev_hdr['height']
+		total_blks = len(self.hdrs)
+		step_disp = f', nBlocks={total_blks}, step={self.step}' if self.step else ''
+		def gen():
+			yield (
+				'Range:      {start}-{end} ({range} blocks [{elapsed}]%s)' % step_disp, {
+					'start': self.hdrs[0]['height'],
+					'end': self.hdrs[-1]['height'],
+					'range': self.hdrs[-1]['height'] - self.hdrs[0]['height'] + 1, # includes Genesis Block
+					'elapsed': self.t_fmt(elapsed),
+					'nBlocks': total_blks,
+					'step': self.step,
+				}
+			)
+			if elapsed:
+				avg_bdi = int(elapsed / nblocks)
+				if 'bs' in self.deps:
+					rate = (self.total_bytes / 10000) / (self.total_solve_time / 36)
+					yield ( 'Avg size:   {} bytes', 'avg_size', self.total_bytes//total_blks )
+					yield ( 'Avg weight: {} bytes', 'avg_weight', self.total_weight//total_blks )
+					yield ( 'MB/hr:      {}', 'mb_per_hour', f'{rate:0.4f}' )
+				yield ('Avg BDI:    {} min', 'avg_bdi', f'{avg_bdi/60:.2f}')
 
-		Msg('Range:      {}-{} ({} blocks [{}])'.format(
-			self.hdrs[0]['height'],
-			self.hdrs[-1]['height'],
-			self.hdrs[-1]['height'] - self.hdrs[0]['height'] + 1, # includes Genesis Block
-			self.t_fmt(elapsed) ))
+		return ( 'range', gen() )
 
-		if elapsed:
-			avg_bdi = int(elapsed / nblocks)
-			if 'bs' in self.deps:
-				total_blocks = len(self.hdrs)
-				rate = (self.total_bytes / 10000) / (self.total_solve_time / 36)
-				Msg_r(fmt(f"""
-					Avg size:   {self.total_bytes//total_blocks} bytes
-					Avg weight: {self.total_weight//total_blocks} bytes
-					MB/hr:      {rate:0.4f}
-					"""))
-			Msg(f'Avg BDI:    {avg_bdi/60:.2f} min')
-
-	async def print_diff_stats(self):
+	async def create_diff_stats(self):
 
 		c = self.rpc
 		rel = self.tip % 2016
@@ -428,13 +439,25 @@ class BlocksInfo:
 			bdi_disp = bdi_avg
 
 		rem = 2016 - rel
-		Msg_r(fmt(f"""
-			Current height:    {self.tip}
-			Next diff adjust:  {self.tip+rem} (in {rem} block{suf(rem)} [{self.t_fmt((rem)*bdi_avg)}])
-			BDI (cur period):  {bdi_disp/60:.2f} min
-			Cur difficulty:    {tip_hdr['difficulty']:.2e}
-			Est. diff adjust: {((600 / bdi) - 1) * 100:+.2f}%
-			"""))
+
+		return ( 'difficulty', (
+			('Current height:    {}', 'chain_tip', self.tip),
+			('Next diff adjust:  {next_diff_adjust} (in {blks_remaining} block%s [{time_remaining}])' % suf(rem),
+				{
+					'next_diff_adjust': self.tip + rem,
+					'blks_remaining': rem,
+					'time_remaining': self.t_fmt(rem * bdi_avg)
+				}
+			),
+			('Avg BDI:           {avg_bdi} min (over {avg_bdi_blks}-block period)',
+				{
+					'avg_bdi': f'{bdi_disp/60:.2f}',
+					'avg_bdi_blks': max(rel,bdi_avg_blks)
+				}
+			),
+			('Cur difficulty:    {}', 'cur_diff', f'{tip_hdr["difficulty"]:.2e}'),
+			('Est. diff adjust: {}%', 'est_diff_adjust_pct', f'{((600 / bdi) - 1) * 100:+.2f}'),
+		))
 
 	def process_stats_pre(self,i):
 		if not (self.opt.stats_only and i == 0):
