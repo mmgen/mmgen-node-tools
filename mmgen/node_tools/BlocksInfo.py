@@ -20,7 +20,7 @@
 mmgen.node_tools.BlocksInfo: Display information about a block or range of blocks
 """
 
-import re
+import re,json
 from collections import namedtuple
 from time import strftime,gmtime
 from decimal import Decimal
@@ -494,3 +494,33 @@ class BlocksInfo:
 		'utxo_increase': 1,
 		'utxo_size_inc': 117
 	}
+
+class JSONBlocksInfo(BlocksInfo):
+
+	def __init__(self,cmd_args,opt,rpc):
+		super().__init__(cmd_args,opt,rpc)
+		Msg_r('{')
+
+	async def process_blocks(self):
+		Msg_r('"block_data": [')
+		await super().process_blocks()
+		Msg_r(']')
+
+	def output_block(self,data,n):
+		Msg_r( (', ','')[n==0] + json.dumps(data._asdict()) )
+
+	async def output_stats(self,res):
+		name,data = await res
+		def gen(data):
+			for d in data:
+				if len(d) == 2:
+					for k,v in d[1].items():
+						yield (k,v)
+				else:
+					yield (d[1],d[2])
+		Msg_r(', "{}_data": {}'.format(name,json.dumps(dict(gen(data)))))
+
+	def process_stats_pre(self,i): pass
+
+	def finalize_output(self):
+		Msg('}')
