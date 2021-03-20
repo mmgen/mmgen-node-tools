@@ -22,7 +22,7 @@ mmnode-feeview: Visualize the fee structure of a node’s mempool
 
 from mmgen.common import *
 
-min_prec,max_prec,dfl_prec = (0,6,2)
+min_prec,max_prec,dfl_prec = (0,6,4)
 fee_brackets = [
 	1, 2, 3, 4, 5, 6,
 	8, 10, 12, 14, 16, 18,

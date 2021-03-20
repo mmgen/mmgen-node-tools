@@ -41,7 +41,7 @@ class BlocksInfo:
 		'hash':      bf('',     'Hash',     '{:<64}', None,                 'H',     [],     None),
 		'date':      bf('',     'Date',     '{:<19}', None,                 'df',    [],     None),
 		'interval':  bf('Solve','Time ',    '{:>8}',  None,                 'td',    [],     None),
-		'subsidy':   bf('Sub-', 'sidy',     '{:<5}',  'subsidy',            'su',    ['bs'],  None),
+		'subsidy':   bf('Sub-', 'sidy',     '{:<5}',  'subsidy',            'su',    ['bs'], None),
 		'totalfee':  bf('',     'Total Fee','{:>10}', 'totalfee',           'tf',    ['bs'], None),
 		'size':      bf('',     'Size',     '{:>7}',  None,                 'bs',    [],     'total_size'),
 		'weight':    bf('',     'Weight',   '{:>7}',  None,                 'bs',    [],     'total_weight'),
@@ -59,6 +59,7 @@ class BlocksInfo:
 		'utxo_inc':  bf(' UTXO',' Incr',    '{:>5}',  None,                 'bs',    [],     'utxo_increase'),
 		'version':   bf('',     'Version',  '{:<8}',  None,                 'bh',    [],     'versionHex'),
 		'difficulty':bf('Diffi-','culty',   '{:<8}',  None,                 'di',    [],      None),
+		'miner':     bf('',      'Miner',   '{:<5}',  None,                 'mi',    [],      None),
 	}
 	dfl_fields  = [
 		'block',
@@ -132,20 +133,6 @@ class BlocksInfo:
 				parse_cslist(arg,self.all_stats,self.dfl_stats,'stat')
 			)
 
-		def gen_fs(fnames):
-			for i in range(len(fnames)):
-				name = fnames[i]
-				ls = (' ','')[name in self.fs_lsqueeze + self.fs_lsqueeze2]
-				rs = (' ','')[name in self.fs_rsqueeze]
-				if i < len(fnames) - 1 and fnames[i+1] in self.fs_lsqueeze2:
-					rs = ''
-				if i:
-					for group in self.fs_groups:
-						if name in group and fnames[i-1] in group:
-							ls = ''
-							break
-				yield ls + self.fields[name].fs + rs
-
 		def parse_cmd_args(): # => (block_list, first, last, step)
 			if not cmd_args:
 				return (None,self.tip,self.tip,None)
@@ -169,7 +156,7 @@ class BlocksInfo:
 		fnames = get_fields() if opt.fields else self.dfl_fields
 
 		self.fvals = list(self.fields[name] for name in fnames)
-		self.fs    = ''.join(gen_fs(fnames)).strip()
+		self.fs    = ''.join(self.gen_fs(fnames)).strip()
 		self.deps  = set(' '.join(v.varname + ' ' + ' '.join(v.deps) for v in self.fvals).split())
 
 		self.bs_keys = [(v.bs_key or v.key) for v in self.fvals if v.bs_key or v.varname == 'bs']
@@ -179,7 +166,7 @@ class BlocksInfo:
 
 		if opt.miner_info:
 			fnames.append('miner')
-			self.fs += '  {:<5}'
+			self.fs += '  ' + self.fields['miner'].fs
 			self.miner_pats = [re.compile(pat) for pat in (
 				rb'`/([_a-zA-Z0-9&. #/-]+)/',
 				rb'[\xe3\xe4\xe5][\^/](.*?)\xfa',
@@ -195,6 +182,24 @@ class BlocksInfo:
 
 		self.block_data = namedtuple('block_data',fnames)
 		self.stats = get_stats() if opt.stats else self.dfl_stats
+
+	def gen_fs(self,fnames,fill=[],fill_char='-'):
+		for i in range(len(fnames)):
+			name = fnames[i]
+			ls = (' ','')[name in self.fs_lsqueeze + self.fs_lsqueeze2]
+			rs = (' ','')[name in self.fs_rsqueeze]
+			if i < len(fnames) - 1 and fnames[i+1] in self.fs_lsqueeze2:
+				rs = ''
+			if i:
+				for group in self.fs_groups:
+					if name in group and fnames[i-1] in group:
+						ls = ''
+						break
+			yield (
+				ls
+				+ (self.fields[name].fs.replace(':',':'+fill_char) if name in fill else self.fields[name].fs)
+				+ rs
+			)
 
 	def conv_blkspec(self,arg):
 		if arg == 'cur':
@@ -368,24 +373,32 @@ class BlocksInfo:
 			return ''
 
 	def print_header(self):
+		Msg('\n'.join(self.gen_header()))
+
+	def gen_header(self):
 		hdr1 = [v.hdr1 for v in self.fvals]
 		hdr2 = [v.hdr2 for v in self.fvals]
 		if self.opt.miner_info:
 			hdr1.append('     ')
 			hdr2.append('Miner')
 		if ''.join(hdr1).replace(' ',''):
-			Msg(self.fs.format(*hdr1))
-		Msg(self.fs.format(*hdr2))
+			yield self.fs.format(*hdr1)
+		yield self.fs.format(*hdr2)
 
 	def process_stats(self,name):
 		return self.output_stats(getattr(self,f'create_{name}_stats')())
 
 	async def output_stats(self,res):
+		def gen(data):
+			for d in data:
+				if len(d) == 2:
+					yield ('  '+d[0]).format(**d[1])
+				elif len(d) == 3:
+					yield ('  '+d[0]).format(d[2])
+				else:
+					yield d
 		name,data = await res
-		Msg(
-			capfirst(name) + ' Statistics:\n' +
-			'\n'.join([('  '+d[0]).format(**d[1]) if len(d) == 2 else ('  '+d[0]).format(d[2]) for d in data])
-		)
+		Msg('\n'.join(gen(data)))
 
 	async def create_range_stats(self):
 		# These figures don’t include the Genesis Block:
@@ -394,6 +407,7 @@ class BlocksInfo:
 		total_blks = len(self.hdrs)
 		step_disp = f', nBlocks={total_blks}, step={self.step}' if self.step else ''
 		def gen():
+			yield 'Range Statistics:'
 			yield (
 				'Range:      {start}-{end} ({range} blocks [{elapsed}]%s)' % step_disp, {
 					'start': self.hdrs[0]['height'],
@@ -441,6 +455,7 @@ class BlocksInfo:
 		rem = 2016 - rel
 
 		return ( 'difficulty', (
+			'Difficulty Statistics:',
 			('Current height:    {}', 'chain_tip', self.tip),
 			('Next diff adjust:  {next_diff_adjust} (in {blks_remaining} block%s [{time_remaining}])' % suf(rem),
 				{
@@ -510,14 +525,14 @@ class JSONBlocksInfo(BlocksInfo):
 		Msg_r( (', ','')[n==0] + json.dumps(data._asdict()) )
 
 	async def output_stats(self,res):
-		name,data = await res
 		def gen(data):
 			for d in data:
 				if len(d) == 2:
 					for k,v in d[1].items():
 						yield (k,v)
-				else:
+				elif len(d) == 3:
 					yield (d[1],d[2])
+		name,data = await res
 		Msg_r(', "{}_data": {}'.format(name,json.dumps(dict(gen(data)))))
 
 	def process_stats_pre(self,i): pass
