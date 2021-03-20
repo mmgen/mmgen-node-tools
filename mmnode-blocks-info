@@ -118,23 +118,25 @@ cmd_args = opts.init(opts_data)
 async def main():
 
 	from mmgen.protocol import init_proto_from_opts
+	from mmgen.rpc import rpc_init
+
 	proto = init_proto_from_opts()
 
-	from mmgen.rpc import rpc_init
 	m = BlocksInfo( cmd_args, opt, await rpc_init(proto) )
 
 	if not opt.no_header:
 		m.print_header()
 
-	await m.run()
+	await m.process_blocks()
 
 	if m.last and m.stats:
 		for i,stat in enumerate(m.stats):
 			if stat == 'diff': # Display diff stats by default only if user-requested range ends with chain tip
 				if not opt.stats and m.last != m.tip:
 					continue
-			if not (opt.stats_only and i == 0):
-				Msg('')
-			await m.print_stats(stat)
+			m.process_stats_pre(i)
+			await m.process_stats(stat)
+
+	m.finalize_output()
 
 run_session(main())

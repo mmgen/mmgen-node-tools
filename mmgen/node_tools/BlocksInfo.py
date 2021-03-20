@@ -146,24 +146,25 @@ class BlocksInfo:
 							break
 				yield ls + self.fields[name].fs + rs
 
-		def parse_cmd_args():
+		def parse_cmd_args(): # => (block_list, first, last, step)
 			if not cmd_args:
-				return (None,self.tip,self.tip)
+				return (None,self.tip,self.tip,None)
 			elif len(cmd_args) == 1:
 				r = self.parse_rangespec(cmd_args[0])
 				return (
 					list(range(r.first,r.last+1,r.step)) if r.step else None,
 					r.first,
-					r.last
+					r.last,
+					r.step
 				)
 			else:
-				return ([self.conv_blkspec(a) for a in cmd_args],None,None)
+				return ([self.conv_blkspec(a) for a in cmd_args],None,None,None)
 
 		self.rpc = rpc
 		self.opt = opt
 		self.tip = rpc.blockcount
 
-		self.block_list,self.first,self.last = parse_cmd_args()
+		self.block_list,self.first,self.last,self.step = parse_cmd_args()
 
 		fnames = get_fields() if opt.fields else self.dfl_fields
 
@@ -288,7 +289,7 @@ class BlocksInfo:
 
 		return self.range_data(first,last,from_tip,nblocks,step)
 
-	async def run(self):
+	async def process_blocks(self):
 
 		c = self.rpc
 		heights = self.block_list or range(self.first,self.last+1)
@@ -311,10 +312,11 @@ class BlocksInfo:
 			if self.block_list:
 				await init(n)
 			ret = await self.process_block(heights[n],hashes[n],self.hdrs[n])
-			if opt.stats_only:
-				continue
-			else:
-				Msg(self.fs.format(*ret))
+			if not self.opt.stats_only:
+				self.output_block(ret,n)
+
+	def output_block(self,data,n):
+		Msg(self.fs.format(*data))
 
 	async def process_block(self,height,H,hdr):
 		class local_vars: pass
@@ -375,7 +377,7 @@ class BlocksInfo:
 			Msg(self.fs.format(*hdr1))
 		Msg(self.fs.format(*hdr2))
 
-	def print_stats(self,name):
+	def process_stats(self,name):
 		return getattr(self,f'print_{name}_stats')()
 
 	async def print_range_stats(self):
@@ -419,18 +421,26 @@ class BlocksInfo:
 		if rel > bdi_avg_blks:
 			rel_hdr = await c.call('getblockheader',await c.call('getblockhash',self.tip-rel))
 			bdi = ( tip_hdr['time'] - rel_hdr['time'] ) / rel
+			bdi_disp = bdi
 		else:
 			bdi_adj = float(tip_hdr['difficulty'] / bdi_avg_hdr['difficulty'])
 			bdi = bdi_avg * ( (bdi_adj * (bdi_avg_blks-rel)) + rel ) / bdi_avg_blks
+			bdi_disp = bdi_avg
 
 		rem = 2016 - rel
 		Msg_r(fmt(f"""
 			Current height:    {self.tip}
 			Next diff adjust:  {self.tip+rem} (in {rem} block{suf(rem)} [{self.t_fmt((rem)*bdi_avg)}])
-			BDI (cur period):  {bdi/60:.2f} min
+			BDI (cur period):  {bdi_disp/60:.2f} min
 			Cur difficulty:    {tip_hdr['difficulty']:.2e}
 			Est. diff adjust: {((600 / bdi) - 1) * 100:+.2f}%
 			"""))
+
+	def process_stats_pre(self,i):
+		if not (self.opt.stats_only and i == 0):
+			Msg('')
+
+	def finalize_output(self): pass
 
 	# 'getblockstats' RPC raises exception on Genesis Block, so provide our own stats:
 	genesis_stats = {

@@ -50,6 +50,7 @@ class dummyRPC:
 
 class dummyOpt:
 	fields = None
+	stats = None
 	miner_info = None
 
 class unit_tests:

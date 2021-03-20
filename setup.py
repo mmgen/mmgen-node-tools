@@ -28,6 +28,8 @@ class my_install_data(install_data):
 			os.chmod(os.path.join(sdir,f),0o644)
 		install_data.run(self)
 
+os.umask(0o0022)
+
 setup(
 		name         = 'mmgen-node-tools',
 		description  = 'Optional tools for the MMGen wallet system',
