@@ -521,6 +521,8 @@ class JSONBlocksInfo(BlocksInfo):
 
 	def __init__(self,cmd_args,opt,rpc):
 		super().__init__(cmd_args,opt,rpc)
+		if opt.json_raw:
+			self.output_block = self.output_block_raw
 		Msg_r('{')
 
 	async def process_blocks(self):
@@ -528,12 +530,17 @@ class JSONBlocksInfo(BlocksInfo):
 		await super().process_blocks()
 		Msg_r(']')
 
+	def output_block_raw(self,data,n):
+		Msg_r( (', ','')[n==0] + json.dumps(data._asdict()) )
+
 	def output_block(self,data,n):
 		def gen():
 			for k,v in data._asdict().items():
 				vn = self.fields[k].varname
 				yield ( k, (self.fmt_funcs[vn](v) if vn in self.fmt_funcs else v) )
-		Msg_r(json.dumps(dict(gen())))
+		Msg_r( (', ','')[n==0] + json.dumps(dict(gen())))
+
+	def print_header(self): pass
 
 	async def output_stats(self,res):
 		def gen(data):

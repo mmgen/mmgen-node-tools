@@ -29,7 +29,7 @@ opts_data = {
 		('hashes',     True,   'stats',      'none'),
 		('stats',      'none', 'stats_only', False),
 		('stats_only', True,   'no_header',  True),
-		('json',       True,   'no_header',  True),
+		('json_raw',   True,   'json',       True),
 	],
 	'text': {
 		'desc':    'Display information about a block or range of blocks',
@@ -44,6 +44,7 @@ opts_data = {
 --, --longhelp        Print help message for long options (common options)
 -H, --hashes          Display only block numbers and hashes
 -j, --json            Produce JSON output
+-J, --json-raw        Produce JSON output with unformatted values
 -m, --miner-info      Display miner info in coinbase transaction
 -M, --raw-miner-info  Display miner info in uninterpreted form
 -n, --no-header       Don’t print the column header
