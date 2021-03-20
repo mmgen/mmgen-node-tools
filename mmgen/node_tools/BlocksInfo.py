@@ -97,15 +97,14 @@ class BlocksInfo:
 	all_stats = ['range','diff']
 	dfl_stats = ['range','diff']
 
-	funcs = {
-		'df': lambda self,loc: strftime('%Y-%m-%d %X',gmtime(self.t_cur)),
-		'td': lambda self,loc: (
-			'-{:02}:{:02}'.format(abs(self.t_diff)//60,abs(self.t_diff)%60) if self.t_diff < 0 else
-			' {:02}:{:02}'.format(self.t_diff//60,self.t_diff%60) ),
-		'tf': lambda self,loc: '{:.8f}'.format(loc.bs["totalfee"] * Decimal('0.00000001')),
-		'fp': lambda self,loc: loc.bs['feerate_percentiles'],
-		'su': lambda self,loc: str(loc.bs['subsidy'] * Decimal('0.00000001')).rstrip('0').rstrip('.'),
-		'di': lambda self,loc: '{:.2e}'.format(loc.bh['difficulty']),
+	fmt_funcs = {
+		'df': lambda arg: strftime('%Y-%m-%d %X',gmtime(arg)),
+		'td': lambda arg: (
+			'-{:02}:{:02}'.format(abs(arg)//60,abs(self.t_diff)%60) if arg < 0 else
+			' {:02}:{:02}'.format(arg//60,arg%60) ),
+		'tf': lambda arg: '{:.8f}'.format(arg * Decimal('0.00000001')),
+		'su': lambda arg: str(arg * Decimal('0.00000001')).rstrip('0').rstrip('.'),
+		'di': lambda arg: '{:.2e}'.format(arg),
 	}
 
 	range_data = namedtuple('parsed_range_data',['first','last','from_tip','nblocks','step'])
@@ -159,10 +158,10 @@ class BlocksInfo:
 		self.fs    = ''.join(self.gen_fs(fnames)).strip()
 		self.deps  = set(' '.join(v.varname + ' ' + ' '.join(v.deps) for v in self.fvals).split())
 
-		self.bs_keys = [(v.bs_key or v.key) for v in self.fvals if v.bs_key or v.varname == 'bs']
-		self.bs_keys.extend(['total_size','total_weight'])
-
-		self.ufuncs = {v.varname:self.funcs[v.varname] for v in self.fvals if v.varname in self.funcs}
+		self.bs_keys = set(
+			[(v.bs_key or v.key) for v in self.fvals if v.bs_key or v.varname == 'bs']
+			+ ['total_size','total_weight'] )
+		self.blk_data_bs_add = set([(v.varname,v.bs_key) for v in self.fvals if v.bs_key in self.bs_keys])
 
 		if opt.miner_info:
 			fnames.append('miner')
@@ -321,26 +320,34 @@ class BlocksInfo:
 				self.output_block(ret,n)
 
 	def output_block(self,data,n):
-		Msg(self.fs.format(*data))
+		def gen():
+			for k,v in data._asdict().items():
+				vn = self.fields[k].varname
+				yield self.fmt_funcs[vn](v) if vn in self.fmt_funcs else v
+		Msg(self.fs.format(*gen()))
 
 	async def process_block(self,height,H,hdr):
-		class local_vars: pass
-		loc = local_vars()
-		loc.height = height
-		loc.H = H
-		loc.bh = hdr
 
 		self.t_diff = hdr['time'] - self.t_cur
 		self.t_cur  = hdr['time']
 		self.total_solve_time += self.t_diff
 
-		if 'bs' in self.deps:
-			loc.bs = self.genesis_stats if height == 0 else await self.rpc.call('getblockstats',H,self.bs_keys)
-			self.total_bytes += loc.bs['total_size']
-			self.total_weight += loc.bs['total_weight']
+		blk_data = {
+			'height': height,
+			'H': H,
+			'bh': hdr,
+			'df': self.t_cur,
+			'td': self.t_diff,
+			'di': hdr['difficulty']
+		}
 
-		for varname,func in self.ufuncs.items():
-			setattr(loc,varname,func(self,loc))
+		if 'bs' in self.deps:
+			bs = self.genesis_stats if height == 0 else await self.rpc.call('getblockstats',H,list(self.bs_keys))
+			self.total_bytes += bs['total_size']
+			self.total_weight += bs['total_weight']
+			blk_data['bs'] = bs
+			for k1,k2 in self.blk_data_bs_add:
+				blk_data[k1] = bs[k2]
 
 		if self.opt.miner_info:
 			miner_info = '-' if height == 0 else await self.get_miner_string(H)
@@ -348,9 +355,9 @@ class BlocksInfo:
 		def gen():
 			for v in self.fvals:
 				if v.key is None:
-					yield getattr(loc,v.varname)
+					yield blk_data[v.varname]
 				else:
-					yield getattr(loc,v.varname)[v.key]
+					yield blk_data[v.varname][v.key]
 			if self.opt.miner_info:
 				yield miner_info
 
@@ -522,7 +529,11 @@ class JSONBlocksInfo(BlocksInfo):
 		Msg_r(']')
 
 	def output_block(self,data,n):
-		Msg_r( (', ','')[n==0] + json.dumps(data._asdict()) )
+		def gen():
+			for k,v in data._asdict().items():
+				vn = self.fields[k].varname
+				yield ( k, (self.fmt_funcs[vn](v) if vn in self.fmt_funcs else v) )
+		Msg_r(json.dumps(dict(gen())))
 
 	async def output_stats(self,res):
 		def gen(data):
