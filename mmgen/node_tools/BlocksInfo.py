@@ -94,7 +94,7 @@ class BlocksInfo:
 	]
 	fs_lsqueeze2 = ['interval']
 
-	all_stats = ['range','diff']
+	all_stats = ['avg','range','diff']
 	dfl_stats = ['range','diff']
 
 	fmt_funcs = {
@@ -312,10 +312,12 @@ class BlocksInfo:
 		if not self.block_list:
 			await init(0)
 
+		self.res = []
 		for n in range(len(heights)):
 			if self.block_list:
 				await init(n)
 			ret = await self.process_block(heights[n],hashes[n],self.hdrs[n])
+			self.res.append(ret)
 			if not self.opt.stats_only:
 				self.output_block(ret,n)
 
@@ -480,6 +482,21 @@ class BlocksInfo:
 			('Cur difficulty:    {}', 'cur_diff', f'{tip_hdr["difficulty"]:.2e}'),
 			('Est. diff adjust: {}%', 'est_diff_adjust_pct', f'{((600 / bdi) - 1) * 100:+.2f}'),
 		))
+
+	async def create_avg_stats(self):
+		skip = ('block', 'hash', 'date', 'version','miner')
+		fields = self.block_data._fields
+		nblocks = len(self.res)
+		def gen():
+			for field in fields:
+				if field in skip:
+					yield ''
+				else:
+					ret = sum(getattr(block,field) for block in self.res) // nblocks
+					vn = self.fields[field].varname
+					yield self.fmt_funcs[vn](ret) if vn in self.fmt_funcs else ret
+		fs = ''.join(self.gen_fs(fields,fill=skip)).strip()
+		return ( 'averages', ( 'Averages:', fs.format(*gen()) ) )
 
 	def process_stats_pre(self,i):
 		if not (self.opt.stats_only and i == 0):
