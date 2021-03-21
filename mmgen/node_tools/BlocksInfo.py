@@ -152,10 +152,12 @@ class BlocksInfo:
 
 		self.block_list,self.first,self.last,self.step = parse_cmd_args()
 
-		fnames = get_fields() if opt.fields else self.dfl_fields
+		self.fnames = get_fields() if opt.fields else self.dfl_fields
+		if opt.miner_info and 'miner' not in self.fnames:
+			self.fnames.append('miner')
 
-		self.fvals = list(self.fields[name] for name in fnames)
-		self.fs    = ''.join(self.gen_fs(fnames)).strip()
+		self.fvals = list(self.fields[name] for name in self.fnames)
+		self.fs    = ''.join(self.gen_fs(self.fnames)).strip()
 		self.deps  = set(' '.join(v.varname + ' ' + ' '.join(v.deps) for v in self.fvals).split())
 
 		self.bs_keys = set(
@@ -163,9 +165,7 @@ class BlocksInfo:
 			+ ['total_size','total_weight'] )
 		self.blk_data_bs_add = set([(v.varname,v.bs_key) for v in self.fvals if v.bs_key in self.bs_keys])
 
-		if opt.miner_info:
-			fnames.append('miner')
-			self.fs += '  ' + self.fields['miner'].fs
+		if 'miner' in self.fnames:
 			self.miner_pats = [re.compile(pat) for pat in (
 				rb'`/([_a-zA-Z0-9&. #/-]+)/',
 				rb'[\xe3\xe4\xe5][\^/](.*?)\xfa',
@@ -176,10 +176,8 @@ class BlocksInfo:
 				rb'[/^]([a-zA-Z0-9&. #/-]{5,})',
 				rb'[/^]([_a-zA-Z0-9&. #/-]+)/',
 			)]
-		else:
-			self.miner_pats = None
 
-		self.block_data = namedtuple('block_data',fnames)
+		self.block_data = namedtuple('block_data',self.fnames)
 		self.stats = get_stats() if opt.stats else self.dfl_stats
 
 	def gen_fs(self,fnames,fill=[],fill_char='-'):
@@ -351,8 +349,8 @@ class BlocksInfo:
 			for k1,k2 in self.blk_data_bs_add:
 				blk_data[k1] = bs[k2]
 
-		if self.opt.miner_info:
-			miner_info = '-' if height == 0 else await self.get_miner_string(H)
+		if 'miner' in self.fnames:
+			blk_data['mi'] = '-' if height == 0 else await self.get_miner_string(H)
 
 		def gen():
 			for v in self.fvals:
@@ -360,8 +358,6 @@ class BlocksInfo:
 					yield blk_data[v.varname]
 				else:
 					yield blk_data[v.varname][v.key]
-			if self.opt.miner_info:
-				yield miner_info
 
 		return self.block_data(*gen())
 
@@ -387,10 +383,7 @@ class BlocksInfo:
 	def gen_header(self):
 		hdr1 = [v.hdr1 for v in self.fvals]
 		hdr2 = [v.hdr2 for v in self.fvals]
-		if self.opt.miner_info:
-			hdr1.append('     ')
-			hdr2.append('Miner')
-		if ''.join(hdr1).replace(' ',''):
+		if ''.join(hdr1):
 			yield self.fs.format(*hdr1)
 		yield self.fs.format(*hdr2)
 
@@ -485,17 +478,15 @@ class BlocksInfo:
 
 	async def create_avg_stats(self):
 		skip = ('block', 'hash', 'date', 'version','miner')
-		fields = self.block_data._fields
-		nblocks = len(self.res)
 		def gen():
-			for field in fields:
+			for field in self.fnames:
 				if field in skip:
 					yield ''
 				else:
-					ret = sum(getattr(block,field) for block in self.res) // nblocks
+					ret = sum(getattr(block,field) for block in self.res) // len(self.res)
 					vn = self.fields[field].varname
 					yield self.fmt_funcs[vn](ret) if vn in self.fmt_funcs else ret
-		fs = ''.join(self.gen_fs(fields,fill=skip)).strip()
+		fs = ''.join(self.gen_fs(self.fnames,fill=skip)).strip()
 		return ( 'averages', ( 'Averages:', fs.format(*gen()) ) )
 
 	def process_stats_pre(self,i):

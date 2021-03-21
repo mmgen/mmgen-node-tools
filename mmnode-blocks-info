@@ -30,6 +30,7 @@ opts_data = {
 		('stats',      'none', 'stats_only', False),
 		('stats_only', True,   'no_header',  True),
 		('json_raw',   True,   'json',       True),
+		('raw_miner_info',True,'miner_info', True),
 	],
 	'text': {
 		'desc':    'Display information about a block or range of blocks',
@@ -93,7 +94,7 @@ EXAMPLES:
     {p} -- -1000+50+5
 
     # Display info for block 152817, adding miner field:
-    {p} --miner-info 152817
+    {p} -o +miner 152817
 
     # Display specified fields for listed blocks:
     {p} -o block,date,hash 245798 170 624044
