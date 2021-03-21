@@ -100,7 +100,7 @@ class BlocksInfo:
 	fmt_funcs = {
 		'df': lambda arg: strftime('%Y-%m-%d %X',gmtime(arg)),
 		'td': lambda arg: (
-			'-{:02}:{:02}'.format(abs(arg)//60,abs(self.t_diff)%60) if arg < 0 else
+			'-{:02}:{:02}'.format(abs(arg)//60,abs(arg)%60) if arg < 0 else
 			' {:02}:{:02}'.format(arg//60,arg%60) ),
 		'tf': lambda arg: '{:.8f}'.format(arg * Decimal('0.00000001')),
 		'su': lambda arg: str(arg * Decimal('0.00000001')).rstrip('0').rstrip('.'),
