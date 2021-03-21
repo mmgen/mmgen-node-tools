@@ -405,15 +405,22 @@ class BlocksInfo:
 	def process_stats(self,sname):
 		return self.output_stats(getattr(self,f'create_{sname}_stats')(),sname)
 
+	def fmt_stat_item(self,fs,s):
+		return fs.format(s) if type(fs) == str else fs(s)
+
 	async def output_stats(self,res,sname):
+
 		def gen(data):
 			for d in data:
 				if len(d) == 2:
-					yield (indent+d[0]).format(**d[1])
-				elif len(d) == 3:
-					yield (indent+d[0]).format(d[2])
-				else:
+					yield (indent+d[0]).format(**{k:self.fmt_stat_item(*v) for k,v in d[1].items()})
+				elif len(d) == 4:
+					yield (indent+d[0]).format(self.fmt_stat_item(d[2],d[3]))
+				elif type(d) == str:
 					yield d
+				else:
+					assert False, f'{d}: invalid stats data'
+
 		foo,data = await res
 		indent = '' if sname in self.noindent_stats else '  '
 		Msg('\n'.join(gen(data)))
@@ -428,22 +435,22 @@ class BlocksInfo:
 			yield 'Range Statistics:'
 			yield (
 				'Range:      {start}-{end} ({range} blocks [{elapsed}]%s)' % step_disp, {
-					'start': self.hdrs[0]['height'],
-					'end': self.hdrs[-1]['height'],
-					'range': self.hdrs[-1]['height'] - self.hdrs[0]['height'] + 1, # includes Genesis Block
-					'elapsed': self.t_fmt(elapsed),
-					'nBlocks': total_blks,
-					'step': self.step,
+					'start':   ('{}', self.hdrs[0]['height']),
+					'end':     ('{}', self.hdrs[-1]['height']),
+					'range':   ('{}', self.hdrs[-1]['height'] - self.hdrs[0]['height'] + 1),
+					'elapsed': (self.t_fmt, elapsed),
+					'nBlocks': ('{}', total_blks),
+					'step':    ('{}', self.step),
 				}
 			)
 			if elapsed:
 				avg_bdi = int(elapsed / nblocks)
 				if 'bs' in self.deps:
 					rate = (self.total_bytes / 10000) / (self.total_solve_time / 36)
-					yield ( 'Avg size:   {} bytes', 'avg_size', self.total_bytes//total_blks )
-					yield ( 'Avg weight: {} bytes', 'avg_weight', self.total_weight//total_blks )
-					yield ( 'MB/hr:      {}', 'mb_per_hour', f'{rate:0.4f}' )
-				yield ('Avg BDI:    {} min', 'avg_bdi', f'{avg_bdi/60:.2f}')
+					yield ( 'Avg size:   {} bytes', 'avg_size',    '{}',      self.total_bytes//total_blks )
+					yield ( 'Avg weight: {} bytes', 'avg_weight',  '{}',      self.total_weight//total_blks )
+					yield ( 'MB/hr:      {}',       'mb_per_hour', '{:0.4f}', rate )
+				yield ('Avg BDI:    {} min',        'avg_bdi',     '{:.2f}',  avg_bdi/60)
 
 		return ( 'range', gen() )
 
@@ -474,22 +481,22 @@ class BlocksInfo:
 
 		return ( 'difficulty', (
 			'Difficulty Statistics:',
-			('Current height:    {}', 'chain_tip', self.tip),
+			('Current height:    {}', 'chain_tip', '{}', self.tip),
 			('Next diff adjust:  {next_diff_adjust} (in {blks_remaining} block%s [{time_remaining}])' % suf(rem),
 				{
-					'next_diff_adjust': self.tip + rem,
-					'blks_remaining': rem,
-					'time_remaining': self.t_fmt(rem * bdi_avg)
+					'next_diff_adjust': ('{}', self.tip + rem),
+					'blks_remaining':   ('{}', rem),
+					'time_remaining':   (self.t_fmt, rem * bdi_avg)
 				}
 			),
 			('Avg BDI:           {avg_bdi} min (over {avg_bdi_blks}-block period)',
 				{
-					'avg_bdi': f'{bdi_disp/60:.2f}',
-					'avg_bdi_blks': max(rel,bdi_avg_blks)
+					'avg_bdi':      ('{:.2f}', bdi_disp/60),
+					'avg_bdi_blks': ('{}',     max(rel,bdi_avg_blks))
 				}
 			),
-			('Cur difficulty:    {}', 'cur_diff', f'{tip_hdr["difficulty"]:.2e}'),
-			('Est. diff adjust: {}%', 'est_diff_adjust_pct', f'{((600 / bdi) - 1) * 100:+.2f}'),
+			('Cur difficulty:    {}', 'cur_diff',            '{:.2e}',  tip_hdr['difficulty']),
+			('Est. diff adjust: {}%', 'est_diff_adjust_pct', '{:+.2f}', ((600 / bdi) - 1) * 100),
 		))
 
 	async def create_avg_stats(self):
@@ -497,11 +504,11 @@ class BlocksInfo:
 		def gen():
 			for field in self.fnames:
 				if field in skip:
-					yield ( field, '' )
+					yield ( field, ('{}','') )
 				else:
 					ret = sum(getattr(block,field) for block in self.res) // len(self.res)
 					vn = self.fields[field].varname
-					yield ( field, (self.fmt_funcs[vn](ret) if vn in self.fmt_funcs else ret) )
+					yield ( field, ( (self.fmt_funcs[vn] if vn in self.fmt_funcs else '{}'), ret ))
 		fs = ''.join(self.gen_fs(self.fnames,fill=skip,add_name=True)).strip()
 		return ('averages', ('Averages:', (fs, dict(gen())) ))
 
@@ -547,6 +554,7 @@ class JSONBlocksInfo(BlocksInfo):
 		super().__init__(cmd_args,opt,rpc)
 		if opt.json_raw:
 			self.output_block = self.output_block_raw
+			self.fmt_stat_item = self.fmt_stat_item_raw
 		Msg_r('{')
 
 	async def process_blocks(self):
@@ -566,14 +574,21 @@ class JSONBlocksInfo(BlocksInfo):
 
 	def print_header(self): pass
 
+	def fmt_stat_item_raw(self,fs,s):
+		return s
+
 	async def output_stats(self,res,sname):
+
 		def gen(data):
 			for d in data:
 				if len(d) == 2:
 					for k,v in d[1].items():
-						yield (k,v)
-				elif len(d) == 3:
-					yield (d[1],d[2])
+						yield (k,self.fmt_stat_item(*v))
+				elif len(d) == 4:
+					yield (d[1],self.fmt_stat_item(d[2],d[3]))
+				elif type(d) != str:
+					assert False, f'{d}: invalid stats data'
+
 		varname,data = await res
 		Msg_r(', "{}_data": {}'.format( varname, json.dumps(dict(gen(data)),cls=json_encoder) ))
 
