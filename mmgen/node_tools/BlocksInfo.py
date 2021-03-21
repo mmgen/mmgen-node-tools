@@ -34,33 +34,32 @@ class BlocksInfo:
 	total_weight = 0
 	total_solve_time = 0
 
-	bf = namedtuple('block_info_fields',['hdr1','hdr2','fs','bs_key','varname','deps','key'])
-	# bs=getblockstats(), bh=getblockheader()
-	# If 'bs_key' is set, it's included in self.bs_keys instead of 'key'
+	bf = namedtuple('block_info_fields',['fmt_func','src','fs','hdr1','hdr2','key1','key2'])
+	# bh=getblockheader, bs=getblockstats, lo=local
 	fields = {
-		'block':     bf('',     'Block',    '{:<6}',  None,                 'height',[],     None),
-		'hash':      bf('',     'Hash',     '{:<64}', None,                 'H',     [],     None),
-		'date':      bf('',     'Date',     '{:<19}', None,                 'df',    [],     None),
-		'interval':  bf('Solve','Time ',    '{:>8}',  None,                 'td',    [],     None),
-		'subsidy':   bf('Sub-', 'sidy',     '{:<5}',  'subsidy',            'su',    ['bs'], None),
-		'totalfee':  bf('',     'Total Fee','{:>10}', 'totalfee',           'tf',    ['bs'], None),
-		'size':      bf('',     'Size',     '{:>7}',  None,                 'bs',    [],     'total_size'),
-		'weight':    bf('',     'Weight',   '{:>7}',  None,                 'bs',    [],     'total_weight'),
-		'fee90':     bf('90%',  'Fee',      '{:>3}',  'feerate_percentiles','fp',    ['bs'], 4),
-		'fee75':     bf('75%',  'Fee',      '{:>3}',  'feerate_percentiles','fp',    ['bs'], 3),
-		'fee50':     bf('50%',  'Fee',      '{:>3}',  'feerate_percentiles','fp',    ['bs'], 2),
-		'fee25':     bf('25%',  'Fee',      '{:>3}',  'feerate_percentiles','fp',    ['bs'], 1),
-		'fee10':     bf('10%',  'Fee',      '{:>3}',  'feerate_percentiles','fp',    ['bs'], 0),
-		'fee_max':   bf('Max',  'Fee',      '{:>5}',  None,                 'bs',    [],     'maxfeerate'),
-		'fee_avg':   bf('Avg',  'Fee',      '{:>3}',  None,                 'bs',    [],     'avgfeerate'),
-		'fee_min':   bf('Min',  'Fee',      '{:>3}',  None,                 'bs',    [],     'minfeerate'),
-		'nTx':       bf('',     ' nTx ',    '{:>5}',  None,                 'bh',    [],     'nTx'),
-		'inputs':    bf('In- ', 'puts',     '{:>5}',  None,                 'bs',    [],     'ins'),
-		'outputs':   bf('Out-', 'puts',     '{:>5}',  None,                 'bs',    [],     'outs'),
-		'utxo_inc':  bf(' UTXO',' Incr',    '{:>5}',  None,                 'bs',    [],     'utxo_increase'),
-		'version':   bf('',     'Version',  '{:<8}',  None,                 'bh',    [],     'versionHex'),
-		'difficulty':bf('Diffi-','culty',   '{:<8}',  None,                 'di',    [],      None),
-		'miner':     bf('',      'Miner',   '{:<5}',  None,                 'mi',    [],      None),
+		'block':      bf( None, 'bh', '{:<6}',  '',      'Block',     'height',              None ),
+		'hash':       bf( None, 'bh', '{:<64}', '',      'Hash',      'hash',                None ),
+		'date':       bf( 'da', 'bh', '{:<19}', '',      'Date',      'time',                None ),
+		'interval':   bf( 'td', 'lo', '{:>8}',  'Solve', 'Time ',     'interval',            None ),
+		'subsidy':    bf( 'su', 'bs', '{:<5}',  'Sub-',  'sidy',      'subsidy',             None ),
+		'totalfee':   bf( 'tf', 'bs', '{:>10}', '',      'Total Fee', 'totalfee',            None ),
+		'size':       bf( None, 'bs', '{:>7}',  '',      'Size',      'total_size',          None ),
+		'weight':     bf( None, 'bs', '{:>7}',  '',      'Weight',    'total_weight',        None ),
+		'fee90':      bf( None, 'bs', '{:>3}',  '90%',   'Fee',       'feerate_percentiles', 4 ),
+		'fee75':      bf( None, 'bs', '{:>3}',  '75%',   'Fee',       'feerate_percentiles', 3 ),
+		'fee50':      bf( None, 'bs', '{:>3}',  '50%',   'Fee',       'feerate_percentiles', 2 ),
+		'fee25':      bf( None, 'bs', '{:>3}',  '25%',   'Fee',       'feerate_percentiles', 1 ),
+		'fee10':      bf( None, 'bs', '{:>3}',  '10%',   'Fee',       'feerate_percentiles', 0 ),
+		'fee_max':    bf( None, 'bs', '{:>5}',  'Max',   'Fee',       'maxfeerate',          None ),
+		'fee_avg':    bf( None, 'bs', '{:>3}',  'Avg',   'Fee',       'avgfeerate',          None ),
+		'fee_min':    bf( None, 'bs', '{:>3}',  'Min',   'Fee',       'minfeerate',          None ),
+		'nTx':        bf( None, 'bh', '{:>5}',  '',      ' nTx ',     'nTx',                 None ),
+		'inputs':     bf( None, 'bs', '{:>5}',  'In- ',  'puts',      'ins',                 None ),
+		'outputs':    bf( None, 'bs', '{:>5}',  'Out-',  'puts',      'outs',                None ),
+		'utxo_inc':   bf( None, 'bs', '{:>5}',  ' UTXO', ' Incr',     'utxo_increase',       None ),
+		'version':    bf( None, 'bh', '{:<8}',  '',      'Version',   'versionHex',          None ),
+		'difficulty': bf( 'di', 'bh', '{:<8}',  'Diffi-','culty',     'difficulty',          None ),
+		'miner':      bf( None, 'lo', '{:<5}',  '',      'Miner',     'miner',               None ),
 	}
 	dfl_fields  = [
 		'block',
@@ -100,7 +99,7 @@ class BlocksInfo:
 	noindent_stats = ['avg']
 
 	fmt_funcs = {
-		'df': lambda arg: strftime('%Y-%m-%d %X',gmtime(arg)),
+		'da': lambda arg: strftime('%Y-%m-%d %X',gmtime(arg)),
 		'td': lambda arg: (
 			'-{:02}:{:02}'.format(abs(arg)//60,abs(arg)%60) if arg < 0 else
 			' {:02}:{:02}'.format(arg//60,arg%60) ),
@@ -167,13 +166,13 @@ class BlocksInfo:
 		if opt.miner_info and 'miner' not in self.fnames:
 			self.fnames.append('miner')
 
-		self.fvals = list(self.fields[name] for name in self.fnames)
+		self.fvals = [self.fields[name] for name in self.fnames]
 		self.fs    = ''.join(self.gen_fs(self.fnames)).strip()
 
 		self.bs_keys = set(
-			[(v.bs_key or v.key) for v in self.fvals if v.bs_key or v.varname == 'bs']
-			+ ['total_size','total_weight'] )
-		self.blk_data_bs_add = set([(v.varname,v.bs_key) for v in self.fvals if v.bs_key in self.bs_keys])
+			[v.key1 for v in self.fvals if v.src == 'bs'] +
+			['total_size','total_weight']
+		)
 
 		if 'miner' in self.fnames:
 			self.miner_pats = [re.compile(pat) for pat in (
@@ -197,10 +196,7 @@ class BlocksInfo:
 		if 'avg' in self.stats and not self.fnames:
 			self.stats.remove('avg')
 
-		self.deps = set(
-			' '.join(v.varname + ' ' + ' '.join(v.deps) for v in self.fvals).split()
-			+ ( ['bs'] if 'range' in self.stats else [] )
-			)
+		self.deps = set([v.src for v in self.fvals] + (['bs'] if 'range' in self.stats else []))
 
 	def gen_fs(self,fnames,fill=[],fill_char='-',add_name=False):
 		for i in range(len(fnames)):
@@ -333,7 +329,7 @@ class BlocksInfo:
 		for n in range(len(heights)):
 			if self.block_list:
 				await init(n)
-			ret = await self.process_block(heights[n],hashes[n],self.hdrs[n])
+			ret = await self.process_block(self.hdrs[n])
 			self.res.append(ret)
 			if self.fnames:
 				self.output_block(ret,n)
@@ -341,42 +337,39 @@ class BlocksInfo:
 	def output_block(self,data,n):
 		def gen():
 			for k,v in data._asdict().items():
-				vn = self.fields[k].varname
-				yield self.fmt_funcs[vn](v) if vn in self.fmt_funcs else v
+				func = self.fields[k].fmt_func
+				yield self.fmt_funcs[func](v) if func else v
 		Msg(self.fs.format(*gen()))
 
-	async def process_block(self,height,H,hdr):
+	async def process_block(self,hdr):
 
 		self.t_diff = hdr['time'] - self.t_cur
 		self.t_cur  = hdr['time']
 		self.total_solve_time += self.t_diff
 
 		blk_data = {
-			'height': height,
-			'H': H,
 			'bh': hdr,
-			'df': self.t_cur,
-			'td': self.t_diff,
-			'di': hdr['difficulty']
+			'lo': { 'interval': self.t_diff }
 		}
 
 		if 'bs' in self.deps:
-			bs = self.genesis_stats if height == 0 else await self.rpc.call('getblockstats',H,list(self.bs_keys))
+			bs = (
+				self.genesis_stats if hdr['height'] == 0 else
+				await self.rpc.call('getblockstats',hdr['hash'],list(self.bs_keys))
+			)
 			self.total_bytes += bs['total_size']
 			self.total_weight += bs['total_weight']
 			blk_data['bs'] = bs
-			for k1,k2 in self.blk_data_bs_add:
-				blk_data[k1] = bs[k2]
 
 		if 'miner' in self.fnames:
-			blk_data['mi'] = '-' if height == 0 else await self.get_miner_string(H)
+			blk_data['lo']['miner'] = '-' if hdr['height'] == 0 else await self.get_miner_string(hdr['hash'])
 
 		def gen():
 			for v in self.fvals:
-				if v.key is None:
-					yield blk_data[v.varname]
-				else:
-					yield blk_data[v.varname][v.key]
+				yield (
+					blk_data[v.src][v.key1] if v.key2 is None else
+					blk_data[v.src][v.key1][v.key2]
+				)
 
 		return self.block_data(*gen())
 
@@ -510,8 +503,8 @@ class BlocksInfo:
 					yield ( field, ('{}','') )
 				else:
 					ret = sum(getattr(block,field) for block in self.res) // len(self.res)
-					vn = self.fields[field].varname
-					yield ( field, ( (self.fmt_funcs[vn] if vn in self.fmt_funcs else '{}'), ret ))
+					func = self.fields[field].fmt_func
+					yield ( field, ( (self.fmt_funcs[func] if func else '{}'), ret ))
 		fs = ''.join(self.gen_fs(self.fnames,fill=skip,add_name=True)).strip()
 		return ('averages', ('Averages:', (fs, dict(gen())) ))
 
@@ -571,8 +564,8 @@ class JSONBlocksInfo(BlocksInfo):
 	def output_block(self,data,n):
 		def gen():
 			for k,v in data._asdict().items():
-				vn = self.fields[k].varname
-				yield ( k, (self.fmt_funcs[vn](v) if vn in self.fmt_funcs else v) )
+				func = self.fields[k].fmt_func
+				yield ( k, (self.fmt_funcs[func](v) if func else v) )
 		Msg_r( (', ','')[n==0] + json.dumps(dict(gen()),cls=json_encoder) )
 
 	def print_header(self): pass
