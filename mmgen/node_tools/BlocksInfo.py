@@ -26,6 +26,7 @@ from time import strftime,gmtime
 from decimal import Decimal
 
 from mmgen.common import *
+from mmgen.rpc import json_encoder
 
 class BlocksInfo:
 
@@ -539,14 +540,14 @@ class JSONBlocksInfo(BlocksInfo):
 		Msg_r(']')
 
 	def output_block_raw(self,data,n):
-		Msg_r( (', ','')[n==0] + json.dumps(data._asdict()) )
+		Msg_r( (', ','')[n==0] + json.dumps(data._asdict(),cls=json_encoder) )
 
 	def output_block(self,data,n):
 		def gen():
 			for k,v in data._asdict().items():
 				vn = self.fields[k].varname
 				yield ( k, (self.fmt_funcs[vn](v) if vn in self.fmt_funcs else v) )
-		Msg_r( (', ','')[n==0] + json.dumps(dict(gen())))
+		Msg_r( (', ','')[n==0] + json.dumps(dict(gen()),cls=json_encoder) )
 
 	def print_header(self): pass
 
@@ -558,8 +559,8 @@ class JSONBlocksInfo(BlocksInfo):
 						yield (k,v)
 				elif len(d) == 3:
 					yield (d[1],d[2])
-		name,data = await res
-		Msg_r(', "{}_data": {}'.format(name,json.dumps(dict(gen(data)))))
+		varname,data = await res
+		Msg_r(', "{}_data": {}'.format( varname, json.dumps(dict(gen(data)),cls=json_encoder) ))
 
 	def process_stats_pre(self,i): pass
 
