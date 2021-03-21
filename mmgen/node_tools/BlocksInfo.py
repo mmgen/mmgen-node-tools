@@ -169,7 +169,6 @@ class BlocksInfo:
 
 		self.fvals = list(self.fields[name] for name in self.fnames)
 		self.fs    = ''.join(self.gen_fs(self.fnames)).strip()
-		self.deps  = set(' '.join(v.varname + ' ' + ' '.join(v.deps) for v in self.fvals).split())
 
 		self.bs_keys = set(
 			[(v.bs_key or v.key) for v in self.fvals if v.bs_key or v.varname == 'bs']
@@ -197,6 +196,11 @@ class BlocksInfo:
 
 		if 'avg' in self.stats and not self.fnames:
 			self.stats.remove('avg')
+
+		self.deps = set(
+			' '.join(v.varname + ' ' + ' '.join(v.deps) for v in self.fvals).split()
+			+ ( ['bs'] if 'range' in self.stats else [] )
+			)
 
 	def gen_fs(self,fnames,fill=[],fill_char='-',add_name=False):
 		for i in range(len(fnames)):
@@ -445,12 +449,11 @@ class BlocksInfo:
 			)
 			if elapsed:
 				avg_bdi = int(elapsed / nblocks)
-				if 'bs' in self.deps:
-					rate = (self.total_bytes / 10000) / (self.total_solve_time / 36)
-					yield ( 'Avg size:   {} bytes', 'avg_size',    '{}',      self.total_bytes//total_blks )
-					yield ( 'Avg weight: {} bytes', 'avg_weight',  '{}',      self.total_weight//total_blks )
-					yield ( 'MB/hr:      {}',       'mb_per_hour', '{:0.4f}', rate )
-				yield ('Avg BDI:    {} min',        'avg_bdi',     '{:.2f}',  avg_bdi/60)
+				rate = (self.total_bytes / 10000) / (self.total_solve_time / 36)
+				yield ( 'Avg size:   {} bytes', 'avg_size',    '{}',      self.total_bytes//total_blks )
+				yield ( 'Avg weight: {} bytes', 'avg_weight',  '{}',      self.total_weight//total_blks )
+				yield ( 'MB/hr:      {}',       'mb_per_hour', '{:0.4f}', rate )
+				yield ( 'Avg BDI:    {} min',   'avg_bdi',     '{:.2f}',  avg_bdi/60 )
 
 		return ( 'range', gen() )
 
