@@ -27,8 +27,6 @@ opts_data = {
 	'sets': [
 		('hashes',     True,   'fields',     'block,hash'),
 		('hashes',     True,   'stats',      'none'),
-		('stats',      'none', 'stats_only', False),
-		('stats_only', True,   'no_header',  True),
 		('json_raw',   True,   'json',       True),
 		('raw_miner_info',True,'miner_info', True),
 	],
@@ -50,17 +48,19 @@ opts_data = {
 -M, --raw-miner-info  Display miner info in uninterpreted form
 -n, --no-header       Don’t print the column header
 -o, --fields=         Display the specified fields (comma-separated list).
-                      See AVAILABLE FIELDS below.  If the first character
-                      is '+', specified fields are added to the defaults.
+                      See AVAILABLE FIELDS below.  Prefix the list with '+'
+                      to add the fields to the defaults, or '-' to remove
+                      them.  The special values 'all' and 'none' select all
+                      available fields or none, respectively.
 -s, --stats=          Display the specified stats (comma-separated list).
-                      See AVAILABLE STATS below.  If the first character is
-                      '+', specified stats are added to the defaults.  Use
-                      'none' to disable, or 'all' for all available stats.
--S, --stats-only      Display stats only.  Skip display of per-block data.
+                      See AVAILABLE STATS below.  The prefixes and special
+                      values available to the --fields option are recognized.
 """,
 	'notes': """
-If no block number is specified, the current block is assumed.  The string
-'cur' can be used in place of the current block number.
+If no block number is specified, the current chain tip is assumed.
+
+The special value 'cur' can be used to designate the chain tip wherever a
+block number is expected.
 
 If the requested range ends at the current chain tip, an estimate of the next
 difficulty adjustment is also displayed. The estimate is based on the average
@@ -74,40 +74,47 @@ AVAILABLE STATS: {s}
 
 EXAMPLES:
 
-    # Display info for current block:
-    {p}
+    Display info for current block:
+    $ {p}
 
-    # Display info for the Genesis Block:
-    {p} 0
+    Display info for the Genesis Block:
+    $ {p} 0
 
-    # Display info for the last 20 blocks:
-    {p} +20
+    Display info for the last 20 blocks:
+    $ {p} +20
 
-    # Display specified fields for blocks 165-190
-    {p} -o block,date,size,inputs,nTx 165-190
+    Display specified fields for blocks 165-190
+    $ {p} -o block,date,size,inputs,nTx 165-190
 
-    # Display info for 10 blocks beginning at block 600000:
-    {p} 600000+10
+    Display info for 10 blocks beginning at block 600000:
+    $ {p} 600000+10
 
-    # Display info for every 5th block of 50-block range beginning at 1000
-    # blocks from chain tip:
-    {p} -- -1000+50+5
+    Display info for every 5th block of 50-block range beginning at 1000
+    blocks from chain tip:
+    $ {p} -- -1000+50+5
 
-    # Display info for block 152817, adding miner field:
-    {p} -o +miner 152817
+    Display info for block 152817, adding miner field:
+    $ {p} -o +miner 152817
 
-    # Display specified fields for listed blocks:
-    {p} -o block,date,hash 245798 170 624044
+    Display specified fields for listed blocks:
+    $ {p} -o block,date,hash 245798 170 624044
 
-    # Display every difficulty adjustment from Genesis Block to chain tip:
-    {p} -o +difficulty 0-cur+2016
+    Display every difficulty adjustment from Genesis Block to chain tip:
+    $ {p} -o +difficulty 0-cur+2016
 
-    # Display roughly a block a day over the last two weeks.  Note that
-    # multiplication is allowed in the nBlocks spec:
-    {p} +144*14+144
+    Display roughly a block a day over the last two weeks.  Note that
+    multiplication is allowed in the nBlocks spec:
+    $ {p} +144*14+144
 
-    # Display only range stats for the last ten blocks:
-    {p} -s range -S +10
+    Display only range stats for the last ten blocks:
+    $ {p} -o none -s range +10
+
+    Display data for the last ten blocks, skipping 'size' and 'subsidy'
+    fields and stats:
+    $ {p} -o -size,subsidy -s none +10
+
+    Display all fields and stats for the last ten blocks:
+    $ {p} -o all -s all +10
 
 This program requires a txindex-enabled daemon for correct operation.
 """.format(
@@ -130,18 +137,15 @@ async def main():
 
 	m = cls( cmd_args, opt, await rpc_init(proto) )
 
-	if not opt.no_header:
+	if m.fnames and not opt.no_header:
 		m.print_header()
 
 	await m.process_blocks()
 
 	if m.last and m.stats:
-		for i,stat in enumerate(m.stats):
-			if stat == 'diff': # Display diff stats by default only if user-requested range ends with chain tip
-				if not opt.stats and m.last != m.tip:
-					continue
+		for i,sname in enumerate(m.stats):
 			m.process_stats_pre(i)
-			await m.process_stats(stat)
+			await m.process_stats(sname)
 
 	m.finalize_output()
 

@@ -116,23 +116,32 @@ class BlocksInfo:
 	def __init__(self,cmd_args,opt,rpc):
 
 		def parse_cslist(uarg,full_set,dfl_set,desc):
-			usr_set = uarg.lstrip('+').split(',')
+			m = re.match('([+-]){1}',uarg)
+			pfx = m[1] if m else None
+			usr_set = set((uarg[1:] if m else uarg).split(','))
+			dfl_set = set(dfl_set)
 			for e in usr_set:
 				if e not in full_set:
 					die(1,f'{e!r}: unrecognized {desc}')
-			res = dfl_set + usr_set if uarg[0] == '+' else usr_set
+			res = (
+				dfl_set | usr_set if pfx == '+' else
+				dfl_set - usr_set if pfx == '-' else
+				usr_set
+			)
 			# display elements in order:
 			return [e for e in full_set if e in res]
 
+		def parse_cs_uarg(uarg,full_set,dfl_set,desc):
+			return (
+				full_set if uarg == 'all' else [] if uarg == 'none' else
+				parse_cslist(uarg,full_set,dfl_set,desc)
+			)
+
 		def get_fields():
-			return parse_cslist(opt.fields,self.fields,self.dfl_fields,'field')
+			return parse_cs_uarg(opt.fields,list(self.fields),self.dfl_fields,'field')
 
 		def get_stats():
-			arg = opt.stats.lower()
-			return (
-				self.all_stats if arg == 'all' else [] if arg == 'none' else
-				parse_cslist(arg,self.all_stats,self.dfl_stats,'stat')
-			)
+			return parse_cs_uarg(opt.stats.lower(),self.all_stats,self.dfl_stats,'stat')
 
 		def parse_cmd_args(): # => (block_list, first, last, step)
 			if not cmd_args:
@@ -181,6 +190,13 @@ class BlocksInfo:
 
 		self.block_data = namedtuple('block_data',self.fnames)
 		self.stats = get_stats() if opt.stats else self.dfl_stats
+
+		# Display diff stats by default only if user-requested range ends with chain tip
+		if 'diff' in self.stats and not opt.stats and self.last != self.tip:
+			self.stats.remove('diff')
+
+		if 'avg' in self.stats and not self.fnames:
+			self.stats.remove('avg')
 
 	def gen_fs(self,fnames,fill=[],fill_char='-',add_name=False):
 		for i in range(len(fnames)):
@@ -315,7 +331,7 @@ class BlocksInfo:
 				await init(n)
 			ret = await self.process_block(heights[n],hashes[n],self.hdrs[n])
 			self.res.append(ret)
-			if not self.opt.stats_only:
+			if self.fnames:
 				self.output_block(ret,n)
 
 	def output_block(self,data,n):
@@ -490,7 +506,7 @@ class BlocksInfo:
 		return ('averages', ('Averages:', (fs, dict(gen())) ))
 
 	def process_stats_pre(self,i):
-		if not (self.opt.stats_only and i == 0):
+		if self.fnames or i != 0:
 			Msg('')
 
 	def finalize_output(self): pass
