@@ -97,6 +97,7 @@ class BlocksInfo:
 
 	all_stats = ['avg','range','diff']
 	dfl_stats = ['range','diff']
+	noindent_stats = ['avg']
 
 	fmt_funcs = {
 		'df': lambda arg: strftime('%Y-%m-%d %X',gmtime(arg)),
@@ -181,7 +182,7 @@ class BlocksInfo:
 		self.block_data = namedtuple('block_data',self.fnames)
 		self.stats = get_stats() if opt.stats else self.dfl_stats
 
-	def gen_fs(self,fnames,fill=[],fill_char='-'):
+	def gen_fs(self,fnames,fill=[],fill_char='-',add_name=False):
 		for i in range(len(fnames)):
 			name = fnames[i]
 			ls = (' ','')[name in self.fs_lsqueeze + self.fs_lsqueeze2]
@@ -193,11 +194,8 @@ class BlocksInfo:
 					if name in group and fnames[i-1] in group:
 						ls = ''
 						break
-			yield (
-				ls
-				+ (self.fields[name].fs.replace(':',':'+fill_char) if name in fill else self.fields[name].fs)
-				+ rs
-			)
+			repl = (name if add_name else '') + ':' + (fill_char if name in fill else '')
+			yield (ls + self.fields[name].fs.replace(':',repl) + rs)
 
 	def conv_blkspec(self,arg):
 		if arg == 'cur':
@@ -388,19 +386,20 @@ class BlocksInfo:
 			yield self.fs.format(*hdr1)
 		yield self.fs.format(*hdr2)
 
-	def process_stats(self,name):
-		return self.output_stats(getattr(self,f'create_{name}_stats')())
+	def process_stats(self,sname):
+		return self.output_stats(getattr(self,f'create_{sname}_stats')(),sname)
 
-	async def output_stats(self,res):
+	async def output_stats(self,res,sname):
 		def gen(data):
 			for d in data:
 				if len(d) == 2:
-					yield ('  '+d[0]).format(**d[1])
+					yield (indent+d[0]).format(**d[1])
 				elif len(d) == 3:
-					yield ('  '+d[0]).format(d[2])
+					yield (indent+d[0]).format(d[2])
 				else:
 					yield d
-		name,data = await res
+		foo,data = await res
+		indent = '' if sname in self.noindent_stats else '  '
 		Msg('\n'.join(gen(data)))
 
 	async def create_range_stats(self):
@@ -482,13 +481,13 @@ class BlocksInfo:
 		def gen():
 			for field in self.fnames:
 				if field in skip:
-					yield ''
+					yield ( field, '' )
 				else:
 					ret = sum(getattr(block,field) for block in self.res) // len(self.res)
 					vn = self.fields[field].varname
-					yield self.fmt_funcs[vn](ret) if vn in self.fmt_funcs else ret
-		fs = ''.join(self.gen_fs(self.fnames,fill=skip)).strip()
-		return ( 'averages', ( 'Averages:', fs.format(*gen()) ) )
+					yield ( field, (self.fmt_funcs[vn](ret) if vn in self.fmt_funcs else ret) )
+		fs = ''.join(self.gen_fs(self.fnames,fill=skip,add_name=True)).strip()
+		return ('averages', ('Averages:', (fs, dict(gen())) ))
 
 	def process_stats_pre(self,i):
 		if not (self.opt.stats_only and i == 0):
@@ -551,7 +550,7 @@ class JSONBlocksInfo(BlocksInfo):
 
 	def print_header(self): pass
 
-	async def output_stats(self,res):
+	async def output_stats(self,res,sname):
 		def gen(data):
 			for d in data:
 				if len(d) == 2:
