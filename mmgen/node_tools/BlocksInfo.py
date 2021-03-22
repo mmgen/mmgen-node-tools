@@ -56,12 +56,12 @@ class BlocksInfo:
 		'nTx':        bf( None, 'bh', '{:>5}',  '',      ' nTx ',     'nTx',                 None ),
 		'inputs':     bf( None, 'bs', '{:>5}',  'In- ',  'puts',      'ins',                 None ),
 		'outputs':    bf( None, 'bs', '{:>5}',  'Out-',  'puts',      'outs',                None ),
-		'utxo_inc':   bf( None, 'bs', '{:>5}',  ' UTXO', ' Incr',     'utxo_increase',       None ),
+		'utxo_inc':   bf( None, 'bs', '{:>6}',  ' UTXO', ' Incr',     'utxo_increase',       None ),
 		'version':    bf( None, 'bh', '{:<8}',  '',      'Version',   'versionHex',          None ),
 		'difficulty': bf( 'di', 'bh', '{:<8}',  'Diffi-','culty',     'difficulty',          None ),
 		'miner':      bf( None, 'lo', '{:<5}',  '',      'Miner',     'miner',               None ),
 	}
-	dfl_fields  = [
+	dfl_fields = (
 		'block',
 		'date',
 		'interval',
@@ -75,8 +75,8 @@ class BlocksInfo:
 		'fee_avg',
 		'fee_min',
 		'version',
-	]
-	fixed_fields = [
+	)
+	fixed_fields = (
 		'block',      # until ≈ 09/01/2028 (block 1000000)
 		'hash',
 		'date',
@@ -85,14 +85,15 @@ class BlocksInfo:
 		'version',
 		'subsidy',    # until ≈ 01/04/2028 (increases by 1 digit per halving until 9th halving [max 10 digits])
 		'difficulty', # until 1.00e+100 (i.e. never)
-	]
+	)
+
 	# column width adjustment data:
-	fs_lsqueeze = ['totalfee','inputs','outputs','nTx']
-	fs_rsqueeze = []
-	fs_groups = [
+	fs_lsqueeze = ('totalfee','inputs','outputs','nTx')
+	fs_rsqueeze = ()
+	fs_groups = (
 		('fee10','fee25','fee50','fee75','fee90','fee_avg','fee_min','fee_max'),
-	]
-	fs_lsqueeze2 = ['interval']
+	)
+	fs_lsqueeze2 = ('interval',)
 
 	all_stats = ['avg','range','diff']
 	dfl_stats = ['range','diff']
@@ -162,9 +163,12 @@ class BlocksInfo:
 
 		self.block_list,self.first,self.last,self.step = parse_cmd_args()
 
-		self.fnames = get_fields() if opt.fields else self.dfl_fields
+		self.fnames = tuple(
+			get_fields() if opt.fields else
+			self.dfl_fields
+		)
 		if opt.miner_info and 'miner' not in self.fnames:
-			self.fnames.append('miner')
+			self.fnames += ('miner',)
 
 		self.fvals = [self.fields[name] for name in self.fnames]
 		self.fs    = ''.join(self.gen_fs(self.fnames)).strip()
@@ -196,7 +200,11 @@ class BlocksInfo:
 		if 'avg' in self.stats and not self.fnames:
 			self.stats.remove('avg')
 
-		self.deps = set([v.src for v in self.fvals] + (['bs'] if 'range' in self.stats else []))
+		self.deps = set(
+			[v.src for v in self.fvals] +
+			# display full range stats if no fields selected
+			(['bs'] if 'range' in self.stats else [])
+		)
 
 	def gen_fs(self,fnames,fill=[],fill_char='-',add_name=False):
 		for i in range(len(fnames)):

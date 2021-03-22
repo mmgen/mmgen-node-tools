@@ -142,7 +142,7 @@ async def main():
 
 	await m.process_blocks()
 
-	if m.last and m.stats:
+	if m.last:
 		for i,sname in enumerate(m.stats):
 			m.process_stats_pre(i)
 			await m.process_stats(sname)
