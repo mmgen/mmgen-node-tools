@@ -95,7 +95,7 @@ class BlocksInfo:
 	)
 	fs_lsqueeze2 = ('interval',)
 
-	all_stats = ['avg','range','diff']
+	all_stats = ['avg','totals','range','diff']
 	dfl_stats = ['range','diff']
 	noindent_stats = ['avg']
 
@@ -521,6 +521,26 @@ class BlocksInfo:
 					yield ( field, ( (self.fmt_funcs[func] if func else '{}'), ret ))
 		fs = ''.join(self.gen_fs(self.fnames,fill=skip,add_name=True)).strip()
 		return ('averages', ('Averages:', (fs, dict(gen())) ))
+
+	async def create_totals_stats(self):
+		coin = self.rpc.proto.coin
+		fields = {
+			'interval': ('Solve Time:    {} h/m/s', secs_to_dhms),
+			'subsidy':  ('Subsidy:       {} %s' % coin, self.fmt_funcs['su']),
+			'totalfee': ('Fees:          {} %s' % coin, self.fmt_funcs['tf']),
+			'earnings': ('Subsidy+Fees:  {} %s' % coin, self.fmt_funcs['tf']),
+			'nTx':      ('nTx:           {}', int),
+			'inputs':   ('Inputs:        {}', int),
+			'outputs':  ('Outputs:       {}', int),
+			'utxo_inc': ('UTXO change:  {:<+}', int),
+		}
+		fnames = list( set(fields) & set(self.fnames) )
+		vals = dict( ( name, sum(getattr(blk,name) for blk in self.res) ) for name in fnames )
+		if 'subsidy' in vals and 'totalfee' in vals:
+			vals['earnings'] = vals['subsidy'] + vals['totalfee']
+			fnames.append('earnings')
+		res = [( v[0], k, v[1], vals[k] ) for k,v in fields.items() if k in fnames]
+		return ( 'totals', ['Totals:'] + res )
 
 	def process_stats_pre(self,i):
 		if self.fnames or i != 0:
