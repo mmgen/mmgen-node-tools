@@ -25,10 +25,11 @@ from mmgen.node_tools.BlocksInfo import BlocksInfo,JSONBlocksInfo
 
 opts_data = {
 	'sets': [
-		('hashes',     True,   'fields',     'block,hash'),
-		('hashes',     True,   'stats',      'none'),
-		('json_raw',   True,   'json',       True),
-		('raw_miner_info',True,'miner_info', True),
+		('header_info',    True,   'fields',     None),
+		('header_info',    True,   'miner_info', None),
+		('header_info',    True,   'stats',      'range'),
+		('json_raw',       True,   'json',       True),
+		('raw_miner_info', True,   'miner_info', True),
 	],
 	'text': {
 		'desc':    'Display information about a block or range of blocks',
@@ -41,7 +42,7 @@ opts_data = {
 		'options': """
 -h, --help            Print this help message
 --, --longhelp        Print help message for long options (common options)
--H, --hashes          Display only block numbers and hashes
+-H, --header-info     Display information from block headers only
 -j, --json            Produce JSON output
 -J, --json-raw        Produce JSON output with unformatted values
 -m, --miner-info      Display miner info in coinbase transaction
@@ -115,6 +116,10 @@ EXAMPLES:
 
     Display all fields and stats for the last ten blocks:
     $ {p} -o all -s all +10
+
+    Display headers-only info for the last 1000 blocks.  Speed up execution
+    using the async RPC backend:
+    $ {p} --rpc-backend=aio -H +1000
 
 This program requires a txindex-enabled daemon for correct operation.
 """.format(

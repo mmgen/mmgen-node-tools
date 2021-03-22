@@ -164,6 +164,7 @@ class BlocksInfo:
 		self.block_list,self.first,self.last,self.step = parse_cmd_args()
 
 		self.fnames = tuple(
+			[f for f in self.fields if self.fields[f].src == 'bh' or f == 'interval'] if opt.header_info else
 			get_fields() if opt.fields else
 			self.dfl_fields
 		)
@@ -203,7 +204,7 @@ class BlocksInfo:
 		self.deps = set(
 			[v.src for v in self.fvals] +
 			# display full range stats if no fields selected
-			(['bs'] if 'range' in self.stats else [])
+			(['bs'] if 'range' in self.stats and not self.fvals else [])
 		)
 
 	def gen_fs(self,fnames,fill=[],fill_char='-',add_name=False):
@@ -316,27 +317,30 @@ class BlocksInfo:
 
 	async def process_blocks(self):
 
+		async def get_hdrs(heights):
+			hashes = await c.gathered_call('getblockhash',[(height,) for height in heights])
+			return await c.gathered_call('getblockheader',[(H,) for H in hashes])
+
 		c = self.rpc
+
 		heights = self.block_list or range(self.first,self.last+1)
-		hashes = await c.gathered_call('getblockhash',[(height,) for height in heights])
-		self.hdrs = await c.gathered_call('getblockheader',[(H,) for H in hashes])
+		self.hdrs = await get_hdrs(heights)
 
-		async def init(count):
-			h0 = (
-				self.hdrs[count] if heights[count] == 0 else
-				await c.call('getblockheader',await c.call('getblockhash',heights[count]-1))
+		if self.block_list:
+			self.prev_hdrs = await get_hdrs([(n-1 if n else 0) for n in self.block_list])
+			self.first_prev_hdr = self.prev_hdrs[0]
+		else:
+			self.first_prev_hdr = (
+				self.hdrs[0] if heights[0] == 0 else
+				await c.call('getblockheader',await c.call('getblockhash',heights[0]-1))
 			)
-			self.t_cur = h0['time']
-			if count == 0:
-				self.first_prev_hdr = h0
 
-		if not self.block_list:
-			await init(0)
-
+		self.t_cur = self.first_prev_hdr['time']
 		self.res = []
+
 		for n in range(len(heights)):
 			if self.block_list:
-				await init(n)
+				self.t_cur = self.prev_hdrs[n]['time']
 			ret = await self.process_block(self.hdrs[n])
 			self.res.append(ret)
 			if self.fnames:
@@ -449,12 +453,14 @@ class BlocksInfo:
 				}
 			)
 			if elapsed:
-				avg_bdi = int(elapsed / nblocks)
-				rate = (self.total_bytes / 10000) / (self.total_solve_time / 36)
-				yield ( 'Avg size:   {} bytes', 'avg_size',    '{}',      self.total_bytes//total_blks )
-				yield ( 'Avg weight: {} bytes', 'avg_weight',  '{}',      self.total_weight//total_blks )
-				yield ( 'MB/hr:      {}',       'mb_per_hour', '{:0.4f}', rate )
-				yield ( 'Avg BDI:    {} min',   'avg_bdi',     '{:.2f}',  avg_bdi/60 )
+				if 'bs' in self.deps:
+					rate = (self.total_bytes / 10000) / (self.total_solve_time / 36)
+					yield ( 'Avg size:   {} bytes', 'avg_size',    '{}',      self.total_bytes//total_blks )
+					yield ( 'Avg weight: {} bytes', 'avg_weight',  '{}',      self.total_weight//total_blks )
+					yield ( 'MB/hr:      {}',       'mb_per_hour', '{:0.4f}', rate )
+				yield ( 'Start:      {}',       'start_date',  self.fmt_funcs['da'], self.hdrs[0]['time']  )
+				yield ( 'End:        {}',       'end_date',    self.fmt_funcs['da'], self.hdrs[-1]['time']  )
+				yield ( 'Avg BDI:    {} min',   'avg_bdi',     '{:.2f}',  elapsed / nblocks / 60 )
 
 		return ( 'range', gen() )
 
