@@ -43,6 +43,10 @@ opts_data = {
 		'options': """
 -h, --help            Print this help message
 --, --longhelp        Print help message for long options (common options)
+-f, --full-stats      Stats that relate to a specific field are shown only
+                      if that field is configured, whether by default or via
+                      the --fields option.  This option adds the fields req-
+                      uired to produce a full display of configured stats.
 -H, --header-info     Display information from block headers only
 -j, --json            Produce JSON output
 -J, --json-raw        Produce JSON output with unformatted values
@@ -119,8 +123,11 @@ EXAMPLES:
     Display all fields and stats for the last ten blocks:
     $ {p} -o all -s all +10
 
+    Same as above, but display only relevant fields:
+    $ {p} -o none -s all -f +10
+
     Same as above, but display stats only:
-    $ {p} -o all -s all -S +10
+    $ {p} -o none -s all -fS +10
 
     Display headers-only info for the last 1000 blocks.  Speed up execution
     using the async RPC backend:

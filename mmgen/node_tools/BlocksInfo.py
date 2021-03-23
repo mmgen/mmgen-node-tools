@@ -100,6 +100,14 @@ class BlocksInfo:
 	dfl_stats = ['range','diff']
 	noindent_stats = ['avg']
 
+	avg_stats_skip = {'block', 'hash', 'date', 'version','miner'}
+	stats_deps = {
+		'avg':    set(fields) - avg_stats_skip,
+		'totals': {'interval','subsidy','totalfee','nTx','inputs','outputs','utxo_inc'},
+		'range':  {},
+		'diff':   {},
+	}
+
 	fmt_funcs = {
 		'da': lambda arg: strftime('%Y-%m-%d %X',gmtime(arg)),
 		'td': lambda arg: (
@@ -172,6 +180,21 @@ class BlocksInfo:
 		if opt.miner_info and 'miner' not in self.fnames:
 			self.fnames += ('miner',)
 
+		self.stats = get_stats() if opt.stats else self.dfl_stats
+
+		# Display diff stats by default only if user-requested range ends with chain tip
+		if 'diff' in self.stats and not opt.stats and self.last != self.tip:
+			self.stats.remove('diff')
+
+		if opt.full_stats:
+			add_fnames = {fname for sname in self.stats for fname in self.stats_deps[sname]}
+			self.fnames = tuple(f for f in self.fields if f in {'block'} | set(self.fnames) | add_fnames )
+		else:
+			if 'avg' in self.stats and not self.fnames:
+				self.stats.remove('avg')
+
+		# self.fnames is now finalized
+
 		self.fvals = [self.fields[name] for name in self.fnames]
 		self.fs    = ''.join(self.gen_fs(self.fnames)).strip()
 
@@ -193,20 +216,7 @@ class BlocksInfo:
 			)]
 
 		self.block_data = namedtuple('block_data',self.fnames)
-		self.stats = get_stats() if opt.stats else self.dfl_stats
-
-		# Display diff stats by default only if user-requested range ends with chain tip
-		if 'diff' in self.stats and not opt.stats and self.last != self.tip:
-			self.stats.remove('diff')
-
-		if 'avg' in self.stats and not self.fnames:
-			self.stats.remove('avg')
-
-		self.deps = set(
-			[v.src for v in self.fvals] +
-			# display full range stats if no fields selected
-			(['bs'] if 'range' in self.stats and not self.fvals else [])
-		)
+		self.deps = { v.src for v in self.fvals }
 
 	def gen_fs(self,fnames,fill=[],fill_char='-',add_name=False):
 		for i in range(len(fnames)):
@@ -512,10 +522,9 @@ class BlocksInfo:
 		))
 
 	async def create_avg_stats(self):
-		skip = ('block', 'hash', 'date', 'version','miner')
 		def gen():
 			for field in self.fnames:
-				if field in skip:
+				if field in self.avg_stats_skip:
 					yield ( field, ('{}','') )
 				else:
 					ret = sum(getattr(block,field) for block in self.res) // len(self.res)
@@ -523,7 +532,7 @@ class BlocksInfo:
 					yield ( field, ( (self.fmt_funcs[func] if func else '{}'), ret ))
 		if not self.header_printed:
 			self.print_header()
-		fs = ''.join(self.gen_fs(self.fnames,fill=skip,add_name=True)).strip()
+		fs = ''.join(self.gen_fs(self.fnames,fill=self.avg_stats_skip,add_name=True)).strip()
 		return ('averages', ('Averages:', (fs, dict(gen())) ))
 
 	async def create_totals_stats(self):
