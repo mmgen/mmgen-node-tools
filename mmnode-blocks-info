@@ -30,6 +30,7 @@ opts_data = {
 		('header_info',    True,   'stats',      'range'),
 		('json_raw',       True,   'json',       True),
 		('raw_miner_info', True,   'miner_info', True),
+		('stats_only',     True,   'no_header',  True),
 	],
 	'text': {
 		'desc':    'Display information about a block or range of blocks',
@@ -56,6 +57,7 @@ opts_data = {
 -s, --stats=          Display the specified stats (comma-separated list).
                       See AVAILABLE STATS below.  The prefixes and special
                       values available to the --fields option are recognized.
+-S, --stats-only      Display stats only.  Suppress display of per-block data.
 """,
 	'notes': """
 If no block number is specified, the current chain tip is assumed.
@@ -116,6 +118,9 @@ EXAMPLES:
 
     Display all fields and stats for the last ten blocks:
     $ {p} -o all -s all +10
+
+    Same as above, but display stats only:
+    $ {p} -o all -s all -S +10
 
     Display headers-only info for the last 1000 blocks.  Speed up execution
     using the async RPC backend:

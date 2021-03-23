@@ -33,6 +33,7 @@ class BlocksInfo:
 	total_bytes = 0
 	total_weight = 0
 	total_solve_time = 0
+	header_printed = False
 
 	bf = namedtuple('block_info_fields',['fmt_func','src','fs','hdr1','hdr2','key1','key2'])
 	# bh=getblockheader, bs=getblockstats, lo=local
@@ -343,7 +344,7 @@ class BlocksInfo:
 				self.t_cur = self.prev_hdrs[n]['time']
 			ret = await self.process_block(self.hdrs[n])
 			self.res.append(ret)
-			if self.fnames:
+			if self.fnames and not self.opt.stats_only:
 				self.output_block(ret,n)
 
 	def output_block(self,data,n):
@@ -403,6 +404,7 @@ class BlocksInfo:
 
 	def print_header(self):
 		Msg('\n'.join(self.gen_header()))
+		self.header_printed = True
 
 	def gen_header(self):
 		hdr1 = [v.hdr1 for v in self.fvals]
@@ -519,6 +521,8 @@ class BlocksInfo:
 					ret = sum(getattr(block,field) for block in self.res) // len(self.res)
 					func = self.fields[field].fmt_func
 					yield ( field, ( (self.fmt_funcs[func] if func else '{}'), ret ))
+		if not self.header_printed:
+			self.print_header()
 		fs = ''.join(self.gen_fs(self.fnames,fill=skip,add_name=True)).strip()
 		return ('averages', ('Averages:', (fs, dict(gen())) ))
 
@@ -543,7 +547,7 @@ class BlocksInfo:
 		return ( 'totals', ['Totals:'] + res )
 
 	def process_stats_pre(self,i):
-		if self.fnames or i != 0:
+		if (self.fnames and not self.opt.stats_only) or i != 0:
 			Msg('')
 
 	def finalize_output(self): pass
