@@ -52,6 +52,8 @@ class dummyOpt:
 	fields = None
 	stats = None
 	miner_info = None
+	header_info = None
+	full_stats = None
 
 class unit_tests:
 

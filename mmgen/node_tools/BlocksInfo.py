@@ -96,14 +96,14 @@ class BlocksInfo:
 	)
 	fs_lsqueeze2 = ('interval',)
 
-	all_stats = ['avg','totals','range','diff']
+	all_stats = ['avg','total','range','diff']
 	dfl_stats = ['range','diff']
 	noindent_stats = ['avg']
 
 	avg_stats_skip = {'block', 'hash', 'date', 'version','miner'}
 	stats_deps = {
 		'avg':    set(fields) - avg_stats_skip,
-		'totals': {'interval','subsidy','totalfee','nTx','inputs','outputs','utxo_inc'},
+		'total':  {'interval','subsidy','totalfee','nTx','inputs','outputs','utxo_inc'},
 		'range':  {},
 		'diff':   {},
 	}
@@ -424,7 +424,8 @@ class BlocksInfo:
 		yield self.fs.format(*hdr2)
 
 	def process_stats(self,sname):
-		return self.output_stats(getattr(self,f'create_{sname}_stats')(),sname)
+		method = getattr(self,f'create_{sname}_stats',None)
+		return self.output_stats(method() if method else self.create_stats(sname),sname)
 
 	def fmt_stat_item(self,fs,s):
 		return fs.format(s) if type(fs) == str else fs(s)
@@ -535,25 +536,68 @@ class BlocksInfo:
 		fs = ''.join(self.gen_fs(self.fnames,fill=self.avg_stats_skip,add_name=True)).strip()
 		return ('averages', ('Averages:', (fs, dict(gen())) ))
 
-	async def create_totals_stats(self):
+	def total_stats_data(self,data,spec_conv,spec_val):
 		coin = self.rpc.proto.coin
-		fields = {
-			'interval': ('Solve Time:    {} h/m/s', secs_to_dhms),
-			'subsidy':  ('Subsidy:       {} %s' % coin, self.fmt_funcs['su']),
-			'totalfee': ('Fees:          {} %s' % coin, self.fmt_funcs['tf']),
-			'earnings': ('Subsidy+Fees:  {} %s' % coin, self.fmt_funcs['tf']),
-			'nTx':      ('nTx:           {}', int),
-			'inputs':   ('Inputs:        {}', int),
-			'outputs':  ('Outputs:       {}', int),
-			'utxo_inc': ('UTXO change:  {:<+}', int),
-		}
-		fnames = list( set(fields) & set(self.fnames) )
-		vals = dict( ( name, sum(getattr(blk,name) for blk in self.res) ) for name in fnames )
-		if 'subsidy' in vals and 'totalfee' in vals:
-			vals['earnings'] = vals['subsidy'] + vals['totalfee']
-			fnames.append('earnings')
-		res = [( v[0], k, v[1], vals[k] ) for k,v in fields.items() if k in fnames]
-		return ( 'totals', ['Totals:'] + res )
+		return data(
+			hdr = 'Totals for processed blocks:',
+			func = lambda field: sum(getattr(block,field) for block in self.res),
+			spec_sufs = { 'subsidy': f' {coin}', 'totalfee': f' {coin}', 'reward': f' {coin}' },
+			spec_convs = {
+				'interval': spec_conv(0,  lambda arg: secs_to_dhms(arg)),
+				'utxo_inc': spec_conv(-1, '{:<+}'),
+				'reward':   spec_conv(0,  self.fmt_funcs['tf']),
+			},
+			spec_vals = (
+				spec_val(
+					'reward', 'Reward', 'totalfee',
+					lambda values: {'subsidy','totalfee'} <= set(values),
+					lambda values: values['subsidy'] + values['totalfee']
+				),
+			)
+		)
+
+	async def create_stats(self,sname):
+
+		def convert_stats_hdr(field):
+			v = self.fields[field]
+			return '{} {}'.format(v.hdr1.strip(), v.hdr2.strip()).replace('- ','') if v.hdr1 else v.hdr2.strip()
+
+		d = getattr(self,f'{sname}_stats_data')(
+			namedtuple('stats_data',['hdr','func','spec_sufs','spec_convs','spec_vals']),
+			namedtuple('spec_conv',['width_adj','conv']),
+			namedtuple('spec_val',['name','lbl','insert_after','condition','code'])
+		)
+
+		fnames = [n for n in self.fnames if n in self.stats_deps[sname]]
+		lbls   = {n:convert_stats_hdr(n) for n in fnames}
+		values = {n:d.func(n) for n in fnames}
+		col1_w = max((len(l) for l in lbls.values()),default=0) + 2
+
+		for v in d.spec_vals:
+			if v.condition(values):
+				try:    idx = fnames.index(v.insert_after) + 1
+				except: idx = 0
+				fnames.insert(idx,v.name)
+				lbls[v.name] = v.lbl
+				values[v.name] = v.code(values)
+
+		def gen():
+			for n,fname in enumerate(fnames):
+				spec_conv = d.spec_convs.get(fname)
+				yield (
+					'{lbl:{wid}} {{}}{suf}'.format(
+						lbl = lbls[fname] + ':',
+						wid = col1_w + (spec_conv.width_adj if spec_conv else 0),
+						suf = d.spec_sufs.get(fname) or ''
+					),
+					fname,
+					spec_conv.conv if spec_conv else (
+						(lambda x: self.fmt_funcs[x] if x else '{}')(self.fields[fname].fmt_func)
+					),
+					values[fname]
+				)
+
+		return ( sname, (d.hdr,) + tuple(gen()) )
 
 	def process_stats_pre(self,i):
 		if (self.fnames and not self.opt.stats_only) or i != 0:
