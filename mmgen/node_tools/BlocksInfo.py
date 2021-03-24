@@ -96,14 +96,15 @@ class BlocksInfo:
 	)
 	fs_lsqueeze2 = ('interval',)
 
-	all_stats = ['col_avg','range','avg','total','diff']
-	dfl_stats = ['range','avg','diff']
+	all_stats = ['col_avg','range','avg','mini_avg','total','diff']
+	dfl_stats = ['range','mini_avg','diff']
 	noindent_stats = ['col_avg']
 
 	avg_stats_skip = {'block', 'hash', 'date', 'version','miner'}
 	stats_deps = {
 		'avg':    set(fields) - avg_stats_skip,
 		'col_avg':set(fields) - avg_stats_skip,
+		'mini_avg':{'interval','size','weight'},
 		'total':  {'interval','subsidy','totalfee','nTx','inputs','outputs','utxo_inc'},
 		'range':  {},
 		'diff':   {},
@@ -189,6 +190,9 @@ class BlocksInfo:
 
 		if {'avg','col_avg'} <= set(self.stats) and opt.stats_only:
 			self.stats.remove('col_avg')
+
+		if {'avg','mini_avg'} <= set(self.stats):
+			self.stats.remove('mini_avg')
 
 		if opt.full_stats:
 			add_fnames = {fname for sname in self.stats for fname in self.stats_deps[sname]}
@@ -554,6 +558,8 @@ class BlocksInfo:
 				),
 			)
 		)
+
+	mini_avg_stats_data = avg_stats_data
 
 	def total_stats_data(self,data,spec_conv,spec_val):
 		coin = self.rpc.proto.coin
