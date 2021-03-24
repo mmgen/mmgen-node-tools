@@ -96,13 +96,14 @@ class BlocksInfo:
 	)
 	fs_lsqueeze2 = ('interval',)
 
-	all_stats = ['avg','total','range','diff']
-	dfl_stats = ['range','diff']
-	noindent_stats = ['avg']
+	all_stats = ['col_avg','range','avg','total','diff']
+	dfl_stats = ['range','avg','diff']
+	noindent_stats = ['col_avg']
 
 	avg_stats_skip = {'block', 'hash', 'date', 'version','miner'}
 	stats_deps = {
 		'avg':    set(fields) - avg_stats_skip,
+		'col_avg':set(fields) - avg_stats_skip,
 		'total':  {'interval','subsidy','totalfee','nTx','inputs','outputs','utxo_inc'},
 		'range':  {},
 		'diff':   {},
@@ -186,12 +187,15 @@ class BlocksInfo:
 		if 'diff' in self.stats and not opt.stats and self.last != self.tip:
 			self.stats.remove('diff')
 
+		if {'avg','col_avg'} <= set(self.stats) and opt.stats_only:
+			self.stats.remove('col_avg')
+
 		if opt.full_stats:
 			add_fnames = {fname for sname in self.stats for fname in self.stats_deps[sname]}
 			self.fnames = tuple(f for f in self.fields if f in {'block'} | set(self.fnames) | add_fnames )
 		else:
-			if 'avg' in self.stats and not self.fnames:
-				self.stats.remove('avg')
+			if 'col_avg' in self.stats and not self.fnames:
+				self.stats.remove('col_avg')
 
 		# self.fnames is now finalized
 
@@ -466,11 +470,6 @@ class BlocksInfo:
 				}
 			)
 			if elapsed:
-				if 'bs' in self.deps:
-					rate = (self.total_bytes / 10000) / (self.total_solve_time / 36)
-					yield ( 'Avg size:   {} bytes', 'avg_size',    '{}',      self.total_bytes//total_blks )
-					yield ( 'Avg weight: {} bytes', 'avg_weight',  '{}',      self.total_weight//total_blks )
-					yield ( 'MB/hr:      {}',       'mb_per_hour', '{:0.4f}', rate )
 				yield ( 'Start:      {}',       'start_date',  self.fmt_funcs['da'], self.hdrs[0]['time']  )
 				yield ( 'End:        {}',       'end_date',    self.fmt_funcs['da'], self.hdrs[-1]['time']  )
 				yield ( 'Avg BDI:    {} min',   'avg_bdi',     '{:.2f}',  elapsed / nblocks / 60 )
@@ -522,7 +521,7 @@ class BlocksInfo:
 			('Est. diff adjust: {}%', 'est_diff_adjust_pct', '{:+.2f}', ((600 / bdi) - 1) * 100),
 		))
 
-	async def create_avg_stats(self):
+	async def create_col_avg_stats(self):
 		def gen():
 			for field in self.fnames:
 				if field in self.avg_stats_skip:
@@ -534,7 +533,27 @@ class BlocksInfo:
 		if not self.header_printed:
 			self.print_header()
 		fs = ''.join(self.gen_fs(self.fnames,fill=self.avg_stats_skip,add_name=True)).strip()
-		return ('averages', ('Averages:', (fs, dict(gen())) ))
+		return ('column_averages', ('Column averages:', (fs, dict(gen())) ))
+
+	def avg_stats_data(self,data,spec_conv,spec_val):
+		coin = self.rpc.proto.coin
+		return data(
+			hdr = 'Averages for processed blocks:',
+			func = lambda field: sum(getattr(block,field) for block in self.res) // len(self.res),
+			spec_sufs = { 'subsidy': f' {coin}', 'totalfee': f' {coin}' },
+			spec_convs = {
+				'interval':    spec_conv(0,  lambda arg: secs_to_ms(arg)),
+				'utxo_inc':    spec_conv(-1, '{:<+}'),
+				'mb_per_hour': spec_conv(0,  '{:.4f}'),
+			},
+			spec_vals = (
+				spec_val(
+					'mb_per_hour', 'MB/hr', 'interval',
+					lambda values: 'bs' in self.deps,
+					lambda values: (self.total_bytes / 10000) / (self.total_solve_time / 36)
+				),
+			)
+		)
 
 	def total_stats_data(self,data,spec_conv,spec_val):
 		coin = self.rpc.proto.coin
