@@ -18,15 +18,7 @@
 
 import os
 from distutils.core import setup
-from distutils.command.install_data import install_data
 from mmgen.globalvars import g
-
-class my_install_data(install_data):
-	def run(self):
-		sdir = os.path.join('data_files','audio')
-		for f in [e for e in os.listdir(sdir) if e[-4:] == '.wav']:
-			os.chmod(os.path.join(sdir,f),0o644)
-		install_data.run(self)
 
 os.umask(0o0022)
 
@@ -38,7 +30,7 @@ setup(
 		author_email = g.email,
 		url          = g.proj_url,
 		license      = 'GNU GPL v3',
-		platforms    = 'Linux, MS Windows, Raspberry Pi',
+		platforms    = ('Linux, Armbian, Raspbian, MS Windows'),
 		keywords     = g.keywords,
 		packages     = ['mmgen.node_tools'],
 		scripts      = [
@@ -47,13 +39,12 @@ setup(
 			'mmnode-halving-calculator',
 			'mmnode-netrate',
 			'mmnode-peerblocks',
-			],
-		data_files = [('share/mmgen/node_tools/audio', [
-				'data_files/audio/ringtone.wav',     # source files must have 0644 mode
-				'data_files/audio/Positive.wav',
-				'data_files/audio/Rhodes.wav',
-				'data_files/audio/Counterpoint.wav'
-				])
 		],
-		cmdclass  = { 'install_data': my_install_data },
+#		data_files = [('share/mmgen/node_tools/audio', [
+#				'data_files/audio/ringtone.wav',     # source files must have 0644 mode
+#				'data_files/audio/Positive.wav',
+#				'data_files/audio/Rhodes.wav',
+#				'data_files/audio/Counterpoint.wav'
+#				])
+#		],
 	)
