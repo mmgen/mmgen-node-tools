@@ -45,6 +45,24 @@ range_vecs = (
 	( '+144*10+12*12', (tip-1439, tip,    None, 1440, 144 ),  (tip-1439, tip,    list(range(tip-1439,tip+1,144))) ),
 )
 
+full_set = ['aa','bbb','ccc_P2','ddddd','eeeeee','ffffffff','gg']
+dfl_set  = ['aa','ddddd','ffffffff']
+fields_vecs = (
+	( 'Ccc_P2',                 ['ccc_P2'] ),
+	( '+CCC_P2',                ['aa','ccc_P2','ddddd','ffffffff'] ),
+	( '+Aa',                    dfl_set ),
+	( '+ddDDD,FffffffF',        dfl_set ),
+	( '+bBb',                   ['aa','bbb','ddddd','ffffffff'] ),
+	( '-ddddd',                 ['aa','ffffffff'] ),
+	( '-DDDDD,fFffffff',        ['aa'] ),
+	( '-ffffffff,AA,DdDdD',     [] ),
+	( '+aa,gG,ccC_P2',          ['aa','ccc_P2','ddddd','ffffffff','gg'] ),
+	( '+BBB,gg-dDddD,fFffffff', ['aa','bbb','gg'] ),
+	( '-dDddD,fFffffff+BBB,gg', ['aa','bbb','gg'] ),
+	( 'aLL-Ccc_P2',             [e for e in full_set if e != 'ccc_P2'] ),
+	( 'All-dDddd,aa',           [e for e in full_set if e not in ('aa','ddddd')] ),
+)
+
 class dummyRPC:
 	blockcount = tip
 
@@ -56,6 +74,16 @@ class dummyOpt:
 	full_stats = None
 
 class unit_tests:
+
+	def parse_field(self,name,ut):
+		vmsg('{:28} => {}'.format('FULL SET:',full_set))
+		vmsg('{:28} => {}'.format('DFL SET: ',dfl_set))
+		b = BlocksInfo
+		for opt,chk in fields_vecs:
+			ret = b.parse_cslist(opt,full_set,dfl_set,'field')
+			vmsg(f'{opt:28} => {ret}')
+			assert ret == chk, f'{ret} != {chk}'
+		return True
 
 	def parse_rangespec(self,name,ut):
 

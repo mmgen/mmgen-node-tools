@@ -124,28 +124,42 @@ class BlocksInfo:
 
 	t_fmt = lambda self,t: f'{t/86400:.2f} days' if t > 172800 else f'{t/3600:.2f} hrs'
 
-	def __init__(self,cmd_args,opt,rpc):
+	@classmethod
+	def parse_cslist(cls,uarg,full_set,dfl_set,desc):
 
-		def parse_cslist(uarg,full_set,dfl_set,desc):
-			m = re.match('([+-]){1}',uarg)
-			pfx = m[1] if m else None
-			usr_set = set((uarg[1:] if m else uarg).split(','))
-			dfl_set = set(dfl_set)
-			for e in usr_set:
-				if e not in full_set:
-					die(1,f'{e!r}: unrecognized {desc}')
-			res = (
-				dfl_set | usr_set if pfx == '+' else
-				dfl_set - usr_set if pfx == '-' else
-				usr_set
-			)
+		def make_list(m,func):
+			groups_lc = [set(e.lower() for e in g.split(',')) for g in m.groups()]
+			for group in groups_lc:
+				for e in group:
+					if e not in full_set_lc:
+						die(1,f'{e!r}: unrecognized {desc}')
 			# display elements in order:
-			return [e for e in full_set if e in res]
+			return [e for e in full_set if e.lower() in func(groups_lc)]
+
+		full_set_lc = set(e.lower() for e in full_set)
+		dfl_set_lc  = set(e.lower() for e in dfl_set)
+		cspat = r'(\w+(?:,\w+)*)'
+
+		for pat,func in (
+				( rf'{cspat}$',            lambda g: g[0] ),
+				( rf'\+{cspat}$',          lambda g: dfl_set_lc | g[0] ),
+				( rf'\-{cspat}$',          lambda g: dfl_set_lc - g[0] ),
+				( rf'\+{cspat}\-{cspat}$', lambda g: ( dfl_set_lc | g[0] ) - g[1] ),
+				( rf'\-{cspat}\+{cspat}$', lambda g: ( dfl_set_lc - g[0] ) | g[1] ),
+				( rf'all\-{cspat}$',       lambda g: full_set_lc - g[0] )
+			):
+			m = re.match(pat,uarg,re.ASCII|re.IGNORECASE)
+			if m:
+				return make_list(m,func)
+		else:
+			die(1,f'{uarg}: invalid parameter')
+
+	def __init__(self,cmd_args,opt,rpc):
 
 		def parse_cs_uarg(uarg,full_set,dfl_set,desc):
 			return (
 				full_set if uarg == 'all' else [] if uarg == 'none' else
-				parse_cslist(uarg,full_set,dfl_set,desc)
+				self.parse_cslist(uarg,full_set,dfl_set,desc)
 			)
 
 		def get_fields():

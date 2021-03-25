@@ -57,7 +57,10 @@ opts_data = {
                       See AVAILABLE FIELDS below.  Prefix the list with '+'
                       to add the fields to the defaults, or '-' to remove
                       them.  The special values 'all' and 'none' select all
-                      available fields or none, respectively.
+                      available fields or none, respectively.  The '+' and
+                      '-'-prefixed lists may be concatenated to specify both
+                      addition and removal of fields.  A single '-'-prefixed
+                      list may be additionally prefixed by 'all'.
 -s, --stats=          Display the specified stats (comma-separated list).
                       See AVAILABLE STATS below.  The prefixes and special
                       values available to the --fields option are recognized.
@@ -120,8 +123,15 @@ EXAMPLES:
     fields from the defaults and skipping stats:
     $ {p} -o -size,subsidy -s none +10
 
+    Display data for the last ten blocks, omitting the 'size' and 'version'
+    fields from the defaults and adding the 'inputs' and 'utxo_inc' fields:
+    $ {p} -o -version,size+utxo_inc,inputs +10
+
     Display all fields and stats for the last ten blocks:
     $ {p} -o all -s all +10
+
+    Same as above, but omit the 'miner' and 'hash' fields:
+    $ {p} -o all-miner,hash -s all +10
 
     Same as above, but display only fields relating to stats:
     $ {p} -o none -s all -f +10
