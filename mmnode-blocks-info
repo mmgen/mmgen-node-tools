@@ -34,9 +34,9 @@ opts_data = {
 	],
 	'text': {
 		'desc':    'Display information about a block or range of blocks',
-		'usage':   '[opts] blocknum [blocknum ...] | blocknum-blocknum[+step] | [blocknum|-nBlocks]+nBlocks[+step]',
+		'usage':   '[opts] blocknum ... | blocknum-blocknum[+step] | [blocknum|-nBlocks]+nBlocks[+step]',
 		'usage2': [
-			'[opts] blocknum [blocknum ...]',
+			'[opts] blocknum ...',
 			'[opts] blocknum-blocknum[+step]',
 			'[opts] [blocknum|-nBlocks]+nBlocks[+step]',
 		],
@@ -116,14 +116,14 @@ EXAMPLES:
     Display only range stats for the last ten blocks:
     $ {p} -o none -s range +10
 
-    Display data for the last ten blocks, skipping 'size' and 'subsidy'
-    fields and stats:
+    Display data for the last ten blocks, omitting the 'size' and 'subsidy'
+    fields from the defaults and skipping stats:
     $ {p} -o -size,subsidy -s none +10
 
     Display all fields and stats for the last ten blocks:
     $ {p} -o all -s all +10
 
-    Same as above, but display only relevant fields:
+    Same as above, but display only fields relating to stats:
     $ {p} -o none -s all -f +10
 
     Same as above, but display stats only:

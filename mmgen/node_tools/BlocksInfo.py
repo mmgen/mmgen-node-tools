@@ -242,7 +242,7 @@ class BlocksInfo:
 			yield (ls + self.fields[name].fs.replace(':',repl) + rs)
 
 	def conv_blkspec(self,arg):
-		if arg == 'cur':
+		if str(arg).lower() == 'cur':
 			return self.tip
 		elif is_int(arg):
 			if int(arg) < 0:

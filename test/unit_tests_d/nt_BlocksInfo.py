@@ -9,7 +9,7 @@ from mmgen.exception import *
 from mmgen.node_tools.BlocksInfo import BlocksInfo
 
 tip = 50000
-vecs = (
+range_vecs = (
 	#                  First     Last FromTip nBlocks Step    First      Last    BlockList
 	( (),              (),                                    (tip,      tip,    None) ),
 	( (199,2,37),      (),                                    (None,     None,   [199,2,37]) ),
@@ -36,8 +36,8 @@ vecs = (
 	( '-10+11',        (tip-10,   tip,    10,   11,   None),  (tip-10,   tip,    None) ),
 	( '-10+11+2',      (tip-10,   tip,    10,   11,   2   ),  (tip-10,   tip,    list(range(tip-10,tip+1,2))) ),
 
-	( 'cur',           (tip,      tip,    None, None, None),  (tip,      tip,    None) ),
-	( 'cur-cur',       (tip,      tip,    None, None, None),  (tip,      tip,    None) ),
+	( 'cUr',           (tip,      tip,    None, None, None),  (tip,      tip,    None) ),
+	( 'cur-cUR',       (tip,      tip,    None, None, None),  (tip,      tip,    None) ),
 	( '0-cur',         (0,        tip,    None, None, None),  (0,        tip,    None) ),
 	(f'{tip-1}-cur',   (tip-1,    tip,    None, None, None),  (tip-1,    tip,    None) ),
 	( '0-cur+3000',    (0,        tip,    None, None, 3000 ), (0,        tip,    list(range(0,tip+1,3000))) ),
@@ -57,7 +57,7 @@ class dummyOpt:
 
 class unit_tests:
 
-	def rangespec(self,name,ut):
+	def parse_rangespec(self,name,ut):
 
 		b = BlocksInfo(0,dummyOpt(),dummyRPC())
 
@@ -66,7 +66,7 @@ class unit_tests:
 			vmsg(f'{spec:13} => {BlocksInfo.range_data(*chk)}')
 			assert ret == chk, f'{ret} != {chk}'
 
-		for vec in vecs:
+		for vec in range_vecs:
 			if vec[1]:
 				test(*vec)
 
@@ -80,7 +80,7 @@ class unit_tests:
 			vmsg('{:13} => {}'.format(repr(spec) if type(spec) == tuple else spec,chk))
 			assert ret == chk, f'{ret} != {chk}'
 
-		for vec in vecs:
+		for vec in range_vecs:
 			test(*vec)
 
 		return True
