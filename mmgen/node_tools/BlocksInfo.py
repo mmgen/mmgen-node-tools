@@ -504,18 +504,19 @@ class BlocksInfo:
 			await c.call('getblockheader',await c.call('getblockhash',self.tip))
 		)
 
-		bdi_avg_blks = 432 # ≈3 days
-		bdi_avg_hdr = await c.call('getblockheader',await c.call('getblockhash',self.tip-bdi_avg_blks))
-		bdi_avg = ( tip_hdr['time'] - bdi_avg_hdr['time'] ) / bdi_avg_blks
+		min_sample_blks = 432 # ≈3 days
+		rel_hdr = await c.call('getblockheader',await c.call('getblockhash',self.tip-rel))
 
-		if rel > bdi_avg_blks:
-			rel_hdr = await c.call('getblockheader',await c.call('getblockhash',self.tip-rel))
+		if rel >= min_sample_blks:
+			sample_blks = rel
 			bdi = ( tip_hdr['time'] - rel_hdr['time'] ) / rel
-			bdi_disp = bdi
 		else:
-			bdi_adj = float(tip_hdr['difficulty'] / bdi_avg_hdr['difficulty'])
-			bdi = bdi_avg * ( (bdi_adj * (bdi_avg_blks-rel)) + rel ) / bdi_avg_blks
-			bdi_disp = bdi_avg
+			sample_blks = min_sample_blks
+			start_hdr = await c.call('getblockheader',await c.call('getblockhash',self.tip-sample_blks))
+			diff_adj = float(tip_hdr['difficulty'] / start_hdr['difficulty'])
+			time1 = rel_hdr['time'] - start_hdr['time']
+			time2 = tip_hdr['time'] - rel_hdr['time']
+			bdi = ((time1 * diff_adj) + time2) / sample_blks
 
 		rem = 2016 - rel
 
@@ -526,13 +527,13 @@ class BlocksInfo:
 				{
 					'next_diff_adjust': ('{}', self.tip + rem),
 					'blks_remaining':   ('{}', rem),
-					'time_remaining':   (self.t_fmt, rem * bdi_avg)
+					'time_remaining':   (self.t_fmt, rem * bdi)
 				}
 			),
-			('Avg BDI:           {avg_bdi} min (over {avg_bdi_blks}-block period)',
+			('Avg BDI:           {avg_bdi} min (over {sample_blks}-block period)',
 				{
-					'avg_bdi':      ('{:.2f}', bdi_disp/60),
-					'avg_bdi_blks': ('{}',     max(rel,bdi_avg_blks))
+					'avg_bdi':      ('{:.2f}', bdi/60),
+					'sample_blks':  ('{}',     sample_blks)
 				}
 			),
 			('Cur difficulty:    {}', 'cur_diff',            '{:.2e}',  tip_hdr['difficulty']),
