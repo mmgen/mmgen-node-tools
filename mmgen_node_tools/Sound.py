@@ -16,11 +16,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-mmgen.node_tools.Sound: audio-related functions for MMGen node tools
+mmgen_node_tools.Sound: audio-related functions for MMGen node tools
 """
 
 import sys,os,time
-from mmgen.node_tools.Util import *
+from mmgen_node_tools.Util import *
 
 _alsa_config_file = '/tmp/alsa-config-' + os.path.basename(sys.argv[0])
 _dvols = { 'Master': 78, 'Speaker': 78, 'Headphone': 15, 'PCM': 190 }

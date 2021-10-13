@@ -17,7 +17,7 @@
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
-mmgen.node_tools.BlocksInfo: Display information about a block or range of blocks
+mmgen_node_tools.BlocksInfo: Display information about a block or range of blocks
 """
 
 import re,json

@@ -6,7 +6,7 @@ test.unit_tests_d.nt_BlocksInfo:
 
 from mmgen.common import *
 from mmgen.exception import *
-from mmgen.node_tools.BlocksInfo import BlocksInfo
+from mmgen_node_tools.BlocksInfo import BlocksInfo
 
 tip = 50000
 range_vecs = (

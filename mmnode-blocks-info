@@ -21,7 +21,7 @@ mmnode-blocks-info: Display information about a block or range of blocks
 """
 
 from mmgen.common import *
-from mmgen.node_tools.BlocksInfo import BlocksInfo,JSONBlocksInfo
+from mmgen_node_tools.BlocksInfo import BlocksInfo,JSONBlocksInfo
 
 opts_data = {
 	'sets': [

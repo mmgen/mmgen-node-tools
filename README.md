@@ -14,7 +14,8 @@ Then,
 
     $ git clone https://github.com/mmgen/mmgen-node-tools
     $ cd mmgen-node-tools
-    $ sudo ./setup.py install
+    $ python3 -m build --no-isolation
+    $ python3 -m pip install --user dist/*.whl
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
