@@ -3,6 +3,8 @@
 export MMGEN_TEST_SUITE=1
 export PYTHONPATH=.
 
+orig_pwd=$(pwd)
+
 RED="\e[31;1m" GREEN="\e[32;1m" YELLOW="\e[33;1m" BLUE="\e[34;1m" MAGENTA="\e[35;1m" CYAN="\e[36;1m"
 RESET="\e[0m"
 
@@ -46,6 +48,7 @@ check_mmgen_repo() {
 
 create_links() {
 	( cd 'mmgen'; [ -L 'node_tools' ] || ln -s "../$nt_repo/mmgen/node_tools" )
+	( cd $mm_repo && [ -L 'mmgen_node_tools' ] || ln -s "$orig_pwd/mmgen_node_tools" )
 	(
 		cd 'test/unit_tests_d'
 		for fn in ../../$nt_repo/test/unit_tests_d/nt_*.py; do

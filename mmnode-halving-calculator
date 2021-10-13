@@ -83,7 +83,7 @@ async def main():
 	if proto.name == 'BitcoinCash':
 		sub = proto.coin_amt(str(cur['subsidy']))
 	else:
-		sub = cur['subsidy'] * proto.coin_amt.min_coin_unit
+		sub = cur['subsidy'] * proto.coin_amt.satoshi
 
 	def print_current_stats():
 		print(
@@ -104,7 +104,7 @@ async def main():
 		hist_halvings = await c.gathered_call('getblockstats',([(n,) for n in halving_blocknums if n <= tip]))
 		halving_secs = bdr_proj * 60 * proto.halving_interval
 		nhist = len(hist_halvings)
-		nSubsidy = int(proto.start_subsidy / proto.coin_amt.min_coin_unit)
+		nSubsidy = int(proto.start_subsidy / proto.coin_amt.satoshi)
 
 		block0_hash = await c.call('getblockhash',0)
 		block0_date = (await c.call('getblock',block0_hash))['time']

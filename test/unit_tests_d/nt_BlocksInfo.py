@@ -105,7 +105,9 @@ class unit_tests:
 		def test(spec,foo,chk):
 			b = BlocksInfo(spec if type(spec) == tuple else [spec],dummyOpt(),dummyRPC())
 			ret = (b.first,b.last,b.block_list)
-			vmsg('{:13} => {}'.format(repr(spec) if type(spec) == tuple else spec,chk))
+			vmsg('{:13} => {}'.format(
+				(repr(spec) if type(spec) == tuple else spec),
+				chk ))
 			assert ret == chk, f'{ret} != {chk}'
 
 		for vec in range_vecs:
