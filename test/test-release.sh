@@ -47,7 +47,6 @@ check_mmgen_repo() {
 }
 
 create_links() {
-	( cd 'mmgen'; [ -L 'node_tools' ] || ln -s "../$nt_repo/mmgen/node_tools" )
 	( cd $mm_repo && [ -L 'mmgen_node_tools' ] || ln -s "$orig_pwd/mmgen_node_tools" )
 	(
 		cd 'test/unit_tests_d'
