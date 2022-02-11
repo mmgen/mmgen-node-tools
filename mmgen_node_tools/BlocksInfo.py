@@ -226,15 +226,18 @@ class BlocksInfo:
 		)
 
 		if 'miner' in self.fnames:
+			# capturing parens must contain only ASCII chars!
 			self.miner_pats = [re.compile(pat) for pat in (
 				rb'`/([_a-zA-Z0-9&. #/-]+)/',
-				rb'[\xe3\xe4\xe5][\^/](.*?)\xfa',
+				rb'[\xe3\xe4\xe5][\^/]([\x20-\x7e]+?)\xfa',
 				rb'([a-zA-Z0-9&. -]+/Mined by [a-zA-Z0-9. ]+)',
 				rb'\x08/(.*Mined by [a-zA-Z0-9. ]+)',
 				rb'Mined by ([a-zA-Z0-9. ]+)',
 				rb'[`]([_a-zA-Z0-9&. #/-]+)[/\xfa]',
+				rb'([\x20-\x7e]{9,})',
 				rb'[/^]([a-zA-Z0-9&. #/-]{5,})',
 				rb'[/^]([_a-zA-Z0-9&. #/-]+)/',
+				rb'^\x03...\W{0,5}([\\_a-zA-Z0-9&. #/-]+)[/\\]',
 			)]
 
 		self.block_data = namedtuple('block_data',self.fnames)
@@ -428,10 +431,16 @@ class BlocksInfo:
 			if self.opt.raw_miner_info:
 				return repr(cb)
 			else:
+				trmap_in = {
+					'\\': ' ',
+					'/': ' ',
+					',': ' ',
+				}
+				trmap = { ord(a):b for a,b in trmap_in.items() }
 				for pat in self.miner_pats:
 					m = pat.search(cb)
 					if m:
-						return ''.join(chr(b) for b in m[1] if 31 < b < 127).strip('^').strip('/').replace('/',' ')
+						return re.sub( r'\s+', ' ', m[1].decode().strip('^').translate(trmap).strip() )
 			return ''
 
 	def print_header(self):

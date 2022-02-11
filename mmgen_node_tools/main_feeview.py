@@ -125,8 +125,11 @@ def create_data(coin_amt,mempool):
 				break
 
 	# remove empty top brackets:
-	while out[-1].tx_bytes == 0:
+	while out and out[-1].tx_bytes == 0:
 		out.pop()
+
+	if not out:
+		die(1,'No data!')
 
 	out.reverse() # cumulative totals and display are top-down
 
@@ -197,7 +200,7 @@ def gen_body(data):
 async def main():
 
 	from mmgen.protocol import init_proto_from_opts
-	proto = init_proto_from_opts()
+	proto = init_proto_from_opts(need_amt=True)
 
 	from mmgen.rpc import rpc_init
 	c = await rpc_init(proto)
@@ -210,6 +213,7 @@ async def main():
 		log(mempool,'mempool.json')
 
 	data = create_data(proto.coin_amt,mempool)
+
 	(do_pager if opt.pager else print)(
 		'\n'.join(gen_header(c.host,await c.call('getblockcount'))) + '\n' +
 		'\n'.join(gen_body(data))

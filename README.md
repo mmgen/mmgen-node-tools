@@ -17,6 +17,8 @@ Then,
     $ python3 -m build --no-isolation
     $ python3 -m pip install --user dist/*.whl
 
+Also make sure that `~/.local/bin` is in `PATH`.
+
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 [**Forum**][4] |
