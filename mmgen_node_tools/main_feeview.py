@@ -117,7 +117,7 @@ def create_data(coin_amt,mempool):
 
 	# populate fee brackets:
 	for tx in mempool.values():
-		fee = coin_amt(tx['fee']).to_unit('satoshi')
+		fee = coin_amt(tx['fees']['base']).to_unit('satoshi')
 		vsize = tx['vsize']
 		for bracket in out:
 			if fee / vsize < bracket.top:
