@@ -1,0 +1,62 @@
+#!/bin/bash
+#
+# mmgen = Multi-Mode GENerator, a command-line cryptocurrency wallet
+# Copyright (C)2013-2022 The MMGen Project <mmgen@tuta.io>
+# Licensed under the GNU General Public License, Version 3:
+#   https://www.gnu.org/licenses
+# Public project repositories:
+#   https://github.com/mmgen/mmgen-node-tools
+#   https://gitlab.com/mmgen/mmgen-node-tools
+
+list_avail_tests() {
+	echo   "AVAILABLE TESTS:"
+	echo   "   unit     - unit tests"
+	echo   "   btc_rt   - Bitcoin regtest"
+	echo   "   bch_rt   - Bitcoin Cash Node (BCH) regtest"
+	echo   "   ltc_rt   - Litecoin regtest"
+	echo   "   misc     - miscellaneous tests that don't fit in the above categories"
+	echo
+	echo   "AVAILABLE TEST GROUPS:"
+	echo   "   default  - All tests minus the extra tests"
+	echo   "   extra    - All tests minus the default tests"
+	echo   "   noalt    - BTC-only tests"
+	echo   "   quick    - Default tests minus btc_tn, bch, bch_rt, ltc and ltc_rt"
+	echo   "   qskip    - The tests skipped in the 'quick' test group"
+	echo
+	echo   "By default, all tests are run"
+}
+
+init_groups() {
+	dfl_tests='unit misc btc_rt bch_rt ltc_rt'
+	extra_tests=''
+	noalt_tests='unit misc btc_rt'
+	quick_tests='unit misc btc_rt'
+	qskip_tests='bch_rt ltc_rt'
+}
+
+init_tests() {
+	i_unit='Unit'
+	s_unit="The following tests will test various low-level subsystems"
+	t_unit="- $unit_tests_py --node-tools"
+	f_unit='Unit tests completed'
+
+	i_misc='Misc'
+	s_misc="The following tests will test miscellaneous script features"
+	t_misc="- $test_py helpscreens"
+	f_misc='Misc tests completed'
+
+	i_btc_rt='Bitcoin regtest'
+	s_btc_rt="The following tests will test MMGen's regtest (Bob and Alice) mode"
+	t_btc_rt="- $test_py regtest"
+	f_btc_rt='Regtest (Bob and Alice) mode tests for BTC completed'
+
+	i_bch_rt='BitcoinCashNode (BCH) regtest'
+	s_bch_rt="The following tests will test MMGen's regtest (Bob and Alice) mode"
+	t_bch_rt="- $test_py --coin=bch regtest"
+	f_bch_rt='Regtest (Bob and Alice) mode tests for BCH completed'
+
+	i_ltc_rt='Litecoin regtest'
+	s_ltc_rt="The following tests will test MMGen's regtest (Bob and Alice) mode"
+	t_ltc_rt="- $test_py --coin=ltc regtest"
+	f_ltc_rt='Regtest (Bob and Alice) mode tests for LTC completed'
+}

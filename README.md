@@ -1,4 +1,4 @@
-# MMGen node tools
+# MMGen Node Tools
 
 Helper utilities for Bitcoin and forkcoin full nodes.
 
@@ -18,6 +18,15 @@ Then,
     $ python3 -m pip install --user dist/*.whl
 
 Also make sure that `~/.local/bin` is in `PATH`.
+
+## Test:
+
+*NOTE: the tests require that the MMGen and MMGen Node Tools repositories be
+located in the same directory.*
+
+    $ test/init.sh
+    $ test/test-release.sh -A  # BTC-only testing
+    $ test/test-release.sh     # Full testing
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
