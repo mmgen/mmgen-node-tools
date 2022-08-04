@@ -1,0 +1,24 @@
+proxy: http://asdfzxcv:32459
+
+cachedir:
+
+assets:
+  coin1:
+    - btc-bitcoin
+    - ltc-litecoin
+    - eth-ethereum
+    - xmr-monero
+  coin2:
+    - ada-cardano
+    - algo-algorand
+  commodity:
+    - xau-gold-spot-token
+    - xag-silver-spot-token
+    - xbr-brent-crude-oil-spot
+  fiat:
+    - chf-swiss-franc-token
+    - eur-euro-token
+  index:
+    - dj30-dow-jones-30-token
+    - spx-sp-500
+    - ndx-nasdaq-100-token

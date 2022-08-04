@@ -14,6 +14,7 @@ list_avail_tests() {
 	echo   "   btc_rt   - Bitcoin regtest"
 	echo   "   bch_rt   - Bitcoin Cash Node (BCH) regtest"
 	echo   "   ltc_rt   - Litecoin regtest"
+	echo   "   scripts  - tests of scripts not requiring a coin daemon"
 	echo   "   misc     - miscellaneous tests that don't fit in the above categories"
 	echo
 	echo   "AVAILABLE TEST GROUPS:"
@@ -27,10 +28,10 @@ list_avail_tests() {
 }
 
 init_groups() {
-	dfl_tests='unit misc btc_rt bch_rt ltc_rt'
+	dfl_tests='unit misc scripts btc_rt bch_rt ltc_rt'
 	extra_tests=''
-	noalt_tests='unit misc btc_rt'
-	quick_tests='unit misc btc_rt'
+	noalt_tests='unit misc scripts btc_rt'
+	quick_tests='unit misc scripts btc_rt'
 	qskip_tests='bch_rt ltc_rt'
 }
 
@@ -44,6 +45,11 @@ init_tests() {
 	s_misc="The following tests will test miscellaneous script features"
 	t_misc="- $test_py helpscreens"
 	f_misc='Misc tests completed'
+
+	i_scripts='No-daemon scripts'
+	s_scripts="The following tests will test scripts not requiring a coin daemon"
+	t_scripts="- $test_py scripts"
+	f_scripts='No-daemon script tests completed'
 
 	i_btc_rt='Bitcoin regtest'
 	s_btc_rt="The following tests will test various scripts using regtest mode"

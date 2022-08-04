@@ -19,8 +19,8 @@
 mmgen_node_tools.Util: utility functions for MMGen node tools
 """
 
-import time,subprocess
-from mmgen.util import msg
+import time
+from mmgen.util import suf
 
 def get_hms(t=None,utc=False,no_secs=False):
 	secs = t or time.time()
@@ -33,11 +33,26 @@ def get_day_hms(t=None,utc=False):
 	ret = (time.localtime,time.gmtime)[utc](secs)
 	return '{:04}-{:02}-{:02} {:02}:{:02}:{:02}'.format(*ret[0:6])
 
+def format_elapsed_hr(t,now=None,cached={}):
+	now = now or time.time()
+	e = int(now - t)
+	if not e in cached:
+		h = abs(e) // 3600
+		m = abs(e) // 60 % 60
+		cached[e] = '{a}{b} minute{c} {d}'.format(
+			a = '{} hour{}, '.format(h,suf(h)) if h else '',
+			b = m,
+			c = suf(m),
+			d = 'ago' if e > 0 else 'in the future' ) if (h or m) else 'just now'
+	return cached[e]
+
 def do_system(cmd,testing=False,shell=False):
 	if testing:
+		from mmgen.util import msg
 		msg("Would execute: '%s'" % cmd)
 		return True
 	else:
+		import subprocess
 		return subprocess.call((cmd if shell else cmd.split()),shell,stderr=subprocess.PIPE)
 
 def get_url(url,gzip_ok=False,proxy=None,timeout=60,verbose=False,debug=False):

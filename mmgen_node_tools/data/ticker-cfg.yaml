@@ -1,0 +1,30 @@
+# Indentation must be consistent!  Do not mix leading tabs and spaces.
+
+# See the curl manpage for supported --proxy parameters
+# For a direct connection, leave the right-hand side blank
+proxy: http://vpn-gw:8118
+
+# Override the default cache directory (~/.cache/mmgen-node-tools)
+cachedir:
+
+# Asset labels are arbitrary strings.  Use as many or few as you wish.
+# Invoke ‘mmnode-ticker --list-ids’ for a full list of supported asset IDs.
+assets:
+  coin1:
+    - btc-bitcoin
+    - eth-ethereum
+    - xmr-monero
+  coin2:
+    - ada-cardano
+    - bnb-binance-coin
+  commodity:
+    - xau-gold-spot-token
+    - xag-silver-spot-token
+    - xbr-brent-crude-oil-spot
+  fiat:
+    - gbp-pound-sterling-token
+    - eur-euro-token
+  index:
+    - dj30-dow-jones-30-token
+    - spx-sp-500
+    - ndx-nasdaq-100-token

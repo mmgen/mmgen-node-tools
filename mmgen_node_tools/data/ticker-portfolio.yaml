@@ -1,0 +1,6 @@
+# List each asset and amount in your portfolio here.
+# Amounts should be strings rather than floating-point values.
+# Invoke `mmnode-ticker --list-ids` for a full list of supported asset IDs.
+btc-bitcoin:  '1.23456789'
+eth-ethereum: '2.3456789012'
+xmr-monero:   '4.5678901234'

@@ -16,6 +16,7 @@ import os
 
 cmd_groups_dfl = {
 	'helpscreens': ('TestSuiteHelp',{'modname':'misc','full_data':True}),
+	'scripts':     ('TestSuiteScripts',{'modname':'misc'}),
 	'regtest':     ('TestSuiteRegtest',{}),
 }
 
@@ -23,6 +24,7 @@ cmd_groups_extra = {}
 
 cfgs = {
 	'1':  {}, # regtest
+	'2':  {}, # scripts
 }
 
 def fixup_cfgs(): pass
