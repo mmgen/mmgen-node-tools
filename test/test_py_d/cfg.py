@@ -15,8 +15,8 @@ test.test_py_d.cfg: configuration data for test.py
 import os
 
 cmd_groups_dfl = {
-	'helpscreens':      ('TestSuiteHelp',{'modname':'misc','full_data':True}),
-	'regtest':          ('TestSuiteRegtest',{}),
+	'helpscreens': ('TestSuiteHelp',{'modname':'misc','full_data':True}),
+	'regtest':     ('TestSuiteRegtest',{}),
 }
 
 cmd_groups_extra = {}

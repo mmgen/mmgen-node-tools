@@ -12,7 +12,6 @@
 ts_misc.py: Miscellaneous test groups for the test.py test suite
 """
 
-from mmgen.globalvars import g
 from ..include.common import *
 from .common import *
 from .ts_base import *
@@ -27,6 +26,7 @@ class TestSuiteHelp(TestSuiteBase):
 		('helpscreens',           (1,'help screens',             [])),
 		('longhelpscreens',       (1,'help screens (--longhelp)',[])),
 	)
+	color = True
 
 	def version(self):
 		t = self.spawn(f'mmnode-netrate',['--version'])

@@ -37,7 +37,7 @@ init_groups() {
 init_tests() {
 	i_unit='Unit'
 	s_unit="The following tests will test various low-level subsystems"
-	t_unit="- $unit_tests_py --node-tools"
+	t_unit="- $unit_tests_py"
 	f_unit='Unit tests completed'
 
 	i_misc='Misc'
@@ -46,17 +46,17 @@ init_tests() {
 	f_misc='Misc tests completed'
 
 	i_btc_rt='Bitcoin regtest'
-	s_btc_rt="The following tests will test MMGen's regtest (Bob and Alice) mode"
+	s_btc_rt="The following tests will test various scripts using regtest mode"
 	t_btc_rt="- $test_py regtest"
-	f_btc_rt='Regtest (Bob and Alice) mode tests for BTC completed'
+	f_btc_rt='Regtest mode tests for BTC completed'
 
 	i_bch_rt='BitcoinCashNode (BCH) regtest'
-	s_bch_rt="The following tests will test MMGen's regtest (Bob and Alice) mode"
+	s_bch_rt="The following tests will test various scripts using regtest mode"
 	t_bch_rt="- $test_py --coin=bch regtest"
-	f_bch_rt='Regtest (Bob and Alice) mode tests for BCH completed'
+	f_bch_rt='Regtest mode tests for BCH completed'
 
 	i_ltc_rt='Litecoin regtest'
-	s_ltc_rt="The following tests will test MMGen's regtest (Bob and Alice) mode"
+	s_ltc_rt="The following tests will test various scripts using regtest mode"
 	t_ltc_rt="- $test_py --coin=ltc regtest"
-	f_ltc_rt='Regtest (Bob and Alice) mode tests for LTC completed'
+	f_ltc_rt='Regtest mode tests for LTC completed'
 }
