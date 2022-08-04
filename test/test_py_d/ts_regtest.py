@@ -42,11 +42,21 @@ class TestSuiteRegtest(TestSuiteBase):
 	deterministic = False
 	cmd_group_in = (
 		('setup',                       'regtest mode setup'),
+		('subgroup.halving_calculator', []),
 		('subgroup.fund_addrbal',       []),
 		('subgroup.addrbal',            ['fund_addrbal']),
 		('stop',                        'stopping regtest daemon'),
 	)
 	cmd_subgroups = {
+	'halving_calculator': (
+		"'mmnode-halving-calculator' script",
+		('halving_calculator1', "halving calculator (--help)"),
+		('halving_calculator2', "halving calculator"),
+		('halving_calculator3', "halving calculator (--list)"),
+		('halving_calculator4', "halving calculator (--mined)"),
+		('halving_calculator5', "halving calculator (--mined --bdr-proj=5)"),
+		('halving_calculator6', "halving calculator (--mined --sample-size=20)"),
+	),
 	'fund_addrbal': (
 		"funding addresses for 'addrbal' subgroup",
 		('sendto1', 'sending funds to address #1 (1)'),
@@ -90,6 +100,29 @@ class TestSuiteRegtest(TestSuiteBase):
 		for s in ('Starting','Creating','Creating','Creating','Mined','Setup complete'):
 			t.expect(s)
 		return t
+
+	def halving_calculator(self,add_args,expect_list):
+		t = self.spawn('mmnode-halving-calculator',args1+add_args)
+		t.match_expect_list(expect_list)
+		return t
+
+	def halving_calculator1(self):
+		return self.halving_calculator(['--help'],['USAGE:'])
+
+	def halving_calculator2(self):
+		return self.halving_calculator([],['Current block: 393',f'Current block subsidy: 12.5 {g.coin}'])
+
+	def halving_calculator3(self):
+		return self.halving_calculator(['--list'],['33 4950','0'])
+
+	def halving_calculator4(self):
+		return self.halving_calculator(['--mined'],['0 0.0000015 14949.9999835'])
+
+	def halving_calculator5(self):
+		return self.halving_calculator(['--mined','--bdr-proj=5'],['5.00000 0 0.0000015 14949.9999835'])
+
+	def halving_calculator6(self):
+		return self.halving_calculator(['--mined','--sample-size=20'],['33 4950','0 0.0000015 14949.9999835'])
 
 	def sendto(self,addr,amt):
 		return self.spawn('mmgen-regtest',['send',addr,amt])
