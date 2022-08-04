@@ -40,11 +40,21 @@ class TestSuiteRegtest(TestSuiteBase):
 	tmpdir_nums = [1]
 	color = True
 	deterministic = False
-	cmd_group = (
-		('setup',                     'regtest (Bob and Alice) mode setup'),
-		('sendto1',                   'sending funds to address #1 (1)'),
-		('sendto2',                   'sending funds to address #1 (2)'),
-		('sendto3',                   'sending funds to address #2'),
+	cmd_group_in = (
+		('setup',                       'regtest mode setup'),
+		('subgroup.fund_addrbal',       []),
+		('subgroup.addrbal',            ['fund_addrbal']),
+		('stop',                        'stopping regtest daemon'),
+	)
+	cmd_subgroups = {
+	'fund_addrbal': (
+		"funding addresses for 'addrbal' subgroup",
+		('sendto1', 'sending funds to address #1 (1)'),
+		('sendto2', 'sending funds to address #1 (2)'),
+		('sendto3', 'sending funds to address #2'),
+	),
+	'addrbal': (
+		"'mmnode-addrbal' script",
 		('addrbal_single',            'getting address balance (single address)'),
 		('addrbal_multiple',          'getting address balances (multiple addresses)'),
 		('addrbal_multiple_tabular1', 'getting address balances (multiple addresses, tabular output)'),
@@ -54,8 +64,8 @@ class TestSuiteRegtest(TestSuiteBase):
 		('addrbal_nobal3',            'getting address balances (one null balance)'),
 		('addrbal_nobal3_tabular1',   'getting address balances (one null balance, tabular output)'),
 		('addrbal_nobal3_tabular2',   'getting address balances (one null balance, tabular, show first block)'),
-		('stop',                      'stopping regtest daemon'),
 	)
+	}
 
 	def __init__(self,trunner,cfgs,spawn):
 		TestSuiteBase.__init__(self,trunner,cfgs,spawn)
@@ -88,32 +98,81 @@ class TestSuiteRegtest(TestSuiteBase):
 	def sendto2(self): return self.sendto(self.addrs[0],'0.234')
 	def sendto3(self): return self.sendto(self.addrs[1],'0.345')
 
+	def addrbal(self,args,expect_list):
+		t = self.spawn('mmnode-addrbal',args)
+		t.match_expect_list(expect_list)
+		return t
+
 	def addrbal_single(self):
-		return self.spawn('mmnode-addrbal',args2+[self.addrs[0]])
+		return self.addrbal(
+			args2 + [self.addrs[0]],
+			[
+				f'Balance: 0.357 {g.coin}',
+				'2 unspent outputs in 2 blocks',
+				'394','0.123',
+				'395','0.234'
+			])
 
 	def addrbal_multiple(self):
-		return self.spawn('mmnode-addrbal',args2+[self.addrs[1],self.addrs[0]])
+		return self.addrbal(
+			args2 + [self.addrs[1],self.addrs[0]],
+			[
+				'396','0.345',
+				'394','0.123',
+				'395','0.234'
+			])
 
 	def addrbal_multiple_tabular1(self):
-		return self.spawn('mmnode-addrbal',args2+['--tabular',self.addrs[1],self.addrs[0]])
+		return self.addrbal(
+			args2 + ['--tabular',self.addrs[1],self.addrs[0]],
+			[
+				self.addrs[1] + ' 1 396','0.345',
+				self.addrs[0] + ' 2 395','0.357'
+			])
 
 	def addrbal_multiple_tabular2(self):
-		return self.spawn('mmnode-addrbal',args1+['--tabular','--first-block',self.addrs[1],self.addrs[0]])
+		return self.addrbal(
+			args2 + ['--tabular','--first-block',self.addrs[1],self.addrs[0]],
+			[
+				self.addrs[1] + ' 1 396','396','0.345',
+				self.addrs[0] + ' 2 394','395','0.357'
+			])
 
 	def addrbal_nobal1(self):
-		return self.spawn('mmnode-addrbal',args2+[self.addrs[2]])
+		return self.addrbal(
+			args2 + [self.addrs[2]], ['Address has no balance'] )
 
 	def addrbal_nobal2(self):
-		return self.spawn('mmnode-addrbal',args2+[self.addrs[2],self.addrs[3]])
+		return self.addrbal(
+			args2 + [self.addrs[2],self.addrs[3]], ['Addresses have no balances'] )
 
 	def addrbal_nobal3(self):
-		return self.spawn('mmnode-addrbal',args2+[self.addrs[4],self.addrs[0],self.addrs[3]])
+		return self.addrbal(
+			args2 + [self.addrs[4],self.addrs[0],self.addrs[3]],
+			[
+				'No balance',
+				'2 unspent outputs in 2 blocks',
+				'394','0.123','395','0.234',
+				'No balance'
+			])
 
 	def addrbal_nobal3_tabular1(self):
-		return self.spawn('mmnode-addrbal',args2+['--tabular',self.addrs[4],self.addrs[0],self.addrs[3]])
+		return self.addrbal(
+			args2 + ['--tabular',self.addrs[4],self.addrs[0],self.addrs[3]],
+			[
+				self.addrs[4] + ' - - -',
+				self.addrs[0] + ' 2 395','0.357',
+				self.addrs[3] + ' - - -',
+			])
 
 	def addrbal_nobal3_tabular2(self):
-		return self.spawn('mmnode-addrbal',args1+['--tabular','--first-block',self.addrs[4],self.addrs[0],self.addrs[3]])
+		return self.addrbal(
+			args2 + ['--tabular','--first-block',self.addrs[4],self.addrs[0],self.addrs[3]],
+			[
+				self.addrs[4] + ' - - - -',
+				self.addrs[0] + ' 2 394','395','0.357',
+				self.addrs[3] + ' - - - -',
+			])
 
 	def stop(self):
 		if opt.no_daemon_stop:
