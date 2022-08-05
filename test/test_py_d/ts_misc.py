@@ -85,6 +85,7 @@ class TestSuiteScripts(TestSuiteBase):
 		('ticker13', 'ticker [--cached-data --wide --elapsed -c inr-indian-rupee:79.5 inr:200000:btc:0.1]'),
 		('ticker14', 'ticker [--cached-data --wide --btc]'),
 		('ticker15', 'ticker [--cached-data --wide --btc btc:2:usd:45000]'),
+		('ticker16', 'ticker [--cached-data --wide --elapsed -c eur,omr-omani-rial:2.59r'),
 	)
 	}
 
@@ -270,4 +271,15 @@ class TestSuiteScripts(TestSuiteBase):
 				'SPOT PRICE OFFERED PRICE UPDATED',
 				'BITCOIN 2.00000000 1.92563954 33 hours, 2 minutes ago ' +
 				'US DOLLAR 46,737.71911598 45,000.00000000 33 hours, 2 minutes ago',
+			])
+
+	def ticker16(self):
+		return self.ticker(
+			['--wide','--elapsed','-c','eur,omr-omani-rial:2.59r'],
+			[
+				r'EUR \(EURO TOKEN\) = 1.0186 USD ' +
+				r'OMR \(OMANI RIAL\) = 2.5900 USD',
+				'USD EUR OMR BTC CHG_7d CHG_24h UPDATED',
+				'BITCOIN',
+				'OMANI RIAL 2.59 2.5428 1.0000 0.00011139 -- -- just now'
 			])

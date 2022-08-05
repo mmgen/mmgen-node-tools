@@ -295,13 +295,18 @@ def make_cfg(cmd_args,cfg_in):
 		sym,id = (s.split('-')[0],s) if '-' in s else (s,None)
 		return asset_tuple( sym.upper(), id.lower() if id else None )
 
-	def parse_asset_triplet(s):
+	def parse_asset_triplet(s,reverse_ok=False):
 		ss = s.split(':')
-		sym,amt = ( ss[0], Decimal(ss[1]) ) if len(ss) == 2 else ( s, None )
-		return asset_triplet( *parse_asset_tuple(sym), amt )
+		return asset_triplet(
+			*parse_asset_tuple(s if len(ss) == 1 else ss[0]),
+			(
+				None if len(ss) == 1 else
+				1 / Decimal(ss[1][:-1]) if reverse_ok and ss[1].lower().endswith('r') else
+				Decimal(ss[1])
+			))
 
 	def parse_usr_asset_arg(s):
-		return tuple(parse_asset_triplet(ss) for ss in s.split(',')) if s else ()
+		return tuple(parse_asset_triplet(ss,reverse_ok=True) for ss in s.split(',')) if s else ()
 
 	def parse_query_arg(s):
 		ss = s.split(':')

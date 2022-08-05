@@ -76,11 +76,13 @@ ambiguous, the full ID must be used.  Examples:
 
 ASSET SPECIFIERS consist of an ASSET followed by an optional colon and USD
 rate.  If the asset is not in the source data (see --list-ids), the label
-part of the ID may be arbitrarily chosen by the user.  Examples:
+part of the ID may be arbitrarily chosen by the user.  When the letter ‘r’
+is appended to the USD rate, the rate is reversed, i.e. treated as ‘USD per
+asset’ instead of ‘asset per USD’.  Asset specifier examples:
 
   inr:79.5              - INR is not in the source data, so supply USD rate
   inr-indian-rupee:79.5 - same as above, but add an arbitrary label
-  ada-cardano:0.51      - ADA is in the source data, so use the listed ID
+  omr-omani-rial:2.59r  - OMR is pegged to USD with fixed value of 2.59 USD
 
 A TRADE_SPECIFIER is a single argument in the format:
 
@@ -121,9 +123,9 @@ configured cache directory, and run the script with the --cached-data option.
 To protect user privacy, all filtering and processing of data is performed
 client side so that the remote server does not know which assets are being
 examined.  This means that data for ALL available assets (currently over 4000)
-is fetched with each invocation of the script.  A rate limit of {ratelimit} seconds
-between calls is thus imposed to prevent abuse of the remote server. When the
---btc option is in effect, this limit is reduced to 10 seconds.  To bypass the
+is fetched with each invocation of the script.  A rate limit of {L} seconds
+between calls is thus imposed to prevent abuse of the remote server.  When the
+--btc option is in effect, this limit is reduced to {B} seconds.  To bypass the
 rate limit entirely, use --cached-data.
 
 
@@ -135,8 +137,9 @@ $ mmnode-ticker
 # Display BTC price only:
 $ mmnode-ticker --btc
 
-# Wide display, add EUR and INR columns, INR rate, extra precision and proxy:
-$ mmnode-ticker -w -c eur,inr-indian-rupee:79.5 -e2 -x http://vpnhost:8118
+# Wide display, add EUR and OMR columns, OMRUSD rate, extra precision and
+# proxy:
+$ mmnode-ticker -w -c eur,omr-omani-rial:2.59r -e2 -x http://vpnhost:8118
 
 # Wide display, use cached data from previous network query, show portfolio
 # (see above), pipe output to pager, add DOGE row:
@@ -177,7 +180,8 @@ To add a portfolio, edit the file
 			pf_cfg    = os.path.relpath(cfg_in.portfolio_file,start=homedir),
 			api_host  = api_host,
 			api_url   = api_url,
-			ratelimit = ratelimit,
+			L         = ratelimit,
+			B         = btc_ratelimit,
 		)
 	}
 }
