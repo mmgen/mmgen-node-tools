@@ -67,22 +67,28 @@ user’s portfolio, while trading mode displays the price of a given quantity
 of an asset in relation to other assets, optionally comparing an offered
 price to the spot price.
 
-ASSETS consist of either a symbol (e.g. ‘xmr’) or full ID consisting of
-symbol plus label (e.g. ‘xmr-monero’).  In cases where the symbol is
-ambiguous, the full ID must be used.  Examples:
+ASSETS consist of either a symbol (e.g. ‘xmr’) or full ID (see --list-ids)
+consisting of symbol plus label (e.g. ‘xmr-monero’).  In cases where the
+symbol is ambiguous, the full ID must be used.  Examples:
 
   chf                   - specify asset by symbol
   chf-swiss-franc-token - same as above, but use full ID instead of symbol
 
-ASSET SPECIFIERS consist of an ASSET followed by an optional colon and USD
-rate.  If the asset is not in the source data (see --list-ids), the label
-part of the ID may be arbitrarily chosen by the user.  When the letter ‘r’
-is appended to the USD rate, the rate is reversed, i.e. treated as ‘USD per
-asset’ instead of ‘asset per USD’.  Asset specifier examples:
+ASSET SPECIFIERS have the following format:
 
-  inr:79.5              - INR is not in the source data, so supply USD rate
-  inr-indian-rupee:79.5 - same as above, but add an arbitrary label
-  omr-omani-rial:2.59r  - OMR is pegged to USD with fixed value of 2.59 USD
+  ASSET[:RATE]
+
+If the asset referred to by ASSET is not in the source data (see --list-ids),
+an arbitrarily chosen label may be used.  RATE is the USD exchange rate of
+the asset.  When RATE is postfixed with the letter ‘r’, its meaning is
+reversed, i.e. interpreted as ‘ASSET/USD’ instead of ‘USD/ASSET’.  Asset
+specifier examples:
+
+  inr:79.5               - INR is not in the source data, so supply rate of
+                           79.5 INR to the Dollar (USD/INR)
+  inr:0.01257r           - same as above, but use reverse rate (INR/USD)
+  inr-indian-rupee:79.5  - same as first example, but add an arbitrary label
+  omr-omani-rial:2.59r   - Omani Rial is pegged to the Dollar at 2.59 USD
 
 A TRADE_SPECIFIER is a single argument in the format:
 
@@ -137,7 +143,7 @@ $ mmnode-ticker
 # Display BTC price only:
 $ mmnode-ticker --btc
 
-# Wide display, add EUR and OMR columns, OMRUSD rate, extra precision and
+# Wide display, add EUR and OMR columns, OMR/USD rate, extra precision and
 # proxy:
 $ mmnode-ticker -w -c eur,omr-omani-rial:2.59r -e2 -x http://vpnhost:8118
 

@@ -280,6 +280,6 @@ class TestSuiteScripts(TestSuiteBase):
 				r'EUR \(EURO TOKEN\) = 1.0186 USD ' +
 				r'OMR \(OMANI RIAL\) = 2.5900 USD',
 				'USD EUR OMR BTC CHG_7d CHG_24h UPDATED',
-				'BITCOIN',
+				r'BITCOIN 23,250.77 22,826.6890 8,977.1328 1.00000000 \+11.15 \+0.89 10 minutes ago',
 				'OMANI RIAL 2.59 2.5428 1.0000 0.00011139 -- -- just now'
 			])

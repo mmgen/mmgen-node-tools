@@ -87,11 +87,11 @@ def gen_data(data):
 	usr_wants = {
 		'id': (
 			{a.id for a in usr_assets if a.id} -
-			{a.id for a in usr_assets if a.amount and a.id} - {'usd-us-dollar'} )
+			{a.id for a in usr_assets if a.rate and a.id} - {'usd-us-dollar'} )
 		,
 		'symbol': (
 			{a.symbol for a in usr_assets if not a.id} -
-			{a.symbol for a in usr_assets if a.amount} - {'USD'} ),
+			{a.symbol for a in usr_assets if a.rate} - {'USD'} ),
 	}
 
 	found = { 'id': set(), 'symbol': set() }
@@ -114,7 +114,7 @@ def gen_data(data):
 			break
 
 	for asset in (cfg.usr_rows + cfg.usr_columns):
-		if asset.amount:
+		if asset.rate:
 			"""
 			User-supplied rate overrides rate from source data.
 			"""
@@ -122,8 +122,8 @@ def gen_data(data):
 			yield ( _id, {
 				'symbol': asset.symbol,
 				'id': _id,
-				'price_usd': str(Decimal(1/asset.amount)),
-				'price_btc': str(Decimal(1/asset.amount/btcusd)),
+				'price_usd': str(Decimal(1/asset.rate)),
+				'price_btc': str(Decimal(1/asset.rate/btcusd)),
 				'last_updated': int(now),
 			})
 
@@ -280,47 +280,62 @@ def main(cfg_parm,cfg_in_parm):
 def make_cfg(cmd_args,cfg_in):
 
 	def get_rows_from_cfg(add_data=None):
-		def create_row(e):
-			return asset_tuple(e.split('-')[0].upper(),e)
 		def gen():
 			for n,(k,v) in enumerate(cfg_in.cfg['assets'].items()):
 				yield(k)
 				if add_data and k in add_data:
 					v += tuple(add_data[k])
 				for e in v:
-					yield(create_row(e))
+					yield parse_asset_id(e,True)
 		return tuple(gen())
 
-	def parse_asset_tuple(s):
-		sym,id = (s.split('-')[0],s) if '-' in s else (s,None)
-		return asset_tuple( sym.upper(), id.lower() if id else None )
-
-	def parse_asset_triplet(s,reverse_ok=False):
-		ss = s.split(':')
-		return asset_triplet(
-			*parse_asset_tuple(s if len(ss) == 1 else ss[0]),
-			(
-				None if len(ss) == 1 else
-				1 / Decimal(ss[1][:-1]) if reverse_ok and ss[1].lower().endswith('r') else
-				Decimal(ss[1])
-			))
+	def parse_asset_id(s,require_label=False):
+		sym,label = (*s.split('-',1),None)[:2]
+		if require_label and not label:
+			die(1,f'{s!r}: asset label is missing')
+		return asset_tuple( sym.upper(), (s.lower() if label else None) )
 
 	def parse_usr_asset_arg(s):
-		return tuple(parse_asset_triplet(ss,reverse_ok=True) for ss in s.split(',')) if s else ()
+		"""
+		asset_id[:rate]
+		"""
+		def parse_parm(s):
+			ss = s.split(':')
+			assert len(ss) in (1,2), f'{s}: malformed argument'
+			asset_id,rate = (*ss,None)[:2]
+			parsed_id = parse_asset_id(asset_id)
+
+			return asset_data(
+				symbol = parsed_id.symbol,
+				id     = parsed_id.id,
+				amount = None,
+				rate   = (
+					None if rate is None else
+					1 / Decimal(rate[:-1]) if rate.lower().endswith('r') else
+					Decimal(rate) ))
+
+		return tuple(parse_parm(s2) for s2 in s.split(',')) if s else ()
 
 	def parse_query_arg(s):
+		"""
+		asset_id:amount[:to_asset_id[:to_amount]]
+		"""
+		def parse_query_asset(asset_id,amount):
+			parsed_id = parse_asset_id(asset_id)
+			return asset_data(
+				symbol = parsed_id.symbol,
+				id     = parsed_id.id,
+				amount = None if amount is None else Decimal(amount),
+				rate   = None )
+
 		ss = s.split(':')
-		if len(ss) == 2:
-			return query_tuple(
-				asset    = parse_asset_triplet(s),
-				to_asset = None )
-		elif len(ss) in (3,4):
-			return query_tuple(
-				asset    = parse_asset_triplet(':'.join(ss[:2])),
-				to_asset = parse_asset_triplet(':'.join(ss[2:])),
-			)
-		else:
-			die(1,f'{s}: malformed argument')
+		assert len(ss) in (2,3,4), f'{s}: malformed argument'
+		asset_id,amount,to_asset_id,to_amount = (*ss,None,None)[:4]
+
+		return query_tuple(
+			asset = parse_query_asset(asset_id,amount),
+			to_asset = parse_query_asset(to_asset_id,to_amount) if to_asset_id else None
+		)
 
 	def gen_uniq(obj_list,key,preload=None):
 		found = set([getattr(obj,key) for obj in preload if hasattr(obj,key)] if preload else ())
@@ -339,7 +354,7 @@ def make_cfg(cmd_args,cfg_in):
 
 	def get_portfolio_assets(ret=()):
 		if cfg_in.portfolio and opt.portfolio:
-			ret = tuple( asset_tuple(e.split('-')[0].upper(),e) for e in cfg_in.portfolio )
+			ret = (parse_asset_id(e,True) for e in cfg_in.portfolio)
 		return ( 'portfolio', tuple(e for e in ret if (not opt.btc) or e.symbol == 'BTC') )
 
 	def get_portfolio():
@@ -357,7 +372,7 @@ def make_cfg(cmd_args,cfg_in):
 	def create_rows():
 		rows = (
 			('trade_pair',) + query if (query and query.to_asset) else
-			('bitcoin',parse_asset_tuple('btc-bitcoin')) if opt.btc else
+			('bitcoin',parse_asset_id('btc-bitcoin')) if opt.btc else
 			get_rows_from_cfg( add_data={'fiat':['usd-us-dollar']} if opt.add_columns else None )
 		)
 
@@ -385,7 +400,7 @@ def make_cfg(cmd_args,cfg_in):
 		'portfolio' ])
 
 	query_tuple   = namedtuple('query',['asset','to_asset'])
-	asset_triplet = namedtuple('asset_triplet',['symbol','id','amount'])
+	asset_data    = namedtuple('asset_data',['symbol','id','amount','rate'])
 	asset_tuple   = namedtuple('asset_tuple',['symbol','id'])
 
 	usr_rows    = parse_usr_asset_arg(opt.add_rows)

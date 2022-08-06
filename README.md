@@ -12,10 +12,10 @@ First, install [MMGen][6].
 
 Then,
 
-    $ git clone https://github.com/mmgen/mmgen-node-tools
-    $ cd mmgen-node-tools
-    $ python3 -m build --no-isolation
-    $ python3 -m pip install --user dist/*.whl
+	$ git clone https://github.com/mmgen/mmgen-node-tools
+	$ cd mmgen-node-tools
+	$ python3 -m build --no-isolation
+	$ python3 -m pip install --user dist/*.whl
 
 Also make sure that `~/.local/bin` is in `PATH`.
 
@@ -24,9 +24,18 @@ Also make sure that `~/.local/bin` is in `PATH`.
 *NOTE: the tests require that the MMGen and MMGen Node Tools repositories be
 located in the same directory.*
 
-    $ test/init.sh
-    $ test/test-release.sh -A  # BTC-only testing
-    $ test/test-release.sh     # Full testing
+Initialize the test framework (must be run at least once after cloning, and
+possibly again after a pull if tests have been updated):
+
+	$ test/init.sh
+
+BTC-only testing:
+
+	$ test/test-release.sh -A
+
+Full testing:
+
+	$ test/test-release.sh
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
