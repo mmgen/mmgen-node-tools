@@ -76,19 +76,20 @@ symbol is ambiguous, the full ID must be used.  Examples:
 
 ASSET SPECIFIERS have the following format:
 
-  ASSET[:RATE]
+  ASSET[:RATE[:RATE_ASSET]]
 
 If the asset referred to by ASSET is not in the source data (see --list-ids),
-an arbitrarily chosen label may be used.  RATE is the USD exchange rate of
-the asset.  When RATE is postfixed with the letter ‘r’, its meaning is
-reversed, i.e. interpreted as ‘ASSET/USD’ instead of ‘USD/ASSET’.  Asset
-specifier examples:
+an arbitrarily chosen label may be used.  RATE is the exchange rate of the
+asset in relation to RATE_ASSET, if present, otherwise USD.  When RATE is
+postfixed with the letter ‘r’, its meaning is reversed, i.e. interpreted as
+‘ASSET/RATE_ASSET’ instead of ‘RATE_ASSET/ASSET’.  Asset specifier examples:
 
   inr:79.5               - INR is not in the source data, so supply rate of
                            79.5 INR to the Dollar (USD/INR)
   inr:0.01257r           - same as above, but use reverse rate (INR/USD)
   inr-indian-rupee:79.5  - same as first example, but add an arbitrary label
   omr-omani-rial:2.59r   - Omani Rial is pegged to the Dollar at 2.59 USD
+  bgn-bg-lev:0.5113r:eur - Bulgarian Lev is pegged to the Euro at 0.5113 EUR
 
 A TRADE_SPECIFIER is a single argument in the format:
 
@@ -146,6 +147,9 @@ $ mmnode-ticker --btc
 # Wide display, add EUR and OMR columns, OMR/USD rate, extra precision and
 # proxy:
 $ mmnode-ticker -w -c eur,omr-omani-rial:2.59r -e2 -x http://vpnhost:8118
+
+# Wide display, elapsed update time, add EUR, BGN columns and BGN/EUR rate:
+$ mmnode-ticker -wE -c eur,bgn-bulgarian-lev:0.5113r:eur
 
 # Wide display, use cached data from previous network query, show portfolio
 # (see above), pipe output to pager, add DOGE row:

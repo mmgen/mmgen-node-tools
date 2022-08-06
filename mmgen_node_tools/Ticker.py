@@ -83,18 +83,24 @@ def gen_data(data):
 		'id':     {r.id for r in cfg.rows if getattr(r,'id',None)} - {'usd-us-dollar'},
 		'symbol': {r.symbol for r in cfg.rows if isinstance(r,tuple) and r.id is None} - {'USD'},
 	}
+	usr_rate_assets = tuple(u.rate_asset for u in cfg.usr_rows + cfg.usr_columns if u.rate_asset)
+	usr_rate_assets_want = {
+		'id':     {a.id for a in usr_rate_assets if a.id},
+		'symbol': {a.symbol for a in usr_rate_assets if not a.id}
+	}
 	usr_assets = cfg.usr_rows + cfg.usr_columns + tuple(c for c in (cfg.query or ()) if c)
 	usr_wants = {
 		'id': (
-			{a.id for a in usr_assets if a.id} -
+			{a.id for a in usr_assets + usr_rate_assets if a.id} -
 			{a.id for a in usr_assets if a.rate and a.id} - {'usd-us-dollar'} )
 		,
 		'symbol': (
-			{a.symbol for a in usr_assets if not a.id} -
+			{a.symbol for a in usr_assets + usr_rate_assets if not a.id} -
 			{a.symbol for a in usr_assets if a.rate} - {'USD'} ),
 	}
 
 	found = { 'id': set(), 'symbol': set() }
+	rate_assets = {}
 
 	for k in ['id','symbol']:
 		wants = rows_want[k] | usr_wants[k]
@@ -105,6 +111,8 @@ def gen_data(data):
 						die(1,dup_sym_errmsg(d[k]))
 					yield (d['id'],d)
 					found[k].add(d[k])
+					if d[k] in usr_rate_assets_want[k]:
+						rate_assets[d['symbol']] = d # NB: using symbol instead of ID
 					if k == 'id' and len(found[k]) == len(wants):
 						break
 
@@ -119,11 +127,12 @@ def gen_data(data):
 			User-supplied rate overrides rate from source data.
 			"""
 			_id = asset.id or f'{asset.symbol}-user-asset-{asset.symbol}'.lower()
+			ra_rate = Decimal(rate_assets[asset.rate_asset.symbol]['price_usd']) if asset.rate_asset else 1
 			yield ( _id, {
 				'symbol': asset.symbol,
 				'id': _id,
-				'price_usd': str(Decimal(1/asset.rate)),
-				'price_btc': str(Decimal(1/asset.rate/btcusd)),
+				'price_usd': str(Decimal(ra_rate/asset.rate)),
+				'price_btc': str(Decimal(ra_rate/asset.rate/btcusd)),
 				'last_updated': int(now),
 			})
 
@@ -297,12 +306,12 @@ def make_cfg(cmd_args,cfg_in):
 
 	def parse_usr_asset_arg(s):
 		"""
-		asset_id[:rate]
+		asset_id[:rate[:rate_asset]]
 		"""
 		def parse_parm(s):
 			ss = s.split(':')
-			assert len(ss) in (1,2), f'{s}: malformed argument'
-			asset_id,rate = (*ss,None)[:2]
+			assert len(ss) in (1,2,3), f'{s}: malformed argument'
+			asset_id,rate,rate_asset = (*ss,None,None)[:3]
 			parsed_id = parse_asset_id(asset_id)
 
 			return asset_data(
@@ -312,7 +321,8 @@ def make_cfg(cmd_args,cfg_in):
 				rate   = (
 					None if rate is None else
 					1 / Decimal(rate[:-1]) if rate.lower().endswith('r') else
-					Decimal(rate) ))
+					Decimal(rate) ),
+				rate_asset = parse_asset_id(rate_asset) if rate_asset else None )
 
 		return tuple(parse_parm(s2) for s2 in s.split(',')) if s else ()
 
@@ -326,7 +336,8 @@ def make_cfg(cmd_args,cfg_in):
 				symbol = parsed_id.symbol,
 				id     = parsed_id.id,
 				amount = None if amount is None else Decimal(amount),
-				rate   = None )
+				rate   = None,
+				rate_asset = None )
 
 		ss = s.split(':')
 		assert len(ss) in (2,3,4), f'{s}: malformed argument'
@@ -400,7 +411,7 @@ def make_cfg(cmd_args,cfg_in):
 		'portfolio' ])
 
 	query_tuple   = namedtuple('query',['asset','to_asset'])
-	asset_data    = namedtuple('asset_data',['symbol','id','amount','rate'])
+	asset_data    = namedtuple('asset_data',['symbol','id','amount','rate','rate_asset'])
 	asset_tuple   = namedtuple('asset_tuple',['symbol','id'])
 
 	usr_rows    = parse_usr_asset_arg(opt.add_rows)

@@ -86,6 +86,8 @@ class TestSuiteScripts(TestSuiteBase):
 		('ticker14', 'ticker [--cached-data --wide --btc]'),
 		('ticker15', 'ticker [--cached-data --wide --btc btc:2:usd:45000]'),
 		('ticker16', 'ticker [--cached-data --wide --elapsed -c eur,omr-omani-rial:2.59r'),
+		('ticker17', 'ticker [--cached-data --wide --elapsed -c bgn-bulgarian-lev:0.5113r:eur'),
+		('ticker18', 'ticker [--cached-data --wide --elapsed -c eur,bgn-bulgarian-lev:0.5113r:eur-euro-token'),
 	)
 	}
 
@@ -282,4 +284,25 @@ class TestSuiteScripts(TestSuiteBase):
 				'USD EUR OMR BTC CHG_7d CHG_24h UPDATED',
 				r'BITCOIN 23,250.77 22,826.6890 8,977.1328 1.00000000 \+11.15 \+0.89 10 minutes ago',
 				'OMANI RIAL 2.59 2.5428 1.0000 0.00011139 -- -- just now'
+			])
+
+	def ticker17(self):
+		# BGN pegged at 0.5113 EUR
+		return self.ticker(
+			['--wide','--elapsed','-c','bgn-bulgarian-lev:0.5113r:eur'],
+			[
+				r'BGN \(BULGARIAN LEV\) = 0.52080 USD',
+				'USD BGN BTC CHG_7d CHG_24h UPDATED',
+				'BITCOIN 23,250.77 44,644.414 1.00000000',
+				'BULGARIAN LEV 0.52 1.000 0.00002240',
+			])
+
+	def ticker18(self):
+		return self.ticker(
+			['--wide','--elapsed','-c','eur,bgn-bulgarian-lev:0.5113r:eur-euro-token'],
+			[
+				r'BGN \(BULGARIAN LEV\) = 0.52080 USD',
+				'USD EUR BGN BTC CHG_7d CHG_24h UPDATED',
+				'BITCOIN 23,250.77 22,826.6890 44,644.414 1.00000000',
+				'BULGARIAN LEV 0.52 0.5113 1.000 0.00002240',
 			])
