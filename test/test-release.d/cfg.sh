@@ -8,6 +8,16 @@
 #   https://github.com/mmgen/mmgen-node-tools
 #   https://gitlab.com/mmgen/mmgen-node-tools
 
+# Testing status
+#  mmnode-addrbal             OK
+#  mmnode-blocks-info         -
+#  mmnode-feeview             -
+#  mmnode-halving-calculator  OK
+#  mmnode-netrate             -
+#  mmnode-peerblocks          -
+#  mmnode-ticker              OK
+#  mmnode-txfind              -
+
 list_avail_tests() {
 	echo   "AVAILABLE TESTS:"
 	echo   "   unit     - unit tests"

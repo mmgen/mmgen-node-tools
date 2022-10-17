@@ -121,7 +121,7 @@ async def main(req_addrs):
 	height = await rpc.call('getblockcount')
 	Msg(f'{proto.coin} {proto.network.upper()} [height {height}]')
 
-	from mmgen.base_proto.bitcoin.misc import scantxoutset
+	from mmgen.proto.btc.misc import scantxoutset
 	res = await scantxoutset( rpc, [f'addr({addr})' for addr in addrs] )
 
 	if not res['success']:
@@ -138,7 +138,7 @@ async def main(req_addrs):
 				addr = re.match('addr\((.*?)\)',unspent['desc'])[1]
 				addr_data[addr].append(unspent)
 		else:
-			from mmgen.base_proto.bitcoin.tx.base import scriptPubKey2addr
+			from mmgen.proto.btc.tx.base import scriptPubKey2addr
 			for unspent in sorted(res['unspents'],key=lambda x: x['height']):
 				addr = scriptPubKey2addr( proto, unspent['scriptPubKey'] )[0]
 				addr_data[addr].append(unspent)
@@ -165,6 +165,6 @@ if len(cmd_args) < 1:
 from mmgen.obj import CoinTxID,Int
 
 try:
-	run_session(main(cmd_args))
+	async_run(main(cmd_args))
 except KeyboardInterrupt:
 	sys.stderr.write('\n')

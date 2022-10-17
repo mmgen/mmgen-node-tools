@@ -257,7 +257,7 @@ class TestSuiteScripts(TestSuiteBase):
 			['--btc','--wide','--portfolio','--elapsed'],
 			[
 				'PRICES',
-				r'BITCOIN 23,368.86 \+6.05 -1.87 33 hours, 2 minutes ago',
+				r'BITCOIN 23,368.86 \+6.05 -1.87 1 day 9 hours 2 minutes ago',
 				'PORTFOLIO',
 				r'BITCOIN 28,850.44 \+6.05 -1.87 1.23456789'
 			])
@@ -271,8 +271,8 @@ class TestSuiteScripts(TestSuiteBase):
 				r'BTC \(BITCOIN\) = 23,368.86 USD',
 				'Offered price differs from spot by -3.72%',
 				'SPOT PRICE OFFERED PRICE UPDATED',
-				'BITCOIN 2.00000000 1.92563954 33 hours, 2 minutes ago ' +
-				'US DOLLAR 46,737.71911598 45,000.00000000 33 hours, 2 minutes ago',
+				'BITCOIN 2.00000000 1.92563954 1 day 9 hours 2 minutes ago ' +
+				'US DOLLAR 46,737.71911598 45,000.00000000 1 day 9 hours 2 minutes ago',
 			])
 
 	def ticker16(self):

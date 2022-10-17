@@ -179,4 +179,4 @@ async def main():
 	else:
 		print_current_stats()
 
-run_session(main())
+async_run(main())

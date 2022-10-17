@@ -52,6 +52,7 @@ opts_data = {
 -T, --thousands-comma Use comma as a thousands separator
 -u, --update-time     Include UPDATED (last update time) column
 -U, --print-curl      Print cURL command to standard output and exit
+-v, --verbose         Be more verbose
 -w, --wide            Display all optional columns (equivalent to -punT)
 -x, --proxy=P         Connect via proxy ‘P’.  Set to the empty string to
                       disable.  Consult the curl manpage for --proxy usage.

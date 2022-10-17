@@ -31,7 +31,7 @@ from collections import namedtuple
 from mmgen.opts import opt
 from mmgen.globalvars import g
 from mmgen.color import *
-from mmgen.util import die,fmt_list,msg,msg_r,Msg,do_pager,suf,fmt
+from mmgen.util import die,fmt_list,msg,msg_r,Msg,vmsg,suf,fmt,stdout_or_pager
 
 homedir = os.getenv('HOME')
 cachedir = os.path.join(homedir,'.cache','mmgen-node-tools')
@@ -189,6 +189,7 @@ def get_src_data(curl_cmd):
 		elapsed = int(time.time() - os.stat(fn).st_mtime)
 		if elapsed >= timeout:
 			msg_r(f'Fetching data from {api_host}...')
+			vmsg('')
 			try:
 				cp = run(curl_cmd,check=True,stdout=PIPE)
 			except CalledProcessError as e:
@@ -244,10 +245,10 @@ def main(cfg_parm,cfg_in_parm):
 					'curl',
 					'--tr-encoding',
 					'--compressed', # adds 'Accept-Encoding: gzip'
-					'--silent',
 					'--header', 'Accept: application/json',
 				] +
 				(['--proxy', cfg.proxy] if cfg.proxy else []) +
+				(['--silent'] if not opt.verbose else []) +
 				[api_url + ('/btc-bitcoin' if cfg.btc_only else '')]
 			)
 
@@ -276,14 +277,15 @@ def main(cfg_parm,cfg_in_parm):
 	parsed_json = [get_src_data(curl_cmd)] if cfg.btc_only else get_src_data(curl_cmd)
 
 	if opt.list_ids:
+		from mmgen.ui import do_pager
 		do_pager('\n'.join(e['id'] for e in parsed_json))
 		return
 
 	global now
 	now = 1659465400 if g.test_suite else time.time() # 1659524400 1659445900
 
-	(do_pager if opt.pager else Msg)(
-		'\n'.join(getattr(Ticker,cfg.clsname)(dict(gen_data(parsed_json))).gen_output())
+	stdout_or_pager(
+		'\n'.join(getattr(Ticker,cfg.clsname)(dict(gen_data(parsed_json))).gen_output()) + '\n'
 	)
 
 def make_cfg(cmd_args,cfg_in):
@@ -481,7 +483,7 @@ class Ticker:
 		def format_last_update_col(self,cross_assets=()):
 
 			if opt.elapsed:
-				from .Util import format_elapsed_hr
+				from mmgen.util2 import format_elapsed_hr
 				fmt_func = format_elapsed_hr
 			else:
 				fmt_func = lambda t,now: time.strftime('%F %X',time.gmtime(t)) # ticker API

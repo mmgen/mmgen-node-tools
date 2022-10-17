@@ -21,6 +21,7 @@ mmnode-feeview: Visualize the fee structure of a node’s mempool
 """
 
 from mmgen.common import *
+from mmgen.util2 import int2bytespec,parse_bytespec
 
 min_prec,max_prec,dfl_prec = (0,6,4)
 fee_brackets = [
@@ -213,10 +214,8 @@ async def main():
 		log(mempool,'mempool.json')
 
 	data = create_data(proto.coin_amt,mempool)
-
-	(do_pager if opt.pager else print)(
+	stdout_or_pager(
 		'\n'.join(gen_header(c.host,await c.call('getblockcount'))) + '\n' +
-		'\n'.join(gen_body(data))
-		)
+		'\n'.join(gen_body(data)) + '\n' )
 
-run_session(main())
+async_run(main())

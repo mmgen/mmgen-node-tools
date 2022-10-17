@@ -171,7 +171,7 @@ ERASE_ALL,ERASE_LINE,CUR_HOME,CUR_HIDE,CUR_SHOW = (
 	'\033[J','\033[K','\033[H','\033[?25l','\033[?25h')
 
 try:
-	run_session(main())
+	async_run(main())
 except:
 	from subprocess import run
 	run(['stty','sane'])

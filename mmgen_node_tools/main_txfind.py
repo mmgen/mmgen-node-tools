@@ -91,4 +91,4 @@ msgs = msg_data['quiet' if opt.quiet else 'normal']
 if len(cmd_args) != 1:
 	die(1,'One transaction ID must be specified')
 
-sys.exit(run_session(main(cmd_args[0])))
+sys.exit(async_run(main(cmd_args[0])))

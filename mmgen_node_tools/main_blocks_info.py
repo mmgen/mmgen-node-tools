@@ -176,4 +176,4 @@ async def main():
 
 	m.finalize_output()
 
-run_session(main())
+async_run(main())

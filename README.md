@@ -1,6 +1,6 @@
 # MMGen Node Tools
 
-Helper utilities for Bitcoin and forkcoin full nodes.
+### Terminal-based utilities for Bitcoin and forkcoin full nodes
 
 Requires modules from the [MMGen online/offline cryptocurrency wallet][6].
 
