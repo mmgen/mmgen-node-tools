@@ -45,6 +45,7 @@ class TestSuiteRegtest(TestSuiteBase):
 		('subgroup.halving_calculator', []),
 		('subgroup.fund_addrbal',       []),
 		('subgroup.addrbal',            ['fund_addrbal']),
+		('subgroup.blocks_info',        ['addrbal']),
 		('stop',                        'stopping regtest daemon'),
 	)
 	cmd_subgroups = {
@@ -74,7 +75,14 @@ class TestSuiteRegtest(TestSuiteBase):
 		('addrbal_nobal3',            'getting address balances (one null balance)'),
 		('addrbal_nobal3_tabular1',   'getting address balances (one null balance, tabular output)'),
 		('addrbal_nobal3_tabular2',   'getting address balances (one null balance, tabular, show first block)'),
-	)
+	),
+	'blocks_info': (
+		"'mmnode-blocks-info' script",
+		('blocks_info1',              "blocks-info (--help)"),
+		('blocks_info2',              "blocks-info (no args)"),
+		('blocks_info3',              "blocks-info +100"),
+		('blocks_info4',              "blocks-info --miner-info --fields=all --stats=all +1"),
+	),
 	}
 
 	def __init__(self,trunner,cfgs,spawn):
@@ -85,11 +93,6 @@ class TestSuiteRegtest(TestSuiteBase):
 			die(2,'--testnet and --regtest options incompatible with regtest test suite')
 		self.proto = init_proto(self.proto.coin,network='regtest',need_amt=True)
 		self.addrs = gen_addrs(self.proto,'regtest',[1,2,3,4,5])
-
-		os.environ['MMGEN_TEST_SUITE_REGTEST'] = '1'
-
-	def __del__(self):
-		os.environ['MMGEN_TEST_SUITE_REGTEST'] = ''
 
 	def setup(self):
 		stop_test_daemons(self.proto.network_id,force=True,remove_datadir=True)
@@ -206,6 +209,41 @@ class TestSuiteRegtest(TestSuiteBase):
 				self.addrs[0] + ' 2 394','395','0.357',
 				self.addrs[3] + ' - - - -',
 			])
+
+	def blocks_info(self,args,expect_list):
+		t = self.spawn('mmnode-blocks-info',args)
+		t.match_expect_list(expect_list)
+		return t
+
+	def blocks_info1(self):
+		return self.blocks_info( args1 + ['--help'], ['USAGE:','OPTIONS:'])
+
+	def blocks_info2(self):
+		return self.blocks_info( args1, [
+			'Current height: 396',
+		])
+
+	def blocks_info3(self):
+		return self.blocks_info( args1 + ['+100'], [
+			'Range: 297-396',
+			'Current height: 396',
+			'Next diff adjust: 2016'
+		])
+
+	def blocks_info4(self):
+		n1,i1,o1,n2,i2,o2 = (2,1,3,6,3,9) if g.coin == 'BCH' else (2,1,4,6,3,12)
+		return self.blocks_info( args1 + ['--miner-info','--fields=all','--stats=all','+3'], [
+			'Averages',
+			f'nTx: {n1}',
+			f'Inputs: {i1}',
+			f'Outputs: {o1}',
+			'Totals',
+			f'nTx: {n2}',
+			f'Inputs: {i2}',
+			f'Outputs: {o2}',
+			'Current height: 396',
+			'Next diff adjust: 2016'
+		])
 
 	def stop(self):
 		if opt.no_daemon_stop:

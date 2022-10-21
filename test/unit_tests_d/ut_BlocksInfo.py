@@ -65,6 +65,11 @@ fields_vecs = (
 
 class dummyRPC:
 	blockcount = tip
+	def info(self,arg):
+		return True
+	class proto:
+		class coin_amt:
+			satoshi = 0.00000001
 
 class dummyOpt:
 	fields = None

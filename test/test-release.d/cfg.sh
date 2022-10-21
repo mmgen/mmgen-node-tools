@@ -10,7 +10,7 @@
 
 # Testing status
 #  mmnode-addrbal             OK
-#  mmnode-blocks-info         -
+#  mmnode-blocks-info         OK
 #  mmnode-feeview             -
 #  mmnode-halving-calculator  OK
 #  mmnode-netrate             -

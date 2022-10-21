@@ -23,7 +23,6 @@ mmgen_node_tools.BlocksInfo: Display information about a block or range of block
 import re,json
 from collections import namedtuple
 from time import strftime,gmtime
-from decimal import Decimal
 
 from mmgen.common import *
 from mmgen.rpc import json_encoder
@@ -46,14 +45,14 @@ class BlocksInfo:
 		'totalfee':   bf( 'tf', 'bs', '{:>10}', '',      'Total Fee', 'totalfee',            None ),
 		'size':       bf( None, 'bs', '{:>7}',  '',      'Size',      'total_size',          None ),
 		'weight':     bf( None, 'bs', '{:>7}',  '',      'Weight',    'total_weight',        None ),
-		'fee90':      bf( None, 'bs', '{:>3}',  '90%',   'Fee',       'feerate_percentiles', 4 ),
-		'fee75':      bf( None, 'bs', '{:>3}',  '75%',   'Fee',       'feerate_percentiles', 3 ),
-		'fee50':      bf( None, 'bs', '{:>3}',  '50%',   'Fee',       'feerate_percentiles', 2 ),
-		'fee25':      bf( None, 'bs', '{:>3}',  '25%',   'Fee',       'feerate_percentiles', 1 ),
-		'fee10':      bf( None, 'bs', '{:>3}',  '10%',   'Fee',       'feerate_percentiles', 0 ),
-		'fee_max':    bf( None, 'bs', '{:>5}',  'Max',   'Fee',       'maxfeerate',          None ),
-		'fee_avg':    bf( None, 'bs', '{:>3}',  'Avg',   'Fee',       'avgfeerate',          None ),
-		'fee_min':    bf( None, 'bs', '{:>3}',  'Min',   'Fee',       'minfeerate',          None ),
+		'fee90':      bf( 'fe', 'bs', '{:>3}',  '90%',   'Fee',       'feerate_percentiles', 4 ),
+		'fee75':      bf( 'fe', 'bs', '{:>3}',  '75%',   'Fee',       'feerate_percentiles', 3 ),
+		'fee50':      bf( 'fe', 'bs', '{:>3}',  '50%',   'Fee',       'feerate_percentiles', 2 ),
+		'fee25':      bf( 'fe', 'bs', '{:>3}',  '25%',   'Fee',       'feerate_percentiles', 1 ),
+		'fee10':      bf( 'fe', 'bs', '{:>3}',  '10%',   'Fee',       'feerate_percentiles', 0 ),
+		'fee_max':    bf( 'fe', 'bs', '{:>5}',  'Max',   'Fee',       'maxfeerate',          None ),
+		'fee_avg':    bf( 'fe', 'bs', '{:>3}',  'Avg',   'Fee',       'avgfeerate',          None ),
+		'fee_min':    bf( 'fe', 'bs', '{:>3}',  'Min',   'Fee',       'minfeerate',          None ),
 		'nTx':        bf( None, 'bh', '{:>5}',  '',      ' nTx ',     'nTx',                 None ),
 		'inputs':     bf( None, 'bs', '{:>5}',  'In- ',  'puts',      'ins',                 None ),
 		'outputs':    bf( None, 'bs', '{:>5}',  'Out-',  'puts',      'outs',                None ),
@@ -101,24 +100,6 @@ class BlocksInfo:
 	noindent_stats = ['col_avg']
 
 	avg_stats_skip = {'block', 'hash', 'date', 'version','miner'}
-	stats_deps = {
-		'avg':    set(fields) - avg_stats_skip,
-		'col_avg':set(fields) - avg_stats_skip,
-		'mini_avg':{'interval','size','weight'},
-		'total':  {'interval','subsidy','totalfee','nTx','inputs','outputs','utxo_inc'},
-		'range':  {},
-		'diff':   {},
-	}
-
-	fmt_funcs = {
-		'da': lambda arg: strftime('%Y-%m-%d %X',gmtime(arg)),
-		'td': lambda arg: (
-			'-{:02}:{:02}'.format(abs(arg)//60,abs(arg)%60) if arg < 0 else
-			' {:02}:{:02}'.format(arg//60,arg%60) ),
-		'tf': lambda arg: '{:.8f}'.format(arg * Decimal('0.00000001')),
-		'su': lambda arg: str(arg * Decimal('0.00000001')).rstrip('0').rstrip('.'),
-		'di': lambda arg: '{:.2e}'.format(arg),
-	}
 
 	range_data = namedtuple('parsed_range_data',['first','last','from_tip','nblocks','step'])
 
@@ -186,7 +167,43 @@ class BlocksInfo:
 		self.opt = opt
 		self.tip = rpc.blockcount
 
+		from_satoshi = self.rpc.proto.coin_amt.satoshi
+		to_satoshi = 1 / from_satoshi
+
 		self.block_list,self.first,self.last,self.step = parse_cmd_args()
+
+		have_segwit = self.rpc.info('segwit_is_active')
+
+		if not have_segwit:
+			del self.fields['weight']
+			self.dfl_fields = tuple(f for f in self.dfl_fields if f != 'weight')
+
+		self.stats_deps = {
+			'avg':      set(self.fields) - self.avg_stats_skip,
+			'col_avg':  set(self.fields) - self.avg_stats_skip,
+			'mini_avg': {'interval','size'} | ({'weight'} if have_segwit else set()),
+			'total':    {'interval','subsidy','totalfee','nTx','inputs','outputs','utxo_inc'},
+			'range':    {},
+			'diff':     {},
+		}
+
+		self.fmt_funcs = {
+			'da': lambda arg: strftime('%Y-%m-%d %X',gmtime(arg)),
+			'td': lambda arg: (
+				'-{:02}:{:02}'.format(abs(arg)//60,abs(arg)%60) if arg < 0 else
+				' {:02}:{:02}'.format(arg//60,arg%60) ),
+			'tf': lambda arg: '{:.8f}'.format(arg * from_satoshi),
+			'su': lambda arg: str(arg * from_satoshi).rstrip('0').rstrip('.'),
+			'fe': lambda arg: str(arg),
+			'di': lambda arg: '{:.2e}'.format(arg),
+		}
+
+		if g.coin == 'BCH':
+			self.fmt_funcs.update({
+				'su': lambda arg: str(arg).rstrip('0').rstrip('.'),
+				'fe': lambda arg: str(int(arg * to_satoshi)),
+				'tf': lambda arg: '{:.8f}'.format(arg),
+			})
 
 		self.fnames = tuple(
 			[f for f in self.fields if self.fields[f].src == 'bh' or f == 'interval'] if opt.header_info else
@@ -222,7 +239,8 @@ class BlocksInfo:
 
 		self.bs_keys = set(
 			[v.key1 for v in self.fvals if v.src == 'bs'] +
-			['total_size','total_weight']
+			['total_size'] +
+			(['total_weight'] if have_segwit else [])
 		)
 
 		if 'miner' in self.fnames:
@@ -406,7 +424,8 @@ class BlocksInfo:
 				await self.rpc.call('getblockstats',hdr['hash'],list(self.bs_keys))
 			)
 			self.total_bytes += bs['total_size']
-			self.total_weight += bs['total_weight']
+			if 'total_weight' in bs:
+				self.total_weight += bs['total_weight']
 			blk_data['bs'] = bs
 
 		if 'miner' in self.fnames:
@@ -506,7 +525,7 @@ class BlocksInfo:
 	async def create_diff_stats(self):
 
 		c = self.rpc
-		rel = self.tip % 2016
+		rel = self.tip % self.rpc.proto.diff_adjust_interval
 
 		tip_hdr = (
 			self.hdrs[-1] if self.hdrs[-1]['height'] == self.tip else
@@ -520,14 +539,14 @@ class BlocksInfo:
 			sample_blks = rel
 			bdi = ( tip_hdr['time'] - rel_hdr['time'] ) / rel
 		else:
-			sample_blks = min_sample_blks
+			sample_blks = min(min_sample_blks,self.tip)
 			start_hdr = await c.call('getblockheader',await c.call('getblockhash',self.tip-sample_blks))
 			diff_adj = float(tip_hdr['difficulty'] / start_hdr['difficulty'])
 			time1 = rel_hdr['time'] - start_hdr['time']
 			time2 = tip_hdr['time'] - rel_hdr['time']
 			bdi = ((time1 * diff_adj) + time2) / sample_blks
 
-		rem = 2016 - rel
+		rem = self.rpc.proto.diff_adjust_interval - rel
 
 		return ( 'difficulty', (
 			'Difficulty Statistics:',
@@ -572,13 +591,15 @@ class BlocksInfo:
 			spec_convs = {
 				'interval':    spec_conv(0,  lambda arg: secs_to_ms(arg)),
 				'utxo_inc':    spec_conv(-1, '{:<+}'),
-				'mb_per_hour': spec_conv(0,  '{:.4f}'),
+				'mb_per_hour': spec_conv(0,  '{}'),
 			},
 			spec_vals = (
 				spec_val(
 					'mb_per_hour', 'MB/hr', 'interval',
 					lambda values: 'bs' in self.deps,
-					lambda values: (self.total_bytes / 10000) / (self.total_solve_time / 36)
+					lambda values: (
+						'{:.4f}'.format((self.total_bytes / 10000) / (self.total_solve_time / 36))
+						if self.total_solve_time else 'N/A' ),
 				),
 			)
 		)

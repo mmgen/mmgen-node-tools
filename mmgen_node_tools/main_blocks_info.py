@@ -148,6 +148,11 @@ This program requires a txindex-enabled daemon for correct operation.
 		f = fmt_list(BlocksInfo.fields,fmt='bare'),
 		s = fmt_list(BlocksInfo.all_stats,fmt='bare'),
 		p = g.prog_name )
+	},
+	'code': {
+		'notes': lambda proto,s: s.format(
+			adj_interval = proto.diff_adjust_interval,
+		)
 	}
 }
 
@@ -158,7 +163,7 @@ async def main():
 	from mmgen.protocol import init_proto_from_opts
 	from mmgen.rpc import rpc_init
 
-	proto = init_proto_from_opts()
+	proto = init_proto_from_opts(need_amt=True)
 
 	cls = JSONBlocksInfo if opt.json else BlocksInfo
 
