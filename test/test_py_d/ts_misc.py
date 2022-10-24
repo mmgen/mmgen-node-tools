@@ -17,6 +17,8 @@ from ..include.common import *
 from .common import *
 from .ts_base import *
 
+refdir = os.path.join('test','ref','ticker')
+
 class TestSuiteHelp(TestSuiteBase):
 	'help, info and usage screens'
 	networks = ('btc','ltc','bch')
@@ -49,8 +51,6 @@ class TestSuiteHelp(TestSuiteBase):
 
 	def longhelpscreens(self):
 		return self.helpscreens(arg='--longhelp',expect='USAGE:.*LONG OPTIONS:')
-
-refdir = os.path.join('test','ref','ticker')
 
 class TestSuiteScripts(TestSuiteBase):
 	'scripts not requiring a coin daemon'

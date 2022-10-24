@@ -74,13 +74,13 @@ block number is expected.
 
 If the requested range ends at the current chain tip, an estimate of the next
 difficulty adjustment is also displayed. The estimate is based on the average
-Block Discovery Interval from the beginning of the current 2016-block period.
+Block Discovery Interval from the beginning of the current {I}-block period.
 
 All fee fields except for 'totalfee' are in satoshis per virtual byte.
 
-AVAILABLE FIELDS: {f}
+AVAILABLE FIELDS: {F}
 
-AVAILABLE STATS: {s}
+AVAILABLE STATS: {S}
 
 EXAMPLES:
 
@@ -110,7 +110,7 @@ EXAMPLES:
     $ {p} -o block,date,hash 245798 170 624044
 
     Display every difficulty adjustment from Genesis Block to chain tip:
-    $ {p} -o +difficulty 0-cur+2016
+    $ {p} -o +difficulty 0-cur+{I}
 
     Display roughly a block a day over the last two weeks.  Note that
     multiplication is allowed in the nBlocks spec:
@@ -144,14 +144,13 @@ EXAMPLES:
     $ {p} --rpc-backend=aio -H +1000
 
 This program requires a txindex-enabled daemon for correct operation.
-""".format(
-		f = fmt_list(BlocksInfo.fields,fmt='bare'),
-		s = fmt_list(BlocksInfo.all_stats,fmt='bare'),
-		p = g.prog_name )
-	},
+""" },
 	'code': {
 		'notes': lambda proto,s: s.format(
-			adj_interval = proto.diff_adjust_interval,
+			I = proto.diff_adjust_interval,
+			F = fmt_list(BlocksInfo.fields,fmt='bare'),
+			S = fmt_list(BlocksInfo.all_stats,fmt='bare'),
+			p = g.prog_name,
 		)
 	}
 }
