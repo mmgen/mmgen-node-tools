@@ -59,7 +59,8 @@ create_dir_links() {
 create_test_links() {
 	sources='
 		test/include
-		test/overlay
+		test/overlay/__init__.py
+		test/overlay/fakemods/mmgen
 		test/__init__.py
 		test/test.py
 		test/unit_tests.py

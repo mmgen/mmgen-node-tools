@@ -14,7 +14,7 @@
 #  mmnode-feeview             -
 #  mmnode-halving-calculator  OK
 #  mmnode-netrate             -
-#  mmnode-peerblocks          -
+#  mmnode-peerblocks          OK
 #  mmnode-ticker              OK
 #  mmnode-txfind              -
 
@@ -38,10 +38,10 @@ list_avail_tests() {
 }
 
 init_groups() {
-	dfl_tests='unit misc scripts btc_rt bch_rt ltc_rt'
+	dfl_tests='unit misc scripts btc btc_rt bch_rt ltc_rt'
 	extra_tests=''
-	noalt_tests='unit misc scripts btc_rt'
-	quick_tests='unit misc scripts btc_rt'
+	noalt_tests='unit misc scripts btc btc_rt'
+	quick_tests='unit misc scripts btc btc_rt'
 	qskip_tests='bch_rt ltc_rt'
 }
 
@@ -60,6 +60,11 @@ init_tests() {
 	s_scripts="The following tests will test scripts not requiring a coin daemon"
 	t_scripts="- $test_py scripts"
 	f_scripts='No-daemon script tests completed'
+
+	i_btc='Bitcoin fake RPC data'
+	s_btc="The following tests will test various scripts with fake RPC data"
+	t_btc="- $test_py main"
+	f_btc='Bitcoin fake RPC data tests completed'
 
 	i_btc_rt='Bitcoin regtest'
 	s_btc_rt="The following tests will test various scripts using regtest mode"

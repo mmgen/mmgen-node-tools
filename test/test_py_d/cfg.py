@@ -15,6 +15,7 @@ test.test_py_d.cfg: configuration data for test.py
 import os
 
 cmd_groups_dfl = {
+	'main':        ('TestSuiteMain',{}),
 	'helpscreens': ('TestSuiteHelp',{'modname':'misc','full_data':True}),
 	'scripts':     ('TestSuiteScripts',{'modname':'misc'}),
 	'regtest':     ('TestSuiteRegtest',{}),
@@ -25,6 +26,7 @@ cmd_groups_extra = {}
 cfgs = {
 	'1':  {}, # regtest
 	'2':  {}, # scripts
+	'3':  {}, # main
 }
 
 def fixup_cfgs(): pass
