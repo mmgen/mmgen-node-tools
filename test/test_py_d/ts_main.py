@@ -71,19 +71,19 @@ class TestSuiteMain(TestSuiteBase):
 
 		t.send('0')
 		time.sleep(0.2)
-		t.send('\n')
+		t.send('\n' if opt.pexpect_spawn else '0\n') # TODO: check for readline availability
 		t.expect('Unable to disconnect peer 0')
 		t.expect('PEERS')
 
 		t.send('1')
 		time.sleep(0.2)
-		t.send('1\n')
+		t.send('1\n' if opt.pexpect_spawn else '11\n')
 		t.expect('11: invalid peer number')
 		t.expect('PEERS')
 
 		t.send('2')
 		time.sleep(0.2)
-		t.send('\n')
+		t.send('\n' if opt.pexpect_spawn else '2\n')
 		t.expect('Disconnecting peer 2')
 		t.expect('PEERS')
 

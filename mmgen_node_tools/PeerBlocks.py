@@ -67,6 +67,7 @@ class Display(PollDisplay):
 		with self.info_lock:
 			msg('')
 			term.reset()
+			# readline required for correct operation here; without it, user must re-type first digit
 			ret = line_input('peer number> ',insert_txt=s,hold_protect=False)
 			term.init(noecho=True)
 			self.enable_display = False # prevent display from updating before process_input()
