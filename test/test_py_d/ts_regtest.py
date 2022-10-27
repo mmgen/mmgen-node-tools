@@ -47,6 +47,7 @@ class TestSuiteRegtest(TestSuiteBase):
 		('subgroup.fund_addrbal',       []),
 		('subgroup.addrbal',            ['fund_addrbal']),
 		('subgroup.blocks_info',        ['addrbal']),
+		('subgroup.feeview',            []),
 		('stop',                        'stopping regtest daemon'),
 	)
 	cmd_subgroups = {
@@ -83,6 +84,18 @@ class TestSuiteRegtest(TestSuiteBase):
 		('blocks_info2',              "blocks-info (no args)"),
 		('blocks_info3',              "blocks-info +100"),
 		('blocks_info4',              "blocks-info --miner-info --fields=all --stats=all +1"),
+	),
+	'feeview': (
+		"'mmnode-feeview' script",
+		('feeview_setup',             'setting up feeview test'),
+		('feeview1',                  "'mmnode-feeview'"),
+		('feeview2',                  "'mmnode-feeview --columns=40 --include-current'"),
+		('feeview3',                  "'mmnode-feeview --precision=6'"),
+		('feeview4',                  "'mmnode-feeview --detail'"),
+		('feeview5',                  "'mmnode-feeview --show-empty --log'"),
+		('feeview6',                  "'mmnode-feeview --ignore-below=1MB'"),
+		('feeview7',                  "'mmnode-feeview --ignore-below=20kB'"),
+		('feeview8',                  "'mmnode-feeview' (empty mempool)"),
 	),
 	}
 
@@ -246,6 +259,128 @@ class TestSuiteRegtest(TestSuiteBase):
 			'Current height: 396',
 			'Next diff adjust: 2016'
 		])
+
+	async def feeview_setup(self):
+
+		def create_pairs(nPairs):
+
+			from mmgen.tool.api import tool_api
+			from collections import namedtuple
+
+			t = tool_api()
+			t.init_coin(self.proto.coin,self.proto.network)
+			t.addrtype = 'compressed' if self.proto.coin == 'BCH' else 'bech32'
+			wp = namedtuple('wifaddrpair',['wif','addr'])
+
+			def gen():
+				for n in range(1,nPairs+1):
+					wif = t.hex2wif(f'{n:064x}')
+					yield wp( wif, t.wif2addr(wif) )
+
+			return list(gen())
+
+		def gen_fees(n_in,low,high):
+
+			# very approximate tx size estimation:
+			ibytes,wbytes,obytes = (148,0,34) if self.proto.coin == 'BCH' else (43,108,31)
+			x = (ibytes + (wbytes//4) + (obytes * nPairs)) * self.proto.coin_amt(self.proto.coin_amt.satoshi)
+
+			n = n_in - 1
+			vmax = high - low
+
+			for i in range(n_in):
+				yield (low + (i/n)**6 * vmax) * x
+
+		async def do_tx(inputs,outputs,wif):
+			tx_hex = await r.rpc_call( 'createrawtransaction', inputs, outputs )
+			tx = await r.rpc_call( 'signrawtransactionwithkey', tx_hex, [wif], [], self.proto.sighash_type )
+			assert tx['complete'] == True
+			return tx['hex']
+
+		async def do_tx1():
+			us = await r.rpc_call('listunspent',wallet='miner')
+			fee = self.proto.coin_amt('0.001')
+			outputs = {p.addr:tx1_amt for p in pairs[:nTxs]}
+			outputs.update({burn_addr: us[0]['amount'] - (tx1_amt*nTxs) - fee})
+			return await do_tx(
+				[{ 'txid': us[0]['txid'], 'vout': 0 }],
+				outputs,
+				r.miner_wif )
+
+		async def do_tx2(tx,pairno):
+			fee = fees[pairno]
+			outputs = {p.addr:tx2_amt for p in pairs}
+			outputs.update({burn_addr: tx1_amt - (tx2_amt*len(pairs)) - fee})
+			return await do_tx(
+				[{ 'txid': tx['txid'], 'vout': pairno }],
+				outputs,
+				pairs[pairno].wif )
+
+		async def do_txs(tx_in):
+			for pairno in range(nTxs):
+				tx_hex = await do_tx2(tx_in,pairno)
+				await r.rpc_call('sendrawtransaction',tx_hex)
+
+		self.spawn('',msg_only=True)
+
+		r = self.regtest
+		nPairs = 100
+		nTxs = 25
+		tx1_amt = self.proto.coin_amt('{:0.4f}'.format(24 / (nTxs+1))) # 25 BTC subsidy
+		tx2_amt = self.proto.coin_amt('0.0001')
+
+		imsg(f'Creating {nPairs} key-address pairs')
+		pairs = create_pairs(nPairs+1)
+		burn_addr = pairs.pop()[1]
+
+		imsg(f'Creating funding transaction with {nTxs} outputs of value {tx1_amt} {self.proto.coin}')
+		tx1_hex = await do_tx1()
+
+		imsg(f'Relaying funding transaction')
+		await r.rpc_call('sendrawtransaction',tx1_hex)
+
+		imsg(f'Mining a block')
+		await r.generate(1,silent=True)
+
+		imsg(f'Generating fees for mempool transactions')
+		fees = list(gen_fees(nTxs,2,120))
+
+		imsg(f'Creating and relaying {nTxs} mempool transactions with {nPairs} outputs each')
+		await do_txs(await r.rpc_call('decoderawtransaction',tx1_hex))
+
+		return 'ok'
+
+	def _feeview(self,args,expect_list=[]):
+		t = self.spawn('mmnode-feeview',args)
+		if expect_list:
+			t.match_expect_list(expect_list)
+		return t
+
+	def feeview1(self):
+		return self._feeview([])
+
+	def feeview2(self):
+		return self._feeview(['--columns=40','--include-current'])
+
+	def feeview3(self):
+		return self._feeview(['--precision=6'])
+
+	def feeview4(self):
+		return self._feeview(['--detail'])
+
+	def feeview5(self):
+		return self._feeview(['--show-empty','--log',f'--outdir={self.tmpdir}'])
+
+	def feeview6(self):
+		return self._feeview(['--ignore-below=1MB'])
+
+	def feeview7(self):
+		return self._feeview(['--ignore-below=4kB'])
+
+	async def feeview8(self):
+		imsg('Clearing mempool')
+		await self.regtest.generate(1,silent=True)
+		return self._feeview([])
 
 	def stop(self):
 		if opt.no_daemon_stop:

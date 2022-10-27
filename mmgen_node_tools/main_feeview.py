@@ -52,7 +52,8 @@ opts.init({
 -h, --help            Print this help message
 --, --longhelp        Print help message for long options (common options)
 -c, --include-current Include current bracket’s TXs in cumulative MB value
--d, --detail          Same as --ranges --show-mb-col --precision=6
+-d, --outdir=D        Write log data to directory 'D'
+-D, --detail          Same as --ranges --show-mb-col --precision=6
 -e, --show-empty      Show all fee brackets, including empty ones
 -i, --ignore-below=B  Ignore fee brackets with less than 'B' bytes of TXs
 -l, --log             Log JSON-RPC mempool data to 'mempool.json'
@@ -100,18 +101,24 @@ class fee_bracket:
 def log(data,fn):
 	import json
 	from mmgen.rpc import json_encoder
-	open(fn,'w').write(json.dumps(data,cls=json_encoder,sort_keys=True,indent=4))
+	from mmgen.fileutil import write_data_to_file
+	write_data_to_file(
+		outfile = fn,
+		data = json.dumps(data,cls=json_encoder,sort_keys=True,indent=4),
+		desc = 'mempool',
+		ask_overwrite = False )
 
 def create_data(coin_amt,mempool):
 	out = [fee_bracket(fee_brackets[i],fee_brackets[i-1] if i else 0) for i in range(len(fee_brackets))]
 
 	# populate fee brackets:
+	size_key = 'size' if proto.coin == 'BCH' else 'vsize'
 	for tx in mempool.values():
 		fee = coin_amt(tx['fees']['base']).to_unit('satoshi')
-		vsize = tx['vsize']
+		size = tx[size_key]
 		for bracket in out:
-			if fee / vsize < bracket.top:
-				bracket.tx_bytes += vsize
+			if fee / size < bracket.top:
+				bracket.tx_bytes += size
 				break
 
 	# remove empty top brackets:
@@ -132,19 +139,23 @@ def create_data(coin_amt,mempool):
 
 	return out
 
-def gen_header(host,blockcount):
-	yield('MEMPOOL FEE STRUCTURE ({})\n{} UTC\nBlock {}'.format(
-		host,
-		make_timestr(),
-		blockcount,
-		))
+def gen_header(host,mempool,blockcount):
+
+	yield(fmt(f"""
+		Mempool Fee Structure
+		Date:     {make_timestr()} UTC
+		Host:     {host}
+		Network:  {proto.coin.upper()} {proto.network.upper()}
+		Block:    {blockcount}
+		TX count: {len(mempool)}
+		""")).strip()
 
 	if opt.show_empty:
 		yield('Displaying all fee brackets')
 	elif opt.ignore_below:
-		yield('Ignoring fee brackets with less than {} bytes ({})'.format(
+		yield('Ignoring fee brackets with less than {:,} bytes ({})'.format(
 			ignore_below,
-			int2bytespec(ignore_below,'MB','0.6'),
+			int2bytespec(ignore_below,'MB','0.6',strip=True,add_space=True),
 			))
 
 	if opt.include_current:
@@ -187,6 +198,7 @@ def gen_body(data):
 async def main():
 
 	from mmgen.protocol import init_proto_from_opts
+	global proto
 	proto = init_proto_from_opts(need_amt=True)
 
 	from mmgen.rpc import rpc_init
@@ -199,7 +211,10 @@ async def main():
 
 	data = create_data(proto.coin_amt,mempool)
 	stdout_or_pager(
-		'\n'.join(gen_header(c.host,await c.call('getblockcount'))) + '\n' +
+		'\n'.join(gen_header(
+			c.host,
+			mempool,
+			await c.call('getblockcount') )) + '\n\n' +
 		'\n'.join(gen_body(data)) + '\n' )
 
 async_run(main())
