@@ -17,6 +17,7 @@ from mmgen.globalvars import g
 from mmgen.opts import opt
 from mmgen.util import die,gmsg
 from mmgen.protocol import init_proto
+from mmgen.proto.btc.regtest import MMGenRegtest
 from ..include.common import *
 from .common import *
 
@@ -93,6 +94,7 @@ class TestSuiteRegtest(TestSuiteBase):
 			die(2,'--testnet and --regtest options incompatible with regtest test suite')
 		self.proto = init_proto(self.proto.coin,network='regtest',need_amt=True)
 		self.addrs = gen_addrs(self.proto,'regtest',[1,2,3,4,5])
+		self.regtest = MMGenRegtest(self.proto.coin)
 
 	def setup(self):
 		stop_test_daemons(self.proto.network_id,force=True,remove_datadir=True)

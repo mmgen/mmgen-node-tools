@@ -297,25 +297,22 @@ class fake_data:
 	"""
 	}
 
-	def make_address_data():
-		for line in fake_data.addresses.strip().split('\n'):
-			data = line.split(maxsplit=2)
-			yield (data[0], {k:v for k,v in zip(('id','addr','subver'),data)})
-
-	def make_iterations_data():
-		for line in fake_data.iterations.strip().split('\n'):
-			data = line.split(maxsplit=1)
-			yield (data[0], data[1].split())
-
-	def make_blocks_data(iterations):
-		for peer,blocks_str in fake_data.blocks.items():
-			iter_strs = dict([s.lstrip().split(maxsplit=1) for s in blocks_str.strip().split('\n') if ' ' in s])
-			yield (peer,dict((i,iter_strs.get(i,'').split()) for i in iterations))
-
 	def make_data():
-		address_data = dict(fake_data.make_address_data())
-		iterations_data = dict(fake_data.make_iterations_data())
-		blocks_data = dict(fake_data.make_blocks_data(iterations_data))
+
+		def gen_address_data():
+			for line in fake_data.addresses.strip().split('\n'):
+				data = line.split(maxsplit=2)
+				yield (data[0], {k:v for k,v in zip(('id','addr','subver'),data)})
+
+		def gen_iterations_data():
+			for line in fake_data.iterations.strip().split('\n'):
+				data = line.split(maxsplit=1)
+				yield (data[0], data[1].split())
+
+		def gen_blocks_data(iterations):
+			for peer,blocks_str in fake_data.blocks.items():
+				iter_strs = dict([s.lstrip().split(maxsplit=1) for s in blocks_str.strip().split('\n') if ' ' in s])
+				yield (peer,dict((i,iter_strs.get(i,'').split()) for i in iterations))
 
 		def make_peerinfo(peer_id,blocks,iter_no):
 			d = address_data[peer_id]
@@ -333,6 +330,10 @@ class fake_data:
 					[make_peerinfo(peer_id,blocks,iter_no) for peer_id,blocks in blocks_data.items()
 						if peer_id in iterations_data[iter_no] ]
 				)
+
+		address_data = dict(gen_address_data())
+		iterations_data = dict(gen_iterations_data())
+		blocks_data = dict(gen_blocks_data(iterations_data))
 
 		fake_data.peerinfo = dict(gen_data())
 

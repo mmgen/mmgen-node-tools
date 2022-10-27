@@ -61,7 +61,6 @@ opts.init({
 -P, --pager           Pipe the output to a pager
 -r, --ranges          Display fee brackets as ranges
 -s, --show-mb-col     Display column with each fee bracket’s megabyte count
--w, --width=W         Force output width of 'W' columns (default: term width)
 """,
 	'notes': """
 + By default, fee bracket row labels include only the top of the range.
@@ -83,16 +82,12 @@ if opt.ignore_below:
 		die(1,'Conflicting options: --ignore-below, --show-empty')
 	ignore_below = parse_bytespec(opt.ignore_below)
 
-if opt.precision:
-	precision = check_int_between(opt.precision,min_prec,max_prec,'--precision arg')
-else:
-	precision = dfl_prec
+precision = (
+	check_int_between(opt.precision,min_prec,max_prec,'--precision arg')
+	if opt.precision else dfl_prec )
 
-if opt.width:
-	width = check_int_between(opt.width,40,1024,'--width arg')
-else:
-	from mmgen.term import get_terminal_size
-	width = get_terminal_size()[0]
+from mmgen.term import get_terminal_size
+width = g.columns or get_terminal_size().width
 
 class fee_bracket:
 	def __init__(self,top,bottom):
@@ -101,12 +96,6 @@ class fee_bracket:
 		self.tx_bytes = 0
 		self.tx_bytes_cum = 0
 		self.skip = False
-
-def get_fake_data(fn): # for debugging
-	import json
-	from mmgen.rpc import json_encoder
-	from decimal import Decimal
-	return json.loads(open(os.path.join(fn)).read(),parse_float=Decimal)
 
 def log(data,fn):
 	import json
@@ -129,9 +118,6 @@ def create_data(coin_amt,mempool):
 	while out and out[-1].tx_bytes == 0:
 		out.pop()
 
-	if not out:
-		die(1,'No data!')
-
 	out.reverse() # cumulative totals and display are top-down
 
 	# calculate cumulative byte totals, filter rows:
@@ -152,6 +138,7 @@ def gen_header(host,blockcount):
 		make_timestr(),
 		blockcount,
 		))
+
 	if opt.show_empty:
 		yield('Displaying all fee brackets')
 	elif opt.ignore_below:
@@ -159,29 +146,28 @@ def gen_header(host,blockcount):
 			ignore_below,
 			int2bytespec(ignore_below,'MB','0.6'),
 			))
+
 	if opt.include_current:
 		yield('Including transactions in current fee bracket in Total MB amounts')
 
 def fmt_mb(n):
-	return int2bytespec(n,'MB',f'0.{precision}',False)
+	return int2bytespec(n,'MB',f'0.{precision}',print_sym=False)
 
 def gen_body(data):
-	tx_bytes_max = max(i.tx_bytes for i in data)
-	top_max = max(i.top for i in data if not i.skip)
-	bot_max = max(i.bottom for i in data if not i.skip)
+	tx_bytes_max = max((i.tx_bytes for i in data),default=0)
+	top_max = max((i.top for i in data),default=0)
+	bot_max = max((i.bottom for i in data),default=0)
 	col1_w = max(len(f'{bot_max}-{top_max}') if opt.ranges else len(f'{top_max}'),6)
 	col2_w = len(fmt_mb(tx_bytes_max)) if opt.show_mb_col else 0
-	col3_w = len(fmt_mb(data[-1].tx_bytes_cum))
+	col3_w = len(fmt_mb(data[-1].tx_bytes_cum)) if data else 0
 	col4_w = width - col1_w - col2_w - col3_w - (4 if col2_w else 3)
 	if opt.show_mb_col:
 		fs = '{a:<%i} {b:>%i} {c:>%i} {d}' % (col1_w,col2_w,col3_w)
 	else:
 		fs = '{a:<%i} {c:>%i} {d}' % (col1_w,col3_w)
 
-	yield(
-		'\n' + fs.format(a='',      b='',                  c=f'{"Total":<{col3_w}}', d='') +
-		'\n' + fs.format(a='sat/B', b=f'{"MB":<{col2_w}}', c=f'{"MB":<{col3_w}}',    d='')
-	)
+	yield fs.format(a='',      b='',                  c=f'{"Total":<{col3_w}}', d='')
+	yield fs.format(a='sat/B', b=f'{"MB":<{col2_w}}', c=f'{"MB":<{col3_w}}',    d='')
 
 	for i in data:
 		if not i.skip:
@@ -195,7 +181,7 @@ def gen_body(data):
 	yield(fs.format(
 		a = 'TOTAL',
 		b = '',
-		c = fmt_mb(data[-1].tx_bytes_cum + data[-1].tx_bytes),
+		c = fmt_mb(data[-1].tx_bytes_cum + data[-1].tx_bytes if data else 0),
 		d = '' ))
 
 async def main():
@@ -206,9 +192,7 @@ async def main():
 	from mmgen.rpc import rpc_init
 	c = await rpc_init(proto)
 
-#	pmsg(await c.call('getmempoolinfo'))
 	mempool = await c.call('getrawmempool',True)
-#	mempool = get_fake_data('test_data/mempool-sample.json')
 
 	if opt.log:
 		log(mempool,'mempool.json')

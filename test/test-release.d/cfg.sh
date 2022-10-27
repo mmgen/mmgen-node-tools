@@ -24,7 +24,7 @@ groups_desc="
 	default  - All tests minus the extra tests
 	extra    - All tests minus the default tests
 	noalt    - BTC-only tests
-	quick    - Default tests minus btc_tn, bch, bch_rt, ltc and ltc_rt
+	quick    - Default tests minus bch_rt and ltc_rt
 	qskip    - The tests skipped in the 'quick' test group
 "
 

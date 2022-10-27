@@ -37,7 +37,7 @@ class Display(PollDisplay):
 		if not term:
 			term = get_term()
 			term.init(noecho=True)
-			term_width = g.columns or get_terminal_size()[0]
+			term_width = g.columns or get_terminal_size().width
 			msg_r(CUR_HOME+ERASE_ALL+CUR_HOME)
 
 	async def get_info(self,rpc):
