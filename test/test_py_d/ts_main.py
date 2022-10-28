@@ -35,15 +35,16 @@ class TestSuiteMain(TestSuiteBase):
 		'peerblocks': (
 			"'mmnode-peerblocks' script",
 			('peerblocks1', '--help'),
-			('peerblocks2', 'interactive'),
-			('peerblocks3', 'interactive, 80 columns'),
+			('peerblocks2', 'interactive (popen spawn)'),
+			('peerblocks3', 'interactive, 80 columns (pexpect_spawn)'),
 		),
 	}
 
-	def peerblocks(self,args,expect_list=None):
+	def peerblocks(self,args,expect_list=None,pexpect_spawn=False):
 		t = self.spawn(
 			f'mmnode-peerblocks',
-			args )
+			args,
+			pexpect_spawn = pexpect_spawn )
 		if opt.exact_output: # disable echoing of input
 			t.p.logfile = None
 			t.p.logfile_read = sys.stdout
@@ -53,13 +54,13 @@ class TestSuiteMain(TestSuiteBase):
 
 	def peerblocks1(self):
 		t = self.peerblocks(['--help'])
-		if opt.pexpect_spawn:
+		if t.pexpect_spawn:
 			t.send('q')
 		return t
 
-	def peerblocks2(self,args=[]):
+	def peerblocks2(self,args=[],pexpect_spawn=False):
 
-		t = self.peerblocks(args)
+		t = self.peerblocks(args,pexpect_spawn=pexpect_spawn)
 
 		for i in range(5):
 			t.expect('PEERS')
@@ -69,21 +70,23 @@ class TestSuiteMain(TestSuiteBase):
 		for i in range(3):
 			t.expect('PEERS')
 
+		sleep_secs = 0.2
+
 		t.send('0')
-		time.sleep(0.2)
-		t.send('\n' if opt.pexpect_spawn else '0\n') # TODO: check for readline availability
+		time.sleep(sleep_secs)
+		t.send('\n' if pexpect_spawn else '0\n') # TODO: check for readline availability
 		t.expect('Unable to disconnect peer 0')
 		t.expect('PEERS')
 
 		t.send('1')
-		time.sleep(0.2)
-		t.send('1\n' if opt.pexpect_spawn else '11\n')
+		time.sleep(sleep_secs)
+		t.send('1\n' if pexpect_spawn else '11\n')
 		t.expect('11: invalid peer number')
 		t.expect('PEERS')
 
 		t.send('2')
-		time.sleep(0.2)
-		t.send('\n' if opt.pexpect_spawn else '2\n')
+		time.sleep(sleep_secs)
+		t.send('\n' if pexpect_spawn else '2\n')
 		t.expect('Disconnecting peer 2')
 		t.expect('PEERS')
 
@@ -92,4 +95,4 @@ class TestSuiteMain(TestSuiteBase):
 		return t
 
 	def peerblocks3(self):
-		return self.peerblocks2(['--columns=80'])
+		return self.peerblocks2(['--columns=80'],pexpect_spawn=True)
