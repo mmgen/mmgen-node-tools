@@ -27,7 +27,7 @@ class PollDisplay():
 		self.display_kill_flag = threading.Event()
 
 	def get_input(self):
-		return get_char(immed_chars='q',prehold_protect=False,num_chars=1)
+		return get_char(immed_chars='q',prehold_protect=False,num_bytes=1)
 
 	async def process_input(self,rpc):
 		return True

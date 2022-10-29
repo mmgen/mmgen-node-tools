@@ -61,7 +61,7 @@ class Display(PollDisplay):
 		return await rpc.call('disconnectnode',addr)
 
 	def get_input(self):
-		s = get_char(immed_chars='q0123456789',prehold_protect=False,num_chars=1)
+		s = get_char(immed_chars='q0123456789',prehold_protect=False,num_bytes=1)
 		if not is_int(s):
 			return s
 		with self.info_lock:
