@@ -168,9 +168,9 @@ async def main():
 							c = date(t),
 							d = ' P' if n > nhist else '' if n < nhist else ' E',
 							e = f'{bdr:8.5f}',
-							f = proto.coin_amt(sub,from_unit='satoshi').fmt(fs='2.8'),
-							g = proto.coin_amt(mined,from_unit='satoshi').fmt(fs='8.8'),
-							h = proto.coin_amt(total_mined,from_unit='satoshi').fmt(fs='8.8')
+							f = proto.coin_amt(sub,from_unit='satoshi').fmt(iwidth=2,prec=8),
+							g = proto.coin_amt(mined,from_unit='satoshi').fmt(iwidth=8,prec=8),
+							h = proto.coin_amt(total_mined,from_unit='satoshi').fmt(iwidth=8,prec=8)
 						) for n,sub,blk,mined,total_mined,bdr,t in gen_data())
 		)
 
