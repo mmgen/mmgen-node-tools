@@ -197,12 +197,15 @@ To add a portfolio, edit the file
 	}
 }
 
-cmd_args = opts.init(opts_data,do_post_init=True)
+gcfg = opts.init(opts_data,do_post_init=True)
+
+import mmgen_node_tools.Ticker as Ticker
+Ticker.gcfg = gcfg
 
 cfg_in = get_cfg_in()
 
-cfg = make_cfg(cmd_args,cfg_in)
+cfg = make_cfg(gcfg._args,cfg_in)
 
-opts.post_init()
+opts.post_init(gcfg)
 
 main(cfg,cfg_in)

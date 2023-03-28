@@ -45,7 +45,7 @@ class TestSuiteMain(TestSuiteBase):
 			f'mmnode-peerblocks',
 			args,
 			pexpect_spawn = pexpect_spawn )
-		if opt.exact_output: # disable echoing of input
+		if cfg.exact_output: # disable echoing of input
 			t.p.logfile = None
 			t.p.logfile_read = sys.stdout
 		if expect_list:

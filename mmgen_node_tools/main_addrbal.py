@@ -71,7 +71,7 @@ def do_output_tabular(proto,addr_data,blk_hdrs):
 
 	fs = (
 		' {n:>%s} {a} {u} {b:>%s} {t:19}  {B:>%s} {T:19} {A}' % (col1w,max(5,fb_w),max(4,lb_w))
-			if opt.first_block else
+			if cfg.first_block else
 		' {n:>%s} {a} {u} {B:>%s} {T:19} {A}' % (col1w,max(4,lb_w)) )
 
 	Msg('\n' + fs.format(
@@ -109,20 +109,19 @@ def do_output_tabular(proto,addr_data,blk_hdrs):
 
 async def main(req_addrs):
 
-	from mmgen.protocol import init_proto_from_opts
-	proto = init_proto_from_opts(need_amt=True)
+	proto = cfg._proto
 
 	from mmgen.addr import CoinAddr
 	addrs = [CoinAddr(proto,addr) for addr in req_addrs]
 
 	from mmgen.rpc import rpc_init
-	rpc = await rpc_init(proto)
+	rpc = await rpc_init( cfg, proto )
 
 	height = await rpc.call('getblockcount')
 	Msg(f'{proto.coin} {proto.network.upper()} [height {height}]')
 
 	from mmgen.proto.btc.misc import scantxoutset
-	res = await scantxoutset( rpc, [f'addr({addr})' for addr in addrs] )
+	res = await scantxoutset( cfg, rpc, [f'addr({addr})' for addr in addrs] )
 
 	if not res['success']:
 		die(1,'UTXO scanning failed or was interrupted')
@@ -155,16 +154,16 @@ async def main(req_addrs):
 		blk_hashes = await rpc.batch_call('getblockhash', [(h,) for h in blk_heights])
 		blk_hdrs = await rpc.batch_call('getblockheader', [(H,) for H in blk_hashes])
 
-		(do_output_tabular if opt.tabular else do_output)( proto, addr_data, dict(zip(blk_heights,blk_hdrs)) )
+		(do_output_tabular if cfg.tabular else do_output)( proto, addr_data, dict(zip(blk_heights,blk_hdrs)) )
 
-cmd_args = opts.init(opts_data,init_opts={'rpc_backend':'aiohttp'})
+cfg = opts.init(opts_data,init_opts={'rpc_backend':'aiohttp'})
 
-if len(cmd_args) < 1:
+if len(cfg._args) < 1:
 	die(1,'This command requires at least one coin address argument')
 
 from mmgen.obj import CoinTxID,Int
 
 try:
-	async_run(main(cmd_args))
+	async_run(main(cfg._args))
 except KeyboardInterrupt:
 	sys.stderr.write('\n')

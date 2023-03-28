@@ -58,14 +58,11 @@ async def main(txid):
 	if len(txid) != 64 or not is_hex_str(txid):
 		die(2,f'{txid}: invalid transaction ID')
 
-	if opt.verbose:
+	if cfg.verbose:
 		msg(f'TxID: {txid}')
 
-	from mmgen.protocol import init_proto_from_opts
-	proto = init_proto_from_opts()
-
 	from mmgen.rpc import rpc_init
-	c = await rpc_init(proto)
+	c = await rpc_init(cfg._proto)
 
 	exitval = 0
 	try:
@@ -85,11 +82,11 @@ async def main(txid):
 
 	return exitval
 
-cmd_args = opts.init(opts_data)
+cfg = opts.init(opts_data)
 
-msgs = msg_data['quiet' if opt.quiet else 'normal']
+msgs = msg_data['quiet' if cfg.quiet else 'normal']
 
-if len(cmd_args) != 1:
+if len(cfg._args) != 1:
 	die(1,'One transaction ID must be specified')
 
-sys.exit(async_run(main(cmd_args[0])))
+sys.exit(async_run(main(cfg._args[0])))

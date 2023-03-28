@@ -13,8 +13,6 @@ test.test_py_d.ts_regtest: Regtest tests for the test.py test suite
 """
 
 import os
-from mmgen.globalvars import g
-from mmgen.opts import opt
 from mmgen.util import die,gmsg
 from mmgen.protocol import init_proto
 from mmgen.proto.btc.regtest import MMGenRegtest
@@ -28,7 +26,7 @@ args2 = ['--bob','--rpc-backend=http']
 
 def gen_addrs(proto,network,keys):
 	from mmgen.tool.api import tool_api
-	tool = tool_api()
+	tool = tool_api(cfg)
 	tool.init_coin(proto.coin,'regtest')
 	tool.addrtype = proto.mmtypes[-1]
 	return [tool.privhex2addr('{:064x}'.format(key)) for key in keys]
@@ -105,9 +103,9 @@ class TestSuiteRegtest(TestSuiteBase):
 			return
 		if self.proto.testnet:
 			die(2,'--testnet and --regtest options incompatible with regtest test suite')
-		self.proto = init_proto(self.proto.coin,network='regtest',need_amt=True)
+		self.proto = init_proto( cfg, self.proto.coin, network='regtest', need_amt=True )
 		self.addrs = gen_addrs(self.proto,'regtest',[1,2,3,4,5])
-		self.regtest = MMGenRegtest(self.proto.coin)
+		self.regtest = MMGenRegtest(cfg,self.proto.coin)
 
 	def setup(self):
 		stop_test_daemons(self.proto.network_id,force=True,remove_datadir=True)
@@ -128,7 +126,7 @@ class TestSuiteRegtest(TestSuiteBase):
 		return self.halving_calculator(['--help'],['USAGE:'])
 
 	def halving_calculator2(self):
-		return self.halving_calculator([],['Current block: 393',f'Current block subsidy: 12.5 {g.coin}'])
+		return self.halving_calculator([],['Current block: 393',f'Current block subsidy: 12.5 {cfg.coin}'])
 
 	def halving_calculator3(self):
 		return self.halving_calculator(['--list'],['33 4950','0'])
@@ -158,7 +156,7 @@ class TestSuiteRegtest(TestSuiteBase):
 		return self.addrbal(
 			args2 + [self.addrs[0]],
 			[
-				f'Balance: 0.357 {g.coin}',
+				f'Balance: 0.357 {cfg.coin}',
 				'2 unspent outputs in 2 blocks',
 				'394','0.123',
 				'395','0.234'
@@ -246,7 +244,7 @@ class TestSuiteRegtest(TestSuiteBase):
 		])
 
 	def blocks_info4(self):
-		n1,i1,o1,n2,i2,o2 = (2,1,3,6,3,9) if g.coin == 'BCH' else (2,1,4,6,3,12)
+		n1,i1,o1,n2,i2,o2 = (2,1,3,6,3,9) if cfg.coin == 'BCH' else (2,1,4,6,3,12)
 		return self.blocks_info( args1 + ['--miner-info','--fields=all','--stats=all','+3'], [
 			'Averages',
 			f'nTx: {n1}',
@@ -267,7 +265,7 @@ class TestSuiteRegtest(TestSuiteBase):
 			from mmgen.tool.api import tool_api
 			from collections import namedtuple
 
-			t = tool_api()
+			t = tool_api(cfg)
 			t.init_coin(self.proto.coin,self.proto.network)
 			t.addrtype = 'compressed' if self.proto.coin == 'BCH' else 'bech32'
 			wp = namedtuple('wifaddrpair',['wif','addr'])
@@ -384,7 +382,7 @@ class TestSuiteRegtest(TestSuiteBase):
 		return self._feeview([])
 
 	def stop(self):
-		if opt.no_daemon_stop:
+		if cfg.no_daemon_stop:
 			self.spawn('',msg_only=True)
 			msg_r('(leaving daemon running by user request)')
 			return 'ok'

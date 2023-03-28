@@ -7,6 +7,8 @@ from mmgen.common import *
 from mmgen.exception import *
 from mmgen_node_tools.BlocksInfo import BlocksInfo
 
+from ..include.common import cfg,vmsg
+
 tip = 50000
 range_vecs = (
 	#                  First     Last FromTip nBlocks Step    First      Last    BlockList
@@ -70,12 +72,13 @@ class dummyRPC:
 		class coin_amt:
 			satoshi = 0.00000001
 
-class dummyOpt:
+class dummyCfg:
 	fields = None
 	stats = None
 	miner_info = None
 	header_info = None
 	full_stats = None
+	coin = 'BTC'
 
 class unit_tests:
 
@@ -91,7 +94,7 @@ class unit_tests:
 
 	def parse_rangespec(self,name,ut):
 
-		b = BlocksInfo(0,dummyOpt(),dummyRPC())
+		b = BlocksInfo(dummyCfg(),None,dummyRPC())
 
 		def test(spec,chk,foo):
 			ret = b.parse_rangespec(spec)
@@ -108,8 +111,8 @@ class unit_tests:
 
 		def test(spec,foo,chk):
 			b = BlocksInfo(
+				dummyCfg(),
 				spec if type(spec) == tuple else [spec],
-				dummyOpt(),
 				dummyRPC() )
 			ret = (b.first,b.last,b.block_list)
 			vmsg('{:13} => {}'.format(

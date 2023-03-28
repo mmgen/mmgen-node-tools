@@ -109,7 +109,7 @@ class BlocksInfo:
 	def parse_cslist(cls,uarg,full_set,dfl_set,desc):
 
 		def make_list(m,func):
-			groups_lc = [set(e.lower() for e in g.split(',')) for g in m.groups()]
+			groups_lc = [set(e.lower() for e in gi.split(',')) for gi in m.groups()]
 			for group in groups_lc:
 				for e in group:
 					if e not in full_set_lc:
@@ -135,7 +135,7 @@ class BlocksInfo:
 		else:
 			die(1,f'{uarg}: invalid parameter')
 
-	def __init__(self,cmd_args,opt,rpc):
+	def __init__(self,cfg,cmd_args,rpc):
 
 		def parse_cs_uarg(uarg,full_set,dfl_set,desc):
 			return (
@@ -144,10 +144,10 @@ class BlocksInfo:
 			)
 
 		def get_fields():
-			return parse_cs_uarg(opt.fields,list(self.fields),self.dfl_fields,'field')
+			return parse_cs_uarg(self.cfg.fields,list(self.fields),self.dfl_fields,'field')
 
 		def get_stats():
-			return parse_cs_uarg(opt.stats.lower(),self.all_stats,self.dfl_stats,'stat')
+			return parse_cs_uarg(self.cfg.stats.lower(),self.all_stats,self.dfl_stats,'stat')
 
 		def parse_cmd_args(): # => (block_list, first, last, step)
 			if not cmd_args:
@@ -163,8 +163,8 @@ class BlocksInfo:
 			else:
 				return ([self.conv_blkspec(a) for a in cmd_args],None,None,None)
 
+		self.cfg = cfg
 		self.rpc = rpc
-		self.opt = opt
 		self.tip = rpc.blockcount
 
 		from_satoshi = self.rpc.proto.coin_amt.satoshi
@@ -198,7 +198,7 @@ class BlocksInfo:
 			'di': lambda arg: '{:.2e}'.format(arg),
 		}
 
-		if g.coin == 'BCH':
+		if self.cfg.coin == 'BCH':
 			self.fmt_funcs.update({
 				'su': lambda arg: str(arg).rstrip('0').rstrip('.'),
 				'fe': lambda arg: str(int(arg * to_satoshi)),
@@ -206,26 +206,26 @@ class BlocksInfo:
 			})
 
 		self.fnames = tuple(
-			[f for f in self.fields if self.fields[f].src == 'bh' or f == 'interval'] if opt.header_info else
-			get_fields() if opt.fields else
+			[f for f in self.fields if self.fields[f].src == 'bh' or f == 'interval'] if self.cfg.header_info else
+			get_fields() if self.cfg.fields else
 			self.dfl_fields
 		)
-		if opt.miner_info and 'miner' not in self.fnames:
+		if self.cfg.miner_info and 'miner' not in self.fnames:
 			self.fnames += ('miner',)
 
-		self.stats = get_stats() if opt.stats else self.dfl_stats
+		self.stats = get_stats() if self.cfg.stats else self.dfl_stats
 
 		# Display diff stats by default only if user-requested range ends with chain tip
-		if 'diff' in self.stats and not opt.stats and self.last != self.tip:
+		if 'diff' in self.stats and not self.cfg.stats and self.last != self.tip:
 			self.stats.remove('diff')
 
-		if {'avg','col_avg'} <= set(self.stats) and opt.stats_only:
+		if {'avg','col_avg'} <= set(self.stats) and self.cfg.stats_only:
 			self.stats.remove('col_avg')
 
 		if {'avg','mini_avg'} <= set(self.stats):
 			self.stats.remove('mini_avg')
 
-		if opt.full_stats:
+		if self.cfg.full_stats:
 			add_fnames = {fname for sname in self.stats for fname in self.stats_deps[sname]}
 			self.fnames = tuple(f for f in self.fields if f in {'block'} | set(self.fnames) | add_fnames )
 		else:
@@ -397,7 +397,7 @@ class BlocksInfo:
 				self.t_cur = self.prev_hdrs[n]['time']
 			ret = await self.process_block(self.hdrs[n])
 			self.res.append(ret)
-			if self.fnames and not self.opt.stats_only:
+			if self.fnames and not self.cfg.stats_only:
 				self.output_block(ret,n)
 
 	def output_block(self,data,n):
@@ -447,7 +447,7 @@ class BlocksInfo:
 			return '---'
 		else:
 			cb = bytes.fromhex(bd['vin'][0]['coinbase'])
-			if self.opt.raw_miner_info:
+			if self.cfg.raw_miner_info:
 				return repr(cb)
 			else:
 				trmap_in = {
@@ -670,7 +670,7 @@ class BlocksInfo:
 		return ( sname, (d.hdr,) + tuple(gen()) )
 
 	def process_stats_pre(self,i):
-		if (self.fnames and not self.opt.stats_only) or i != 0:
+		if (self.fnames and not self.cfg.stats_only) or i != 0:
 			Msg('')
 
 	def finalize_output(self): pass
@@ -707,9 +707,9 @@ class BlocksInfo:
 
 class JSONBlocksInfo(BlocksInfo):
 
-	def __init__(self,cmd_args,opt,rpc):
-		super().__init__(cmd_args,opt,rpc)
-		if opt.json_raw:
+	def __init__(self,cfg,cmd_args,opt,rpc):
+		super().__init__(cfg,cmd_args,opt,rpc)
+		if self.cfg.json_raw:
 			self.output_block = self.output_block_raw
 			self.fmt_stat_item = self.fmt_stat_item_raw
 		Msg_r('{')

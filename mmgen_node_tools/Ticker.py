@@ -28,10 +28,8 @@ import sys,os,time,json,yaml
 from subprocess import run,PIPE,CalledProcessError
 from decimal import Decimal
 from collections import namedtuple
-from mmgen.opts import opt
-from mmgen.globalvars import g
 from mmgen.color import *
-from mmgen.util import die,fmt_list,msg,msg_r,Msg,vmsg,suf,fmt,stdout_or_pager
+from mmgen.util import die,fmt_list,msg,msg_r,suf,fmt
 
 homedir = os.getenv('HOME')
 cachedir = os.path.join(homedir,'.cache','mmgen-node-tools')
@@ -173,23 +171,23 @@ def get_src_data(curl_cmd):
 
 	if cfg.btc_only:
 		fn = os.path.join(cfg.cachedir,'ticker-btc.json')
-		timeout = 5 if g.test_suite else btc_ratelimit
+		timeout = 5 if gcfg.test_suite else btc_ratelimit
 	else:
 		fn = os.path.join(cfg.cachedir,'ticker.json')
-		timeout = 5 if g.test_suite else ratelimit
+		timeout = 5 if gcfg.test_suite else ratelimit
 
 	fn_rel = os.path.relpath(fn,start=homedir)
 
 	if not os.path.exists(fn):
 		open(fn,'w').write('{}')
 
-	if opt.cached_data:
+	if gcfg.cached_data:
 		json_text = open(fn).read()
 	else:
 		elapsed = int(time.time() - os.stat(fn).st_mtime)
 		if elapsed >= timeout:
 			msg_r(f'Fetching data from {api_host}...')
-			vmsg('')
+			gcfg._util.vmsg('')
 			try:
 				cp = run(curl_cmd,check=True,stdout=PIPE)
 			except CalledProcessError as e:
@@ -212,14 +210,14 @@ def get_src_data(curl_cmd):
 		die(2,'Retrieved data is not valid JSON, exiting')
 
 	if not data:
-		if opt.cached_data:
+		if gcfg.cached_data:
 			die(1,'No cached data!  Run command without --cached-data option to retrieve data from remote host')
 		else:
 			die(2,'Remote host returned no data!')
 	elif 'error' in data:
 		die(1,data['error'])
 
-	if opt.cached_data:
+	if gcfg.cached_data:
 		msg(f'Using cached data from ~/{fn_rel}')
 	else:
 		open(fn,'w').write(json_text)
@@ -248,7 +246,7 @@ def main(cfg_parm,cfg_in_parm):
 					'--header', 'Accept: application/json',
 				] +
 				(['--proxy', cfg.proxy] if cfg.proxy else []) +
-				(['--silent'] if not opt.verbose else []) +
+				(['--silent'] if not gcfg.verbose else []) +
 				[api_url + ('/btc-bitcoin' if cfg.btc_only else '')]
 			)
 
@@ -264,27 +262,27 @@ def main(cfg_parm,cfg_in_parm):
 	update_sample_file(cfg_in.cfg_file)
 	update_sample_file(cfg_in.portfolio_file)
 
-	if opt.portfolio and not cfg_in.portfolio:
+	if gcfg.portfolio and not cfg_in.portfolio:
 		die(1,'No portfolio configured!\nTo configure a portfolio, edit the file ~/{}'.format(
 			os.path.relpath(cfg_in.portfolio_file,start=homedir)))
 
 	curl_cmd = get_curl_cmd()
 
-	if opt.print_curl:
+	if gcfg.print_curl:
 		Msg(curl_cmd + '\n' + ' '.join(curl_cmd))
 		return
 
 	parsed_json = [get_src_data(curl_cmd)] if cfg.btc_only else get_src_data(curl_cmd)
 
-	if opt.list_ids:
+	if gcfg.list_ids:
 		from mmgen.ui import do_pager
 		do_pager('\n'.join(e['id'] for e in parsed_json))
 		return
 
 	global now
-	now = 1659465400 if g.test_suite else time.time() # 1659524400 1659445900
+	now = 1659465400 if gcfg.test_suite else time.time() # 1659524400 1659445900
 
-	stdout_or_pager(
+	gcfg._util.stdout_or_pager(
 		'\n'.join(getattr(Ticker,cfg.clsname)(dict(gen_data(parsed_json))).gen_output()) + '\n'
 	)
 
@@ -366,12 +364,12 @@ def make_cfg(cmd_args,cfg_in):
 			usr_columns )
 
 	def get_portfolio_assets(ret=()):
-		if cfg_in.portfolio and opt.portfolio:
+		if cfg_in.portfolio and gcfg.portfolio:
 			ret = (parse_asset_id(e,True) for e in cfg_in.portfolio)
-		return ( 'portfolio', tuple(e for e in ret if (not opt.btc) or e.symbol == 'BTC') )
+		return ( 'portfolio', tuple(e for e in ret if (not gcfg.btc) or e.symbol == 'BTC') )
 
 	def get_portfolio():
-		return {k:Decimal(v) for k,v in cfg_in.portfolio.items() if (not opt.btc) or k == 'btc-bitcoin'}
+		return {k:Decimal(v) for k,v in cfg_in.portfolio.items() if (not gcfg.btc) or k == 'btc-bitcoin'}
 
 	def parse_add_precision(s):
 		if not s:
@@ -385,8 +383,8 @@ def make_cfg(cmd_args,cfg_in):
 	def create_rows():
 		rows = (
 			('trade_pair',) + query if (query and query.to_asset) else
-			('bitcoin',parse_asset_id('btc-bitcoin')) if opt.btc else
-			get_rows_from_cfg( add_data={'fiat':['usd-us-dollar']} if opt.add_columns else None )
+			('bitcoin',parse_asset_id('btc-bitcoin')) if gcfg.btc else
+			get_rows_from_cfg( add_data={'fiat':['usd-us-dollar']} if gcfg.add_columns else None )
 		)
 
 		for hdr,data in (
@@ -416,8 +414,8 @@ def make_cfg(cmd_args,cfg_in):
 	asset_data    = namedtuple('asset_data',['symbol','id','amount','rate','rate_asset'])
 	asset_tuple   = namedtuple('asset_tuple',['symbol','id'])
 
-	usr_rows    = parse_usr_asset_arg(opt.add_rows)
-	usr_columns = parse_usr_asset_arg(opt.add_columns)
+	usr_rows    = parse_usr_asset_arg(gcfg.add_rows)
+	usr_columns = parse_usr_asset_arg(gcfg.add_columns)
 	query       = parse_query_arg(cmd_args[0]) if cmd_args else None
 
 	return cfg_tuple(
@@ -425,19 +423,19 @@ def make_cfg(cmd_args,cfg_in):
 		usr_rows    = usr_rows,
 		usr_columns = usr_columns,
 		query       = query,
-		adjust      = ( lambda x: (100 + x) / 100 if x else 1 )( Decimal(opt.adjust or 0) ),
+		adjust      = ( lambda x: (100 + x) / 100 if x else 1 )( Decimal(gcfg.adjust or 0) ),
 		clsname     = 'trading' if query else 'overview',
-		btc_only    = opt.btc,
-		add_prec    = parse_add_precision(opt.add_precision),
-		cachedir    = opt.cachedir or cfg_in.cfg.get('cachedir') or cachedir,
-		proxy       = None if opt.proxy == '' else (opt.proxy or cfg_in.cfg.get('proxy')),
-		portfolio   = get_portfolio() if cfg_in.portfolio and opt.portfolio and not query else None
+		btc_only    = gcfg.btc,
+		add_prec    = parse_add_precision(gcfg.add_precision),
+		cachedir    = gcfg.cachedir or cfg_in.cfg.get('cachedir') or cachedir,
+		proxy       = None if gcfg.proxy == '' else (gcfg.proxy or cfg_in.cfg.get('proxy')),
+		portfolio   = get_portfolio() if cfg_in.portfolio and gcfg.portfolio and not query else None
 	)
 
 def get_cfg_in():
 	ret = namedtuple('cfg_in_data',['cfg','portfolio','cfg_file','portfolio_file'])
 	cfg_file,portfolio_file = (
-		[os.path.join(g.data_dir_root,'node_tools',fn) for fn in (cfg_fn,portfolio_fn)]
+		[os.path.join(gcfg.data_dir_root,'node_tools',fn) for fn in (cfg_fn,portfolio_fn)]
 	)
 	cfg_data,portfolio_data = (
 		[yaml.safe_load(open(fn).read()) if os.path.exists(fn) else None for fn in (cfg_file,portfolio_file)]
@@ -466,10 +464,10 @@ class Ticker:
 
 		def __init__(self,data):
 
-			self.comma = ',' if opt.thousands_comma else ''
+			self.comma = ',' if gcfg.thousands_comma else ''
 
 			self.col1_wid = max(len('TOTAL'),(
-				max(len(self.create_label(d['id'])) for d in data.values()) if opt.name_labels else
+				max(len(self.create_label(d['id'])) for d in data.values()) if gcfg.name_labels else
 				max(len(d['symbol']) for d in data.values())
 			)) + 1
 
@@ -482,7 +480,7 @@ class Ticker:
 
 		def format_last_update_col(self,cross_assets=()):
 
-			if opt.elapsed:
+			if gcfg.elapsed:
 				from mmgen.util2 import format_elapsed_hr
 				fmt_func = format_elapsed_hr
 			else:
@@ -627,7 +625,7 @@ class Ticker:
 					amt_fmt = amt_fmt.rstrip('0').rstrip('.')
 
 			return self.fs_num.format(
-				lbl = (self.create_label(d['id']) if opt.name_labels else d['symbol']),
+				lbl = (self.create_label(d['id']) if gcfg.name_labels else d['symbol']),
 				pc1 = fmt_pct(d.get('percent_change_7d')),
 				pc2 = fmt_pct(d.get('percent_change_24h')),
 				upd = d.get('last_updated_fmt'),
@@ -670,13 +668,13 @@ class Ticker:
 				[asset.id for asset in self.usr_col_assets] +
 				[a for a,b in (
 					( 'btc-bitcoin',  not cfg.btc_only ),
-					( 'pct7d', opt.percent_change ),
-					( 'pct24h', opt.percent_change ),
-					( 'update_time', opt.update_time ),
+					( 'pct7d', gcfg.percent_change ),
+					( 'pct24h', gcfg.percent_change ),
+					( 'update_time', gcfg.update_time ),
 				) if b]
 			)
 			cols2 = list(cols)
-			if opt.update_time:
+			if gcfg.update_time:
 				cols2.pop()
 			cols2.append('amt')
 
@@ -759,7 +757,7 @@ class Ticker:
 			if self.show_adj:
 				self.fs_str += ' {p_adj}'
 				self.hl_wid += self.max_wid + 1
-			if opt.update_time:
+			if gcfg.update_time:
 				self.fs_str += '  {upd}'
 				self.hl_wid += self.upd_w + 2
 
@@ -772,7 +770,7 @@ class Ticker:
 				if self.show_adj else '' )
 
 			return self.fs_str.format(
-				lbl = (self.create_label(id) if opt.name_labels else d['symbol']),
+				lbl = (self.create_label(id) if gcfg.name_labels else d['symbol']),
 				p_spot = green(p_spot) if id in self.hl_ids else p_spot,
 				p_adj  = yellow(p_adj) if id in self.hl_ids else p_adj,
 				upd = d.get('last_updated_fmt'),

@@ -97,7 +97,7 @@ class TestSuiteScripts(TestSuiteBase):
 
 	@property
 	def nt_datadir(self):
-		return os.path.join( g.data_dir_root, 'node_tools' )
+		return os.path.join( cfg.data_dir_root, 'node_tools' )
 
 	def ticker_setup(self):
 		self.spawn('',msg_only=True)
@@ -120,7 +120,7 @@ class TestSuiteScripts(TestSuiteBase):
 
 	def ticker2(self):
 		t = self.ticker(cached=False)
-		if not opt.skipping_deps:
+		if not cfg.skipping_deps:
 			t.expect('Creating')
 			t.expect('Creating')
 		t.expect('proxy host could not be resolved')

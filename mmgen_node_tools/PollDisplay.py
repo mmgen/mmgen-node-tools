@@ -22,7 +22,8 @@ class PollDisplay():
 	input = None
 	poll_secs = 1
 
-	def __init__(self):
+	def __init__(self,cfg):
+		self.cfg = cfg
 		self.info_lock = threading.Lock() # self.info accessed by 2 threads
 		self.display_kill_flag = threading.Event()
 

@@ -26,7 +26,7 @@ from mmgen.common import *
 
 bdr_proj = 9.95
 
-opts.init({
+cfg = opts.init({
 	'sets': [('mined',True,'list',True)],
 	'text': {
 		'desc': 'Estimate date(s) of future block subsidy halving(s)',
@@ -43,8 +43,8 @@ opts.init({
 """ }
 })
 
-if opt.bdr_proj:
-	bdr_proj = float(opt.bdr_proj)
+if cfg.bdr_proj:
+	bdr_proj = float(cfg.bdr_proj)
 
 def date(t):
 	return '{}-{:02}-{:02} {:02}:{:02}:{:02}'.format(*time.gmtime(t)[:6])
@@ -61,16 +61,15 @@ def time_diff_warning(t_diff):
 
 async def main():
 
-	from mmgen.protocol import init_proto_from_opts
-	proto = init_proto_from_opts(need_amt=True)
+	proto = cfg._proto
 
 	from mmgen.rpc import rpc_init
-	c = await rpc_init(proto)
+	c = await rpc_init( cfg, proto )
 
 	tip = await c.call('getblockcount')
 	assert tip > 1, 'block tip must be > 1'
 	remaining = proto.halving_interval - tip % proto.halving_interval
-	sample_size = int(opt.sample_size) if opt.sample_size else min(tip-1,max(remaining,144))
+	sample_size = int(cfg.sample_size) if cfg.sample_size else min(tip-1,max(remaining,144))
 
 	cur,old = await c.gathered_call('getblockstats',((tip,),(tip - sample_size,)))
 
@@ -134,7 +133,7 @@ async def main():
 		fs = (
 			'  {a:<7} {b:>8}  {c:19}{d:2}  {e:10}  {f}',
 			'  {a:<7} {b:>8}  {c:19}{d:2}  {e:10}  {f:17} {g:17}  {h}'
-		)[bool(opt.mined)]
+		)[bool(cfg.mined)]
 
 		print(
 			f'Historical/Estimated/Projected Halvings ({proto.coin}):\n\n'
@@ -174,7 +173,7 @@ async def main():
 						) for n,sub,blk,mined,total_mined,bdr,t in gen_data())
 		)
 
-	if opt.list:
+	if cfg.list:
 		await print_halvings()
 	else:
 		print_current_stats()

@@ -34,17 +34,14 @@ opts_data = {
 	}
 }
 
-cmd_args = opts.init(opts_data)
+cfg = opts.init(opts_data)
 
 ERASE_LINE,CUR_UP = '\033[K','\033[1A'
 
 async def main():
 
-	from mmgen.protocol import init_proto_from_opts
-	proto = init_proto_from_opts()
-
 	from mmgen.rpc import rpc_init
-	c = await rpc_init(proto)
+	c = await rpc_init( cfg, cfg._proto )
 
 	async def get_data():
 		d = await c.call('getnettotals')

@@ -14,7 +14,6 @@ mmgen_node_tools.PeerBlocks: List blocks in flight, disconnect stalling nodes
 
 import asyncio
 from collections import namedtuple
-from mmgen.globalvars import g
 from mmgen.util import msg,msg_r,is_int
 from mmgen.term import get_term,get_terminal_size,get_char
 from mmgen.ui import line_input
@@ -30,15 +29,15 @@ class Display(PollDisplay):
 
 	poll_secs = 2
 
-	def __init__(self):
+	def __init__(self,cfg):
 
-		super().__init__()
+		super().__init__(cfg)
 
 		global term,term_width
 		if not term:
 			term = get_term()
 			term.init(noecho=True)
-			term_width = g.columns or get_terminal_size().width
+			term_width = self.cfg.columns or get_terminal_size().width
 			msg_r(CUR_HOME+ERASE_ALL+CUR_HOME)
 
 	async def get_info(self,rpc):
@@ -69,7 +68,7 @@ class Display(PollDisplay):
 			msg('')
 			term.reset()
 			# readline required for correct operation here; without it, user must re-type first digit
-			ret = line_input('peer number> ',insert_txt=s,hold_protect=False)
+			ret = line_input( self.cfg, 'peer number> ', insert_txt=s, hold_protect=False )
 			term.init(noecho=True)
 			self.enable_display = False # prevent display from updating before process_input()
 			return ret
