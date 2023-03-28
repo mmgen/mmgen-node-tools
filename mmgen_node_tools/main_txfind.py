@@ -86,6 +86,7 @@ async def main(txid):
 	return exitval
 
 cmd_args = opts.init(opts_data)
+
 msgs = msg_data['quiet' if opt.quiet else 'normal']
 
 if len(cmd_args) != 1:

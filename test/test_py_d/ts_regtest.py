@@ -9,7 +9,7 @@
 #   https://gitlab.com/mmgen/mmgen-node-tools
 
 """
-ts_regtest.py: Regtest tests for the test.py test suite
+test.test_py_d.ts_regtest: Regtest tests for the test.py test suite
 """
 
 import os
@@ -273,7 +273,7 @@ class TestSuiteRegtest(TestSuiteBase):
 			wp = namedtuple('wifaddrpair',['wif','addr'])
 
 			def gen():
-				for n in range(1,nPairs+1):
+				for n in range(0xfaceface,nPairs+0xfaceface):
 					wif = t.hex2wif(f'{n:064x}')
 					yield wp( wif, t.wif2addr(wif) )
 
@@ -299,11 +299,12 @@ class TestSuiteRegtest(TestSuiteBase):
 
 		async def do_tx1():
 			us = await r.rpc_call('listunspent',wallet='miner')
+			tx_input = us[7] # 25 BTC in coinbase -- us[0] could have < 25 BTC
 			fee = self.proto.coin_amt('0.001')
 			outputs = {p.addr:tx1_amt for p in pairs[:nTxs]}
-			outputs.update({burn_addr: us[0]['amount'] - (tx1_amt*nTxs) - fee})
+			outputs.update({burn_addr: tx_input['amount'] - (tx1_amt*nTxs) - fee})
 			return await do_tx(
-				[{ 'txid': us[0]['txid'], 'vout': 0 }],
+				[{ 'txid': tx_input['txid'], 'vout': 0 }],
 				outputs,
 				r.miner_wif )
 
@@ -326,8 +327,8 @@ class TestSuiteRegtest(TestSuiteBase):
 		r = self.regtest
 		nPairs = 100
 		nTxs = 25
-		tx1_amt = self.proto.coin_amt('{:0.4f}'.format(24 / (nTxs+1))) # 25 BTC subsidy
-		tx2_amt = self.proto.coin_amt('0.0001')
+		tx1_amt = self.proto.coin_amt('{:0.4f}'.format(24 / nTxs)) # 25 BTC subsidy, leave extra for fee
+		tx2_amt = self.proto.coin_amt('0.00005')                   # make this as small as possible
 
 		imsg(f'Creating {nPairs} key-address pairs')
 		pairs = create_pairs(nPairs+1)

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
-test.unit_tests_d.nt_BlocksInfo:
-  BlocksInfo unit test for the MMGen Node Tools suite
+test.unit_tests_d.nt_BlocksInfo: BlocksInfo unit test for the MMGen Node Tools suite
 """
 
 from mmgen.common import *
@@ -108,7 +107,10 @@ class unit_tests:
 	def parse_cmd_args(self,name,ut):
 
 		def test(spec,foo,chk):
-			b = BlocksInfo(spec if type(spec) == tuple else [spec],dummyOpt(),dummyRPC())
+			b = BlocksInfo(
+				spec if type(spec) == tuple else [spec],
+				dummyOpt(),
+				dummyRPC() )
 			ret = (b.first,b.last,b.block_list)
 			vmsg('{:13} => {}'.format(
 				(repr(spec) if type(spec) == tuple else spec),

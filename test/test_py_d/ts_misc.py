@@ -9,7 +9,7 @@
 #   https://gitlab.com/mmgen/mmgen-node-tools
 
 """
-ts_misc.py: Miscellaneous test groups for the test.py test suite
+test.test_py_d.ts_misc: Miscellaneous test groups for the test.py test suite
 """
 
 import shutil

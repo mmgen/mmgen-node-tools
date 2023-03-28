@@ -31,6 +31,7 @@ class Display(PollDisplay):
 	poll_secs = 2
 
 	def __init__(self):
+
 		super().__init__()
 
 		global term,term_width
