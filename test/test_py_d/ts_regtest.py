@@ -41,6 +41,7 @@ class TestSuiteRegtest(TestSuiteBase):
 	deterministic = False
 	cmd_group_in = (
 		('setup',                       'regtest mode setup'),
+		('subgroup.netrate',            []),
 		('subgroup.halving_calculator', []),
 		('subgroup.fund_addrbal',       []),
 		('subgroup.addrbal',            ['fund_addrbal']),
@@ -49,6 +50,11 @@ class TestSuiteRegtest(TestSuiteBase):
 		('stop',                        'stopping regtest daemon'),
 	)
 	cmd_subgroups = {
+	'netrate': (
+		"'mmnode-netrate' script",
+		('netrate1', "netrate (--help)"),
+		('netrate2', "netrate"),
+	),
 	'halving_calculator': (
 		"'mmnode-halving-calculator' script",
 		('halving_calculator1', "halving calculator (--help)"),
@@ -115,6 +121,19 @@ class TestSuiteRegtest(TestSuiteBase):
 		t = self.spawn('mmgen-regtest',['-n','setup'])
 		for s in ('Starting','Creating','Creating','Creating','Mined','Setup complete'):
 			t.expect(s)
+		return t
+
+	def netrate(self,add_args,expect_str):
+		t = self.spawn( 'mmnode-netrate', args1 + add_args )
+		t.expect(expect_str,regex=True)
+		return t
+
+	def netrate1(self):
+		return self.netrate( ['--help'], 'USAGE:.*' )
+
+	def netrate2(self):
+		t = self.netrate( [], 'sent:.*' )
+		t.kill(2)
 		return t
 
 	def halving_calculator(self,add_args,expect_list):
