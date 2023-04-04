@@ -20,8 +20,10 @@
 mmnode-netrate: Bitcoin daemon network rate monitor
 """
 
-import time
-from mmgen.common import *
+import sys,time
+
+from mmgen.cfg import Config
+from mmgen.util import async_run
 
 opts_data = {
 	'text': {
@@ -34,14 +36,14 @@ opts_data = {
 	}
 }
 
-cfg = opts.init(opts_data)
+cfg = Config(opts_data=opts_data)
 
 ERASE_LINE,CUR_UP = '\033[K','\033[1A'
 
 async def main():
 
 	from mmgen.rpc import rpc_init
-	c = await rpc_init( cfg, cfg._proto )
+	c = await rpc_init(cfg)
 
 	async def get_data():
 		d = await c.call('getnettotals')

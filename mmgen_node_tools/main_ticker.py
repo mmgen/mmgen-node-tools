@@ -13,7 +13,6 @@ mmnode-ticker: Display price information for cryptocurrency and other assets
 """
 
 import sys,os
-from mmgen.common import *
 from .Ticker import *
 
 opts_data = {
@@ -197,7 +196,8 @@ To add a portfolio, edit the file
 	}
 }
 
-gcfg = opts.init(opts_data,do_post_init=True)
+from mmgen.cfg import Config
+gcfg = Config( opts_data=opts_data, do_post_init=True )
 
 import mmgen_node_tools.Ticker as Ticker
 Ticker.gcfg = gcfg
@@ -206,6 +206,6 @@ cfg_in = get_cfg_in()
 
 cfg = make_cfg(gcfg._args,cfg_in)
 
-opts.post_init(gcfg)
+gcfg._post_init()
 
 main(cfg,cfg_in)

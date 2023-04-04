@@ -22,11 +22,13 @@ mmnode-halving-calculator: Estimate date(s) of future block subsidy halving(s)
 
 import time
 from decimal import Decimal
-from mmgen.common import *
+
+from mmgen.cfg import Config
+from mmgen.util import async_run
 
 bdr_proj = 9.95
 
-cfg = opts.init({
+opts_data = {
 	'sets': [('mined',True,'list',True)],
 	'text': {
 		'desc': 'Estimate date(s) of future block subsidy halving(s)',
@@ -41,7 +43,9 @@ cfg = opts.init({
 -s, --sample-size=N Block range to calculate block discovery interval for next
                     halving estimate (default: dynamically calculated)
 """ }
-})
+}
+
+cfg = Config(opts_data=opts_data)
 
 if cfg.bdr_proj:
 	bdr_proj = float(cfg.bdr_proj)

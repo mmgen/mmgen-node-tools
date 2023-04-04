@@ -20,9 +20,6 @@
 mmnode-peerblocks: List blocks in flight, disconnect stalling nodes
 """
 
-import mmgen.opts as opts
-from mmgen.util import async_run
-
 opts_data = {
 	'text': {
 		'desc': 'List blocks in flight, disconnect stalling nodes',
@@ -36,10 +33,11 @@ opts_data = {
 
 async def main():
 
-	cfg = opts.init(opts_data)
+	from mmgen.cfg import Config
+	cfg = Config(opts_data=opts_data)
 
 	from mmgen.rpc import rpc_init
-	rpc = await rpc_init( cfg, cfg._proto )
+	rpc = await rpc_init(cfg)
 
 	from .PeerBlocks import BlocksDisplay,PeersDisplay
 	blocks = BlocksDisplay(cfg)
@@ -49,4 +47,5 @@ async def main():
 		await blocks.run(rpc)
 		await peers.run(rpc)
 
+from mmgen.util import async_run
 async_run(main())

@@ -12,7 +12,10 @@
 mmnode-addrbal: Get balances for arbitrary addresses in the blockchain
 """
 
-from mmgen.common import *
+from mmgen.obj import CoinTxID,Int
+from mmgen.cfg import Config
+from mmgen.util import msg,Msg,die,suf,make_timestr,async_run
+from mmgen.color import red
 
 opts_data = {
 	'text': {
@@ -115,7 +118,7 @@ async def main(req_addrs):
 	addrs = [CoinAddr(proto,addr) for addr in req_addrs]
 
 	from mmgen.rpc import rpc_init
-	rpc = await rpc_init( cfg, proto )
+	rpc = await rpc_init(cfg)
 
 	height = await rpc.call('getblockcount')
 	Msg(f'{proto.coin} {proto.network.upper()} [height {height}]')
@@ -156,12 +159,10 @@ async def main(req_addrs):
 
 		(do_output_tabular if cfg.tabular else do_output)( proto, addr_data, dict(zip(blk_heights,blk_hdrs)) )
 
-cfg = opts.init(opts_data,init_opts={'rpc_backend':'aiohttp'})
+cfg = Config( opts_data=opts_data, init_opts={'rpc_backend':'aiohttp'} )
 
 if len(cfg._args) < 1:
 	die(1,'This command requires at least one coin address argument')
-
-from mmgen.obj import CoinTxID,Int
 
 try:
 	async_run(main(cfg._args))

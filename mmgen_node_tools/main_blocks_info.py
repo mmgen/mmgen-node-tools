@@ -20,8 +20,7 @@
 mmnode-blocks-info: Display information about a block or range of blocks
 """
 
-import mmgen.opts as opts
-from mmgen.globalvars import gc
+from mmgen.cfg import gc,Config
 from mmgen.util import async_run,fmt_list
 from .BlocksInfo import BlocksInfo,JSONBlocksInfo
 
@@ -157,7 +156,7 @@ This program requires a txindex-enabled daemon for correct operation.
 	}
 }
 
-cfg = opts.init(opts_data)
+cfg = Config(opts_data=opts_data)
 
 async def main():
 
@@ -165,7 +164,7 @@ async def main():
 
 	cls = JSONBlocksInfo if cfg.json else BlocksInfo
 
-	m = cls( cfg, cfg._args, await rpc_init(cfg,cfg._proto) )
+	m = cls( cfg, cfg._args, await rpc_init(cfg) )
 
 	if m.fnames and not cfg.no_header:
 		m.print_header()

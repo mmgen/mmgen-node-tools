@@ -24,7 +24,7 @@ import re,json
 from collections import namedtuple
 from time import strftime,gmtime
 
-from mmgen.common import *
+from mmgen.util import msg,Msg,Msg_r,die,suf,secs_to_ms,secs_to_dhms,is_int
 from mmgen.rpc import json_encoder
 
 class BlocksInfo:
@@ -362,7 +362,8 @@ class BlocksInfo:
 		first = self.conv_blkspec(first)
 		last  = self.conv_blkspec(last or first)
 
-		if p.debug: msg(repr(self.range_data(first,last,from_tip,nblocks,step)))
+		if p.debug:
+			msg(repr(self.range_data(first,last,from_tip,nblocks,step)))
 
 		if first > last:
 			die(1,f'{first}-{last}: invalid block range')

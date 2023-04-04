@@ -20,7 +20,8 @@
 mmnode-txfind: Find a transaction in the blockchain or mempool
 """
 
-from mmgen.common import *
+from mmgen.cfg import Config
+from mmgen.util import msg,Msg,die
 
 opts_data = {
 	'text': {
@@ -62,7 +63,7 @@ async def main(txid):
 		msg(f'TxID: {txid}')
 
 	from mmgen.rpc import rpc_init
-	c = await rpc_init(cfg._proto)
+	c = await rpc_init(cfg)
 
 	exitval = 0
 	try:
@@ -82,7 +83,7 @@ async def main(txid):
 
 	return exitval
 
-cfg = opts.init(opts_data)
+cfg = Config(opts_data=opts_data)
 
 msgs = msg_data['quiet' if cfg.quiet else 'normal']
 

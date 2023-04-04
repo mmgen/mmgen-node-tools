@@ -20,7 +20,8 @@
 mmnode-feeview: Visualize the fee structure of a node’s mempool
 """
 
-from mmgen.common import *
+from mmgen.cfg import Config
+from mmgen.util import async_run,die,fmt,make_timestr,check_int_between
 from mmgen.util2 import int2bytespec,parse_bytespec
 
 min_prec,max_prec,dfl_prec = (0,6,4)
@@ -39,7 +40,7 @@ fee_brackets = [
 	100000, 1000000, 10000000, 100000000, 1000000000, 10000000000, 2100000000000000,
 ]
 
-cfg = opts.init({
+opts_data = {
 	'sets': [
 		('detail',True,'ranges',True),
 		('detail',True,'show_mb_col',True),
@@ -75,8 +76,10 @@ Note that there is no global mempool in Bitcoin, and your node’s mempool may
 differ significantly from those of mining nodes depending on uptime and other
 factors.
 """
+	}
 }
-})
+
+cfg = Config(opts_data=opts_data)
 
 if cfg.ignore_below:
 	if cfg.show_empty:
@@ -202,7 +205,7 @@ async def main():
 	proto = cfg._proto
 
 	from mmgen.rpc import rpc_init
-	c = await rpc_init( cfg, proto )
+	c = await rpc_init(cfg)
 
 	mempool = await c.call('getrawmempool',True)
 
