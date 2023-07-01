@@ -43,7 +43,7 @@ ERASE_LINE,CUR_UP = '\033[K','\033[1A'
 async def main():
 
 	from mmgen.rpc import rpc_init
-	c = await rpc_init(cfg)
+	c = await rpc_init(cfg,ignore_wallet=True)
 
 	async def get_data():
 		d = await c.call('getnettotals')

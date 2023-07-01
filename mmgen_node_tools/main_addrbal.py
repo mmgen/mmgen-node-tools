@@ -118,7 +118,7 @@ async def main(req_addrs):
 	addrs = [CoinAddr(proto,addr) for addr in req_addrs]
 
 	from mmgen.rpc import rpc_init
-	rpc = await rpc_init(cfg)
+	rpc = await rpc_init(cfg,ignore_wallet=True)
 
 	height = await rpc.call('getblockcount')
 	Msg(f'{proto.coin} {proto.network.upper()} [height {height}]')

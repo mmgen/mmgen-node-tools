@@ -63,7 +63,7 @@ async def main(txid):
 		msg(f'TxID: {txid}')
 
 	from mmgen.rpc import rpc_init
-	c = await rpc_init(cfg)
+	c = await rpc_init(cfg,ignore_wallet=True)
 
 	exitval = 0
 	try:

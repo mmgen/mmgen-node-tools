@@ -132,8 +132,9 @@ class TestSuiteRegtest(TestSuiteBase):
 		return self.netrate( ['--help'], 'USAGE:.*' )
 
 	def netrate2(self):
-		t = self.netrate( [], 'sent:.*' )
-		t.kill(2)
+		t = self.netrate( [], r'sent:.*' )
+		t.kill(15)
+		t.req_exit_val = -15
 		return t
 
 	def halving_calculator(self,add_args,expect_list):

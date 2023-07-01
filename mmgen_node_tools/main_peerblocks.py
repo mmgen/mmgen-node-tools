@@ -37,7 +37,7 @@ async def main():
 	cfg = Config(opts_data=opts_data)
 
 	from mmgen.rpc import rpc_init
-	rpc = await rpc_init(cfg)
+	rpc = await rpc_init(cfg,ignore_wallet=True)
 
 	from .PeerBlocks import BlocksDisplay,PeersDisplay
 	blocks = BlocksDisplay(cfg)

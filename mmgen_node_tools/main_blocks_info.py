@@ -164,7 +164,7 @@ async def main():
 
 	cls = JSONBlocksInfo if cfg.json else BlocksInfo
 
-	m = cls( cfg, cfg._args, await rpc_init(cfg) )
+	m = cls( cfg, cfg._args, await rpc_init(cfg,ignore_wallet=True) )
 
 	if m.fnames and not cfg.no_header:
 		m.print_header()
