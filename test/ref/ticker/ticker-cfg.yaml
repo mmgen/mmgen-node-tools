@@ -12,13 +12,13 @@ assets:
     - ada-cardano
     - algo-algorand
   commodity:
-    - xau-gold-spot-token
-    - xag-silver-spot-token
-    - xbr-brent-crude-oil-spot
+    - gc=f # gold futures
+    - si=f # silver futures
+    - bz=f # Brent futures
   fiat:
-    - chf-swiss-franc-token
-    - eur-euro-token
+    - chfusd=x # Swiss Franc
+    - eurusd=x # Euro
   index:
-    - dj30-dow-jones-30-token
-    - spx-sp-500
-    - ndx-nasdaq-100-token
+    - ^dji  # Dow Jones Industrials
+    - ^ixic # Nasdaq 100
+    - ^gspc # S&P 500

@@ -3,9 +3,15 @@
 ### See the curl manpage for supported --proxy parameters
 ### For a direct connection, leave the right-hand side blank
 proxy: http://vpn-gw:8118
+# proxy2: http://gw2:8118
 
 ### Override the default cache directory (~/.cache/mmgen-node-tools):
 cachedir:
+
+### Additional asset columns:
+# add_columns:
+#  - cnhusd=x  # Yuan
+#  - 6j=f      # Yen futures
 
 ### Asset rows
 ### Asset labels are arbitrary strings.  Use as many or few as you wish.
@@ -19,13 +25,14 @@ assets:
     - ada-cardano
     - bnb-binance-coin
   commodity:
-    - xau-gold-spot-token
-    - xag-silver-spot-token
-    - xbr-brent-crude-oil-spot
+    - gc=f # gold futures
+    - si=f # silver futures
+    - bz=f # Brent futures
   fiat:
-    - gbp-pound-sterling-token
-    - eur-euro-token
+    - gbpusd=x # Pound Sterling
+    - eurusd=x # Euro
+    - chfusd=x # Swiss Franc
   index:
-    - dj30-dow-jones-30-token
-    - spx-sp-500
-    - ndx-nasdaq-100-token
+    - ^dji  # Dow Jones Industrials
+    - ^ixic # Nasdaq 100
+    - ^gspc # S&P 500

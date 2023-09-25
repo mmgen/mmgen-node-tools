@@ -47,7 +47,7 @@ opts_data = {
 -r, --add-rows=LIST   Add rows for asset specifiers in LIST (comma-separated,
                       see ASSET SPECIFIERS below). Can also be used to supply
                       a USD exchange rate for missing assets.
--t, --testing         Print command to be executed to stdout and exit
+-t, --testing         Print command(s) to be executed to stdout and exit
 -T, --thousands-comma Use comma as a thousands separator
 -u, --update-time     Include UPDATED (last update time) column
 -v, --verbose         Be more verbose
@@ -55,6 +55,8 @@ opts_data = {
 -x, --proxy=P         Connect via proxy ‘P’.  Set to the empty string to
                       completely disable or ‘none’ to allow override from
                       environment. Consult the curl manpage for --proxy usage.
+-X, --proxy2=P        Alternate proxy for non-crypto financial data.  Defaults
+                      to value of --proxy
 """,
 	'notes': """
 
@@ -69,10 +71,15 @@ price to the spot price.
 
 ASSETS consist of either a symbol (e.g. ‘xmr’) or full ID (see --list-ids)
 consisting of symbol plus label (e.g. ‘xmr-monero’).  In cases where the
-symbol is ambiguous, the full ID must be used.  Examples:
+symbol is ambiguous, the full ID must be used.  For Yahoo Finance assets
+the symbol and ID are identical:
 
-  chf                   - specify asset by symbol
-  chf-swiss-franc-token - same as above, but use full ID instead of symbol
+Examples:
+
+  ltc           - specify asset by symbol
+  ltc-litecoin  - same as above, but use full ID instead of symbol
+  ^dji          - Dow Jones Industrial Average (Yahoo)
+  gc=f          - gold futures (Yahoo)
 
 ASSET SPECIFIERS have the following format:
 
@@ -89,7 +96,8 @@ postfixed with the letter ‘r’, its meaning is reversed, i.e. interpreted as
   inr:0.01257r           - same as above, but use reverse rate (INR/USD)
   inr-indian-rupee:79.5  - same as first example, but add an arbitrary label
   omr-omani-rial:2.59r   - Omani Rial is pegged to the Dollar at 2.59 USD
-  bgn-bg-lev:0.5113r:eur - Bulgarian Lev is pegged to the Euro at 0.5113 EUR
+  bgn-bulgarian-lev:0.5113r:eurusd=x
+                         - Bulgarian Lev is pegged to the Euro at 0.5113 EUR
 
 A TRADE_SPECIFIER is a single argument in the format:
 
@@ -99,8 +107,8 @@ A TRADE_SPECIFIER is a single argument in the format:
 
     xmr:17.34          - price of 17.34 XMR in all configured assets
     xmr-monero:17.34   - same as above, but with full ID
-    xmr:17.34:eur      - price of 17.34 XMR in EUR only
-    xmr:17.34:eur:2800 - commission on an offer of 17.34 XMR for 2800 EUR
+    xmr:17.34:eurusd=x - price of 17.34 XMR in EUR only
+    xmr:17.34:eurusd=x:2800 - commission on an offer of 17.34 XMR for 2800 EUR
 
   TO_AMOUNT, if included, is used to calculate the percentage difference or
   commission on an offer compared to the spot price.
@@ -112,28 +120,34 @@ A TRADE_SPECIFIER is a single argument in the format:
 
                                  PROXY NOTE
 
-The remote server used to obtain the price data, {cc.api_host!r}, blocks
-Tor behind a Captcha wall, so a Tor proxy cannot be used directly.  If you’re
-concerned about privacy, connect via a VPN, or better yet, VPN over Tor. Then
-set up an HTTP proxy (e.g. Privoxy) on the VPN’ed host and set the ‘proxy’
-option in the config file or --proxy on the command line accordingly.  Or run
-the script directly on the VPN’ed host with ’proxy’ or --proxy set to the
-null string.
+The remote server used to obtain the crypto price data, {cc.api_host},
+blocks Tor behind a Captcha wall, so a Tor proxy cannot be used directly.
+If you’re concerned about privacy, connect via a VPN, or better yet, VPN over
+Tor.  Then set up an HTTP proxy (e.g. Privoxy) on the VPN’ed host and set the
+‘proxy’ option in the config file or --proxy on the command line accordingly.
+Or run the script directly on the VPN’ed host with ’proxy’ or --proxy set to
+the null string.
 
 Alternatively, you may download the JSON source data in a Tor-proxied browser
-from ‘{cc.api_url}’, save it as ‘ticker.json’ in your
-configured cache directory, and run the script with the --cached-data option.
+from {cc.api_url}, save it as ‘ticker.json’ in your
+configured cache directory and run the script with the --cached-data option.
+
+Financial data is obtained from {fi.desc}, which currently allows Tor.
 
 
                              RATE LIMITING NOTE
 
-To protect user privacy, all filtering and processing of data is performed
-client side so that the remote server does not know which assets are being
-examined.  This means that data for ALL available assets (currently over 4000)
-is fetched with each invocation of the script.  A rate limit of {cc.ratelimit} seconds
-between calls is thus imposed to prevent abuse of the remote server.  When the
---btc option is in effect, this limit is reduced to {cc.btc_ratelimit} seconds.  To bypass the
-rate limit entirely, use --cached-data.
+To protect user privacy, all filtering and processing of cryptocurrency data
+is performed client side so that the remote server does not know which assets
+are being examined.  This means that data for ALL available crypto assets
+(currently over 8000) is fetched with each invocation of the script.  A rate
+limit of {cc.ratelimit} seconds between calls is thus imposed to prevent abuse of the
+remote server.  When the --btc option is in effect, this limit is reduced to
+{cc.btc_ratelimit} seconds.  To bypass the rate limit entirely, use --cached-data.
+
+Note that financial data obtained from {fi.api_host} is filtered in the
+request, which has privacy implications.  The rate limit for financial data
+is {fi.ratelimit} seconds.
 
 
                                   EXAMPLES
@@ -146,10 +160,10 @@ $ mmnode-ticker --btc
 
 # Wide display, add EUR and OMR columns, OMR/USD rate, extra precision and
 # proxy:
-$ mmnode-ticker -w -c eur,omr-omani-rial:2.59r -e2 -x http://vpnhost:8118
+$ mmnode-ticker -w -c eurusd=x,omr-omani-rial:2.59r -e2 -x http://vpnhost:8118
 
 # Wide display, elapsed update time, add EUR, BGN columns and BGN/EUR rate:
-$ mmnode-ticker -wE -c eur,bgn-bulgarian-lev:0.5113r:eur
+$ mmnode-ticker -wE -c eurusd=x,bgn-bulgarian-lev:0.5113r:eurusd=x
 
 # Wide display, use cached data from previous network query, show portfolio
 # (see above), pipe output to pager, add DOGE row:
@@ -193,6 +207,7 @@ To add a portfolio, edit the file
 			cfg    = os.path.relpath(cfg_in.cfg_file,start=homedir),
 			pf_cfg = os.path.relpath(cfg_in.portfolio_file,start=homedir),
 			cc     = src_cls['cc'](),
+			fi     = src_cls['fi'](),
 		)
 	}
 }

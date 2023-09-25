@@ -87,7 +87,6 @@ class TestSuiteScripts(TestSuiteBase):
 		('ticker15', 'ticker [--cached-data --wide --btc btc:2:usd:45000]'),
 		('ticker16', 'ticker [--cached-data --wide --elapsed -c eur,omr-omani-rial:2.59r'),
 		('ticker17', 'ticker [--cached-data --wide --elapsed -c bgn-bulgarian-lev:0.5113r:eur'),
-		('ticker18', 'ticker [--cached-data --wide --elapsed -c eur,bgn-bulgarian-lev:0.5113r:eur-euro-token'),
 	)
 	}
 
@@ -102,6 +101,7 @@ class TestSuiteScripts(TestSuiteBase):
 	def ticker_setup(self):
 		self.spawn('',msg_only=True)
 		shutil.copy2(os.path.join(refdir,'ticker.json'),self.tmpdir)
+		shutil.copy2(os.path.join(refdir,'ticker-finance.json'),self.tmpdir)
 		shutil.copy2(os.path.join(refdir,'ticker-btc.json'),self.tmpdir)
 		return 'ok'
 
@@ -123,8 +123,8 @@ class TestSuiteScripts(TestSuiteBase):
 		if not cfg.skipping_deps:
 			t.expect('Creating')
 			t.expect('Creating')
-		t.expect('proxy host could not be resolved')
-		t.req_exit_val = 3
+		ret = t.expect(['proxy host could not be resolved','ProxyError'])
+		t.req_exit_val = 3 if ret == 0 else 1
 		return t
 
 	def ticker3(self):
@@ -138,15 +138,15 @@ class TestSuiteScripts(TestSuiteBase):
 
 	def ticker4(self):
 		return self.ticker(
-			['--wide','--add-columns=eur,inr-indian-rupee:79.5'],
+			['--wide','--add-columns=eurusd=x,inr-indian-rupee:79.5'],
 			[
-				r'EUR \(EURO TOKEN\) = 1.0186 USD ' +
+				r'EURUSD=X \(EUR/USD\) = 1.0642 USD ' +
 				r'INR \(INDIAN RUPEE\) = 0.012579 USD',
-				'USD EUR INR BTC CHG_7d CHG_24h UPDATED',
+				'USD EURUSD=X INR BTC CHG_7d CHG_24h UPDATED',
 				'BITCOIN',
-				r'ETHEREUM 1,659.66 1,629.3906 131,943.14 0.07146397 \+21.42 \+1.82',
-				r'MONERO 158.97 156.0734 12,638.36 0.00684527 \+7.28 \+1.21 2022-08-02 18:25:59',
-				r'INDIAN RUPEE 0.01 0.0123 1.00 0.00000054 -- --',
+				r'ETHEREUM 1,659.66 1,559.5846 131,943.14 0.07146397 \+21.42 \+1.82',
+				r'MONERO 158.97 149.3870 12,638.36 0.00684527 \+7.28 \+1.21 2022-08-02 18:25:59',
+				r'INDIAN RUPEE 0.01 0.0118 1.00 0.00000054 -- --',
 			])
 
 	def ticker5(self):
@@ -213,7 +213,7 @@ class TestSuiteScripts(TestSuiteBase):
 				'SPOT PRICE',
 				'BTC 0.11783441',
 				'XMR 17.23400000',
-				'XAU','NDX',
+				'GC=F',r'\^IXIC',
 			])
 
 	def ticker11(self):
@@ -277,32 +277,22 @@ class TestSuiteScripts(TestSuiteBase):
 
 	def ticker16(self):
 		return self.ticker(
-			['--wide','--elapsed','-c','eur,omr-omani-rial:2.59r'],
+			['--wide','--elapsed','-c','eurusd=x,omr-omani-rial:2.59r'],
 			[
-				r'EUR \(EURO TOKEN\) = 1.0186 USD ' +
+				r'EURUSD=X \(EUR/USD\) = 1.0642 USD ' +
 				r'OMR \(OMANI RIAL\) = 2.5900 USD',
-				'USD EUR OMR BTC CHG_7d CHG_24h UPDATED',
-				r'BITCOIN 23,250.77 22,826.6890 8,977.1328 1.00000000 \+11.15 \+0.89 10 minutes ago',
-				'OMANI RIAL 2.59 2.5428 1.0000 0.00011139 -- -- --'
+				'USD EURUSD=X OMR BTC CHG_7d CHG_24h UPDATED',
+				r'BITCOIN 23,250.77 21,848.7527 8,977.1328 1.00000000 \+11.15 \+0.89 10 minutes ago',
+				'OMANI RIAL 2.59 2.4338 1.0000 0.00011139 -- -- --'
 			])
 
 	def ticker17(self):
 		# BGN pegged at 0.5113 EUR
 		return self.ticker(
-			['--wide','--elapsed','-c','bgn-bulgarian-lev:0.5113r:eur'],
+			['--wide','--elapsed','-c','bgn-bulgarian-lev:0.5113r:eurusd=x'],
 			[
-				r'BGN \(BULGARIAN LEV\) = 0.52080 USD',
+				r'BGN \(BULGARIAN LEV\) = 0.54411 USD',
 				'USD BGN BTC CHG_7d CHG_24h UPDATED',
-				'BITCOIN 23,250.77 44,644.414 1.00000000',
-				'BULGARIAN LEV 0.52 1.000 0.00002240',
-			])
-
-	def ticker18(self):
-		return self.ticker(
-			['--wide','--elapsed','-c','eur,bgn-bulgarian-lev:0.5113r:eur-euro-token'],
-			[
-				r'BGN \(BULGARIAN LEV\) = 0.52080 USD',
-				'USD EUR BGN BTC CHG_7d CHG_24h UPDATED',
-				'BITCOIN 23,250.77 22,826.6890 44,644.414 1.00000000',
-				'BULGARIAN LEV 0.52 0.5113 1.000 0.00002240',
+				'BITCOIN 23,250.77 42,731.767 1.00000000',
+				'BULGARIAN LEV 0.54 1.000 0.00002340',
 			])

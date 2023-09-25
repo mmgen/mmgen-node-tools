@@ -46,6 +46,7 @@ class DataSource:
 
 	sources = {
 		'cc': 'coinpaprika',
+		'fi': 'yahooquery'
 	}
 
 	class base:
@@ -199,6 +200,69 @@ class DataSource:
 				id     = (s.lower() if label else None),
 				source = 'cc' )
 
+	class yahooquery(base):
+
+		desc = 'Yahoo Finance'
+		api_host = 'finance.yahoo.com'
+		ratelimit = 30
+		net_data_type = 'python'
+		has_verbose = False
+		asset_id_pat = r'^\^.*|.*=[xf]$'
+
+		@staticmethod
+		def get_id(sym,data):
+			return sym.lower()
+
+		@staticmethod
+		def conv_data(sym,data,btcusd):
+			price_usd = Decimal( data['regularMarketPrice']['raw'] )
+			return {
+				'id': sym,
+				'name': data['shortName'],
+				'symbol': sym.upper(),
+				'price_usd': str(price_usd),
+				'price_btc': str(price_usd / btcusd),
+				'percent_change_7d': None,
+				'percent_change_24h': data['regularMarketChangePercent']['raw'] * 100,
+				'last_updated': data['regularMarketTime'],
+			}
+
+		def rate_limit_errmsg(self,elapsed):
+			return f'Rate limit exceeded!  Retry in {self.timeout-elapsed} seconds, or use --cached-data'
+
+		@property
+		def json_fn(self):
+			return os.path.join( cfg.cachedir, 'ticker-finance.json' )
+
+		@property
+		def timeout(self):
+			return 5 if gcfg.test_suite else self.ratelimit
+
+		def get_data_from_network(self):
+
+			arg = [r.symbol for r in cfg.rows if isinstance(r,tuple) and r.source == 'fi']
+
+			kwargs = { 'formatted': True, 'proxies': { 'https': cfg.proxy2 } }
+
+			if gcfg.test_suite:
+				kwargs.update({ 'timeout': 1, 'retry': 0 })
+
+			if gcfg.testing:
+				Msg('\nyahooquery.Ticker(\n  {},\n  {}\n)'.format(
+					arg,
+					fmt_dict(kwargs,fmt='kwargs') ))
+				return
+
+			from yahooquery import Ticker
+			return Ticker(arg,**kwargs).price
+
+		@staticmethod
+		def parse_asset_id(s,require_label):
+			return asset_tuple(
+				symbol = s.upper(),
+				id     = s.lower(),
+				source = 'fi' )
+
 def assets_list_gen(cfg_in):
 	for k,v in cfg_in.cfg['assets'].items():
 		yield('')
@@ -269,6 +333,23 @@ def gen_data(data):
 	for d in data['cc']:
 		if d['id'] == 'btc-bitcoin':
 			btcusd = Decimal(d['price_usd'])
+			break
+
+	get_id = src_cls['fi'].get_id
+	conv_func = src_cls['fi'].conv_data
+
+	for k,v in data['fi'].items():
+		id = get_id(k,v)
+		if wants['id']:
+			if id in wants['id']:
+				if id in found['id']:
+					die(1,dup_sym_errmsg(id))
+				yield ( id, conv_func(id,v,btcusd) )
+				found['id'].add(id)
+				wants['id'].remove(id)
+				if id in usr_rate_assets_want['id']:
+					rate_assets[k] = conv_func(id,v,btcusd) # NB: using symbol instead of ID for key
+		else:
 			break
 
 	for k in ('id','symbol'):
@@ -379,7 +460,7 @@ def make_cfg():
 		return tuple(gen())
 
 	def parse_asset_id(s,require_label=False):
-		return src_cls['cc'].parse_asset_id(s,require_label)
+		return src_cls['fi' if re.match(fi_pat,s) else 'cc'].parse_asset_id(s,require_label)
 
 	def parse_usr_asset_arg(key,use_cf_file=False):
 		"""
@@ -489,11 +570,13 @@ def make_cfg():
 		'add_prec',
 		'cachedir',
 		'proxy',
+		'proxy2',
 		'portfolio' ])
 
 	global cfg_in,src_cls,cfg
 
 	src_cls = { k: getattr(DataSource,v) for k,v in DataSource.sources.items() }
+	fi_pat = src_cls['fi'].asset_id_pat
 
 	cmd_args = gcfg._args
 	cfg_in = get_cfg_in()
@@ -514,6 +597,7 @@ def make_cfg():
 
 	proxy = get_proxy('proxy')
 	proxy = None if proxy == 'none' else proxy
+	proxy2 = get_proxy('proxy2')
 
 	cfg = cfg_tuple(
 		rows        = create_rows(),
@@ -526,6 +610,7 @@ def make_cfg():
 		add_prec    = parse_add_precision(gcfg.add_precision),
 		cachedir    = gcfg.cachedir or cfg_in.cfg.get('cachedir') or dfl_cachedir,
 		proxy       = proxy,
+		proxy2      = None if proxy2 == 'none' else '' if proxy2 == '' else (proxy2 or proxy),
 		portfolio   = get_portfolio() if cfg_in.portfolio and gcfg.portfolio and not query else None
 	)
 
@@ -541,9 +626,12 @@ def get_cfg_in():
 		cfg = cfg_data or {
 			'assets': {
 				'coin':      [ 'btc-bitcoin', 'eth-ethereum', 'xmr-monero' ],
-				'commodity': [ 'xau-gold-spot-token', 'xag-silver-spot-token', 'xbr-brent-crude-oil-spot' ],
-				'fiat':      [ 'gbp-pound-sterling-token', 'eur-euro-token' ],
-				'index':     [ 'dj30-dow-jones-30-token', 'spx-sp-500', 'ndx-nasdaq-100-token' ],
+				             # gold futures, silver futures, Brent futures
+				'commodity': [ 'gc=f', 'si=f', 'bz=f' ],
+				             # Pound Sterling, Euro, Swiss Franc
+				'fiat':      [ 'gbpusd=x', 'eurusd=x', 'chfusd=x' ],
+				             # Dow Jones Industrials, Nasdaq 100, S&P 500
+				'index':     [ '^dji', '^ixic', '^gspc' ],
 			},
 			'proxy': 'http://vpn-gw:8118'
 		},
