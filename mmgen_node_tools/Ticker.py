@@ -28,11 +28,12 @@ import sys,os,time,json,yaml
 from subprocess import run,PIPE,CalledProcessError
 from decimal import Decimal
 from collections import namedtuple
+
 from mmgen.color import *
-from mmgen.util import die,fmt_list,msg,msg_r,suf,fmt
+from mmgen.util import msg,msg_r,Msg,die,Die,suf,fmt,fmt_list
 
 homedir = os.getenv('HOME')
-cachedir = os.path.join(homedir,'.cache','mmgen-node-tools')
+dfl_cachedir = os.path.join(homedir,'.cache','mmgen-node-tools')
 cfg_fn = 'ticker-cfg.yaml'
 portfolio_fn = 'ticker-portfolio.yaml'
 
@@ -78,7 +79,7 @@ def gen_data(data):
 			die(1,'Missing data, exiting')
 
 	rows_want = {
-		'id':     {r.id for r in cfg.rows if getattr(r,'id',None)} - {'usd-us-dollar'},
+		'id': {r.id for r in cfg.rows if isinstance(r,tuple) and r.id} - {'usd-us-dollar'},
 		'symbol': {r.symbol for r in cfg.rows if isinstance(r,tuple) and r.id is None} - {'USD'},
 	}
 	usr_rate_assets = tuple(u.rate_asset for u in cfg.usr_rows + cfg.usr_columns if u.rate_asset)
@@ -100,24 +101,28 @@ def gen_data(data):
 	found = { 'id': set(), 'symbol': set() }
 	rate_assets = {}
 
-	for k in ['id','symbol']:
-		wants = rows_want[k] | usr_wants[k]
-		if wants:
-			for d in data:
-				if d[k] in wants:
-					if d[k] in found[k]:
-						die(1,dup_sym_errmsg(d[k]))
-					yield (d['id'],d)
-					found[k].add(d[k])
-					if d[k] in usr_rate_assets_want[k]:
-						rate_assets[d['symbol']] = d # NB: using symbol instead of ID
-					if k == 'id' and len(found[k]) == len(wants):
-						break
+	wants = {k:rows_want[k] | usr_wants[k] for k in ('id','symbol')}
 
 	for d in data:
 		if d['id'] == 'btc-bitcoin':
 			btcusd = Decimal(d['price_usd'])
 			break
+
+	for k in ('id','symbol'):
+		for d in data:
+			if wants[k]:
+				if d[k] in wants[k]:
+					if d[k] in found[k]:
+						die(1,dup_sym_errmsg(d[k]))
+					yield (d['id'],d)
+					found[k].add(d[k])
+					wants[k].remove(d[k])
+					if d[k] in usr_rate_assets_want[k]:
+						rate_assets[d['symbol']] = d # NB: using symbol instead of ID for key
+			else:
+				break
+
+	check_assets_found(usr_wants,found)
 
 	for asset in (cfg.usr_rows + cfg.usr_columns):
 		if asset.rate:
@@ -129,20 +134,20 @@ def gen_data(data):
 			yield ( _id, {
 				'symbol': asset.symbol,
 				'id': _id,
+				'name': ' '.join(_id.split('-')[1:]),
 				'price_usd': str(Decimal(ra_rate/asset.rate)),
 				'price_btc': str(Decimal(ra_rate/asset.rate/btcusd)),
-				'last_updated': int(now),
+				'last_updated': None,
 			})
 
 	yield ('usd-us-dollar', {
 		'symbol': 'USD',
 		'id': 'usd-us-dollar',
+		'name': 'US Dollar',
 		'price_usd': '1.0',
 		'price_btc': str(Decimal(1/btcusd)),
-		'last_updated': int(now),
+		'last_updated': None,
 	})
-
-	check_assets_found(usr_wants,found)
 
 def get_src_data(curl_cmd):
 
@@ -166,8 +171,8 @@ def get_src_data(curl_cmd):
 			('' if cfg.btc_only else ', or use --cached-data or --btc')
 		)
 
-	if not os.path.exists(cachedir):
-		os.makedirs(cachedir)
+	if not os.path.exists(cfg.cachedir):
+		os.makedirs(cfg.cachedir)
 
 	if cfg.btc_only:
 		fn = os.path.join(cfg.cachedir,'ticker-btc.json')
@@ -225,18 +230,18 @@ def get_src_data(curl_cmd):
 
 	return data
 
-def main(cfg_parm,cfg_in_parm):
+def main():
 
 	def update_sample_file(usr_cfg_file):
-		src_data = files('mmgen_node_tools').joinpath('data',os.path.basename(usr_cfg_file)).read_text()
+		usr_data = files('mmgen_node_tools').joinpath('data',os.path.basename(usr_cfg_file)).read_text()
 		sample_file = usr_cfg_file + '.sample'
 		sample_data = open(sample_file).read() if os.path.exists(sample_file) else None
-		if src_data != sample_data:
+		if usr_data != sample_data:
 			os.makedirs(os.path.dirname(sample_file),exist_ok=True)
 			msg('{} {}'.format(
 				('Updating','Creating')[sample_data is None],
 				sample_file ))
-			open(sample_file,'w').write(src_data)
+			open(sample_file,'w').write(usr_data)
 
 	def get_curl_cmd():
 		return ([
@@ -251,8 +256,6 @@ def main(cfg_parm,cfg_in_parm):
 			)
 
 	global cfg,cfg_in
-	cfg = cfg_parm
-	cfg_in = cfg_in_parm
 
 	try:
 		from importlib.resources import files # Python 3.9
@@ -272,21 +275,23 @@ def main(cfg_parm,cfg_in_parm):
 		Msg(curl_cmd + '\n' + ' '.join(curl_cmd))
 		return
 
-	parsed_json = [get_src_data(curl_cmd)] if cfg.btc_only else get_src_data(curl_cmd)
+	src_data = [get_src_data(curl_cmd)] if cfg.btc_only else get_src_data(curl_cmd)
 
 	if gcfg.list_ids:
 		from mmgen.ui import do_pager
-		do_pager('\n'.join(e['id'] for e in parsed_json))
+		do_pager('\n'.join(e['id'] for e in src_data))
 		return
 
 	global now
 	now = 1659465400 if gcfg.test_suite else time.time() # 1659524400 1659445900
 
+	data = dict(gen_data(src_data))
+
 	gcfg._util.stdout_or_pager(
-		'\n'.join(getattr(Ticker,cfg.clsname)(dict(gen_data(parsed_json))).gen_output()) + '\n'
+		'\n'.join(getattr(Ticker,cfg.clsname)(data).gen_output()) + '\n'
 	)
 
-def make_cfg(cmd_args,cfg_in):
+def make_cfg():
 
 	def get_rows_from_cfg(add_data=None):
 		def gen():
@@ -295,7 +300,7 @@ def make_cfg(cmd_args,cfg_in):
 				if add_data and k in add_data:
 					v += tuple(add_data[k])
 				for e in v:
-					yield parse_asset_id(e,True)
+					yield parse_asset_id(e,require_label=True)
 		return tuple(gen())
 
 	def parse_asset_id(s,require_label=False):
@@ -304,7 +309,7 @@ def make_cfg(cmd_args,cfg_in):
 			die(1,f'{s!r}: asset label is missing')
 		return asset_tuple( sym.upper(), (s.lower() if label else None) )
 
-	def parse_usr_asset_arg(s):
+	def parse_usr_asset_arg(key,use_cf_file=False):
 		"""
 		asset_id[:rate[:rate_asset]]
 		"""
@@ -324,7 +329,9 @@ def make_cfg(cmd_args,cfg_in):
 					Decimal(rate) ),
 				rate_asset = parse_asset_id(rate_asset) if rate_asset else None )
 
-		return tuple(parse_parm(s2) for s2 in s.split(',')) if s else ()
+		cl_opt = getattr(gcfg,key)
+		cf_opt = cfg_in.cfg.get(key,[]) if use_cf_file else []
+		return tuple( parse_parm(s) for s in (cl_opt.split(',') if cl_opt else cf_opt) )
 
 	def parse_query_arg(s):
 		"""
@@ -365,7 +372,7 @@ def make_cfg(cmd_args,cfg_in):
 
 	def get_portfolio_assets(ret=()):
 		if cfg_in.portfolio and gcfg.portfolio:
-			ret = (parse_asset_id(e,True) for e in cfg_in.portfolio)
+			ret = (parse_asset_id(e,require_label=True) for e in cfg_in.portfolio)
 		return ( 'portfolio', tuple(e for e in ret if (not gcfg.btc) or e.symbol == 'BTC') )
 
 	def get_portfolio():
@@ -410,15 +417,30 @@ def make_cfg(cmd_args,cfg_in):
 		'proxy',
 		'portfolio' ])
 
+	global cfg_in,cfg
+
+	cmd_args = gcfg._args
+	cfg_in = get_cfg_in()
+
 	query_tuple   = namedtuple('query',['asset','to_asset'])
 	asset_data    = namedtuple('asset_data',['symbol','id','amount','rate','rate_asset'])
 	asset_tuple   = namedtuple('asset_tuple',['symbol','id'])
 
-	usr_rows    = parse_usr_asset_arg(gcfg.add_rows)
-	usr_columns = parse_usr_asset_arg(gcfg.add_columns)
+	usr_rows    = parse_usr_asset_arg('add_rows')
+	usr_columns = parse_usr_asset_arg('add_columns',use_cf_file=True)
 	query       = parse_query_arg(cmd_args[0]) if cmd_args else None
 
-	return cfg_tuple(
+	def get_proxy(name):
+		proxy = getattr(gcfg,name)
+		return (
+			'' if proxy == '' else 'none' if (proxy and proxy.lower() == 'none')
+			else (proxy or cfg_in.cfg.get(name))
+		)
+
+	proxy = get_proxy('proxy')
+	proxy = None if proxy == 'none' else proxy
+
+	cfg = cfg_tuple(
 		rows        = create_rows(),
 		usr_rows    = usr_rows,
 		usr_columns = usr_columns,
@@ -427,8 +449,8 @@ def make_cfg(cmd_args,cfg_in):
 		clsname     = 'trading' if query else 'overview',
 		btc_only    = gcfg.btc,
 		add_prec    = parse_add_precision(gcfg.add_precision),
-		cachedir    = gcfg.cachedir or cfg_in.cfg.get('cachedir') or cachedir,
-		proxy       = None if gcfg.proxy == '' else (gcfg.proxy or cfg_in.cfg.get('proxy')),
+		cachedir    = gcfg.cachedir or cfg_in.cfg.get('cachedir') or dfl_cachedir,
+		proxy       = proxy,
 		portfolio   = get_portfolio() if cfg_in.portfolio and gcfg.portfolio and not query else None
 	)
 
@@ -489,13 +511,21 @@ class Ticker:
 
 			d = self.data
 			max_w = 0
-			min_t = min( (int(d[a.id]['last_updated']) for a in cross_assets), default=None )
+
+			if cross_assets:
+				last_updated_x = [d[a.id]['last_updated'] for a in cross_assets]
+				min_t = min( (int(n) for n in last_updated_x if isinstance(n,int) ), default=None )
+			else:
+				min_t = None
 
 			for row in self.rows:
 				if isinstance(row,tuple):
 					try:
-						t = int(d[row.id]['last_updated'])
-					except KeyError:
+						t = int( d[row.id]['last_updated'] )
+					except TypeError as e:
+						d[row.id]['last_updated_fmt'] = gray('--' if 'NoneType' in str(e) else str(e))
+					except KeyError as e:
+						msg(str(e))
 						pass
 					else:
 						t_fmt = d[row.id]['last_updated_fmt'] = fmt_func( (min(t,min_t) if min_t else t), now )
@@ -517,7 +547,7 @@ class Ticker:
 						return d['id']
 
 		def create_label(self,id):
-			return ' '.join(id.split('-')[1:]).upper()
+			return self.data[id]['name'].upper()
 
 		def gen_output(self):
 			yield 'Current time: {} UTC'.format(time.strftime('%F %X',time.gmtime(now)))

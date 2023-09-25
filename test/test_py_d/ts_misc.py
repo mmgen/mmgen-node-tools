@@ -198,7 +198,7 @@ class TestSuiteScripts(TestSuiteBase):
 			[
 				'USD BTC CHG_7d CHG_24h UPDATED',
 				r'BITCOIN 23,250.7741 1.0000000000 \+11.15 \+0.89 10 minutes ago',
-				r'FAKECOIN 81.3008 0.0034966927 -- -- just now',
+				r'FAKECOIN 81.3008 0.0034966927 -- -- --',
 				r'\(no data for noc-nocoin\)',
 			])
 		os.unlink(os.path.join(self.nt_datadir,'ticker-portfolio.yaml'))
@@ -247,7 +247,7 @@ class TestSuiteScripts(TestSuiteBase):
 				'Offer: 200,000 INR',
 				'Offered price differs from spot by -7.58%',
 				'SPOT PRICE OFFERED PRICE UPDATED',
-				'INDIAN RUPEE 200,000.00000000 184,843.65372424 10 minutes ago ' +
+				'INDIAN RUPEE 200,000.00000000 184,843.65372424 -- ' +
 				'BITCOIN 0.10819955 0.10000000 10 minutes ago'
 			])
 
@@ -272,7 +272,7 @@ class TestSuiteScripts(TestSuiteBase):
 				'Offered price differs from spot by -3.72%',
 				'SPOT PRICE OFFERED PRICE UPDATED',
 				'BITCOIN 2.00000000 1.92563954 1 day 9 hours 2 minutes ago ' +
-				'US DOLLAR 46,737.71911598 45,000.00000000 1 day 9 hours 2 minutes ago',
+				'US DOLLAR 46,737.71911598 45,000.00000000 --',
 			])
 
 	def ticker16(self):
@@ -283,7 +283,7 @@ class TestSuiteScripts(TestSuiteBase):
 				r'OMR \(OMANI RIAL\) = 2.5900 USD',
 				'USD EUR OMR BTC CHG_7d CHG_24h UPDATED',
 				r'BITCOIN 23,250.77 22,826.6890 8,977.1328 1.00000000 \+11.15 \+0.89 10 minutes ago',
-				'OMANI RIAL 2.59 2.5428 1.0000 0.00011139 -- -- just now'
+				'OMANI RIAL 2.59 2.5428 1.0000 0.00011139 -- -- --'
 			])
 
 	def ticker17(self):

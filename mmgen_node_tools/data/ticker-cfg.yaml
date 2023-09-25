@@ -1,14 +1,15 @@
-# Indentation must be consistent!  Do not mix leading tabs and spaces.
+### Indentation must be consistent!  Do not mix leading tabs and spaces.
 
-# See the curl manpage for supported --proxy parameters
-# For a direct connection, leave the right-hand side blank
+### See the curl manpage for supported --proxy parameters
+### For a direct connection, leave the right-hand side blank
 proxy: http://vpn-gw:8118
 
-# Override the default cache directory (~/.cache/mmgen-node-tools)
+### Override the default cache directory (~/.cache/mmgen-node-tools):
 cachedir:
 
-# Asset labels are arbitrary strings.  Use as many or few as you wish.
-# Invoke ‘mmnode-ticker --list-ids’ for a full list of supported asset IDs.
+### Asset rows
+### Asset labels are arbitrary strings.  Use as many or few as you wish.
+### Invoke ‘mmnode-ticker --list-ids’ for a full list of supported asset IDs.
 assets:
   coin1:
     - btc-bitcoin

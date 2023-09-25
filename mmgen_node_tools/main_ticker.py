@@ -12,7 +12,6 @@
 mmnode-ticker: Display price information for cryptocurrency and other assets
 """
 
-import sys,os
 from .Ticker import *
 
 opts_data = {
@@ -36,8 +35,8 @@ opts_data = {
                       used to supply a USD exchange rate for missing assets.
 -C, --cached-data     Use cached data from previous network query instead of
                       live data from server
--d, --cachedir=D      Read and write cached JSON data to directory ‘D’
-                      instead of ‘~/{os.path.relpath(cachedir,start=homedir)}’
+-D, --cachedir=D      Read and write cached JSON data to directory ‘D’
+                      instead of ‘~/{dfl_cachedir}’
 -e, --add-precision=N Add ‘N’ digits of precision to columns
 -E, --elapsed         Show elapsed time in UPDATED column (see --update-time)
 -F, --portfolio       Display portfolio data
@@ -48,13 +47,14 @@ opts_data = {
 -r, --add-rows=LIST   Add rows for asset specifiers in LIST (comma-separated,
                       see ASSET SPECIFIERS below). Can also be used to supply
                       a USD exchange rate for missing assets.
+-t, --testing         Print command to be executed to stdout and exit
 -T, --thousands-comma Use comma as a thousands separator
 -u, --update-time     Include UPDATED (last update time) column
--U, --print-curl      Print cURL command to standard output and exit
 -v, --verbose         Be more verbose
 -w, --wide            Display all optional columns (equivalent to -punT)
 -x, --proxy=P         Connect via proxy ‘P’.  Set to the empty string to
-                      disable.  Consult the curl manpage for --proxy usage.
+                      completely disable or ‘none’ to allow override from
+                      environment. Consult the curl manpage for --proxy usage.
 """,
 	'notes': """
 
@@ -184,6 +184,9 @@ To add a portfolio, edit the file
 """
 	},
 	'code': {
+		'options': lambda s: s.format(
+			dfl_cachedir = os.path.relpath(dfl_cachedir,start=homedir),
+		),
 		'notes': lambda s: s.format(
 			assets    = fmt_list(assets_list_gen(cfg_in),fmt='col',indent='  '),
 			cfg       = os.path.relpath(cfg_in.cfg_file,start=homedir),
@@ -196,16 +199,17 @@ To add a portfolio, edit the file
 	}
 }
 
+import os
+
 from mmgen.cfg import Config
-gcfg = Config( opts_data=opts_data, do_post_init=True )
+import mmgen_node_tools.Ticker as tck
 
-import mmgen_node_tools.Ticker as Ticker
-Ticker.gcfg = gcfg
+tck.gcfg = Config( opts_data=opts_data, do_post_init=True )
 
-cfg_in = get_cfg_in()
+tck.make_cfg()
 
-cfg = make_cfg(gcfg._args,cfg_in)
+from .Ticker import cfg_in
 
-gcfg._post_init()
+tck.gcfg._post_init()
 
-main(cfg,cfg_in)
+tck.main()
