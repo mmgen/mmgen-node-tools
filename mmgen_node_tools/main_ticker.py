@@ -12,8 +12,6 @@
 mmnode-ticker: Display price information for cryptocurrency and other assets
 """
 
-from .Ticker import *
-
 opts_data = {
 	'sets': [
 		('wide', True, 'percent_change',  True),
@@ -24,7 +22,7 @@ opts_data = {
 	'text': {
 		'desc':  'Display prices for cryptocurrency and other assets',
 		'usage': '[opts] [TRADE_SPECIFIER]',
-		'options': f"""
+		'options': """
 -h, --help            Print this help message
 --, --longhelp        Print help message for long options (common options)
 -A, --adjust=P        Adjust prices by percentage ‘P’.  In ‘trading’ mode,
@@ -37,6 +35,8 @@ opts_data = {
                       live data from server
 -D, --cachedir=D      Read and write cached JSON data to directory ‘D’
                       instead of ‘~/{dfl_cachedir}’
+-d, --download=D      Retrieve data ‘D’ from source, save to file and exit
+                      (valid options: {ds})
 -e, --add-precision=N Add ‘N’ digits of precision to columns
 -E, --elapsed         Show elapsed time in UPDATED column (see --update-time)
 -F, --portfolio       Display portfolio data
@@ -112,7 +112,7 @@ A TRADE_SPECIFIER is a single argument in the format:
 
                                  PROXY NOTE
 
-The remote server used to obtain the price data, {api_host!r}, blocks
+The remote server used to obtain the price data, {cc.api_host!r}, blocks
 Tor behind a Captcha wall, so a Tor proxy cannot be used directly.  If you’re
 concerned about privacy, connect via a VPN, or better yet, VPN over Tor. Then
 set up an HTTP proxy (e.g. Privoxy) on the VPN’ed host and set the ‘proxy’
@@ -121,7 +121,7 @@ the script directly on the VPN’ed host with ’proxy’ or --proxy set to the
 null string.
 
 Alternatively, you may download the JSON source data in a Tor-proxied browser
-from ‘{api_url}’, save it as ‘ticker.json’ in your
+from ‘{cc.api_url}’, save it as ‘ticker.json’ in your
 configured cache directory, and run the script with the --cached-data option.
 
 
@@ -130,9 +130,9 @@ configured cache directory, and run the script with the --cached-data option.
 To protect user privacy, all filtering and processing of data is performed
 client side so that the remote server does not know which assets are being
 examined.  This means that data for ALL available assets (currently over 4000)
-is fetched with each invocation of the script.  A rate limit of {L} seconds
+is fetched with each invocation of the script.  A rate limit of {cc.ratelimit} seconds
 between calls is thus imposed to prevent abuse of the remote server.  When the
---btc option is in effect, this limit is reduced to {B} seconds.  To bypass the
+--btc option is in effect, this limit is reduced to {cc.btc_ratelimit} seconds.  To bypass the
 rate limit entirely, use --cached-data.
 
 
@@ -186,21 +186,20 @@ To add a portfolio, edit the file
 	'code': {
 		'options': lambda s: s.format(
 			dfl_cachedir = os.path.relpath(dfl_cachedir,start=homedir),
+			ds           = fmt_dict(DataSource.sources,fmt='equal'),
 		),
 		'notes': lambda s: s.format(
-			assets    = fmt_list(assets_list_gen(cfg_in),fmt='col',indent='  '),
-			cfg       = os.path.relpath(cfg_in.cfg_file,start=homedir),
-			pf_cfg    = os.path.relpath(cfg_in.portfolio_file,start=homedir),
-			api_host  = api_host,
-			api_url   = api_url,
-			L         = ratelimit,
-			B         = btc_ratelimit,
+			assets = fmt_list(assets_list_gen(cfg_in),fmt='col',indent='  '),
+			cfg    = os.path.relpath(cfg_in.cfg_file,start=homedir),
+			pf_cfg = os.path.relpath(cfg_in.portfolio_file,start=homedir),
+			cc     = src_cls['cc'](),
 		)
 	}
 }
 
 import os
 
+from mmgen.util import fmt_list,fmt_dict
 from mmgen.cfg import Config
 import mmgen_node_tools.Ticker as tck
 
@@ -208,7 +207,7 @@ tck.gcfg = Config( opts_data=opts_data, do_post_init=True )
 
 tck.make_cfg()
 
-from .Ticker import cfg_in
+from .Ticker import dfl_cachedir,homedir,DataSource,assets_list_gen,cfg_in,src_cls
 
 tck.gcfg._post_init()
 

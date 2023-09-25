@@ -12,11 +12,6 @@
 mmgen_node_tools.Ticker: Display price information for cryptocurrency and other assets
 """
 
-api_host = 'api.coinpaprika.com'
-api_url  = f'https://{api_host}/v1/ticker'
-ratelimit = 240
-btc_ratelimit = 10
-
 # We use deprecated coinpaprika ‘ticker’ API for now because it returns ~45% less data.
 # Old ‘ticker’ API  (/v1/ticker):  data['BTC']['price_usd']
 # New ‘tickers’ API (/v1/tickers): data['BTC']['quotes']['USD']['price']
@@ -24,25 +19,193 @@ btc_ratelimit = 10
 # Possible alternatives:
 # - https://min-api.cryptocompare.com/data/pricemultifull?fsyms=BTC,LTC&tsyms=USD,EUR
 
-import sys,os,time,json,yaml
+import sys,os,re,time,json,yaml,random
 from subprocess import run,PIPE,CalledProcessError
 from decimal import Decimal
 from collections import namedtuple
 
 from mmgen.color import *
-from mmgen.util import msg,msg_r,Msg,die,Die,suf,fmt,fmt_list
+from mmgen.util import msg,msg_r,Msg,die,Die,suf,fmt,fmt_list,fmt_dict,list_gen
 
 homedir = os.getenv('HOME')
 dfl_cachedir = os.path.join(homedir,'.cache','mmgen-node-tools')
 cfg_fn = 'ticker-cfg.yaml'
 portfolio_fn = 'ticker-portfolio.yaml'
+asset_tuple = namedtuple('asset_tuple',['symbol','id','source'])
+
+def fetch_delay(fetched_data=[]):
+	if not gcfg.testing:
+		if fetched_data:
+			delay = 1 + random.randrange(1,5000) / 1000
+			msg(f'Waiting {delay:.3f} seconds...')
+			time.sleep(delay)
+		else:
+			fetched_data.append(None)
+
+class DataSource:
+
+	sources = {
+		'cc': 'coinpaprika',
+	}
+
+	class base:
+
+		def get_data_from_network(self):
+
+			curl_cmd = list_gen(
+				['curl', '--tr-encoding', '--header', 'Accept: application/json',True],
+				['--compressed'], # adds 'Accept-Encoding: gzip'
+				['--proxy', cfg.proxy, isinstance(cfg.proxy,str)],
+				['--silent', not gcfg.verbose],
+				[self.api_url]
+			)
+
+			if gcfg.testing:
+				Msg(fmt_list(curl_cmd,fmt='bare'))
+				return
+
+			try:
+				return run(curl_cmd,check=True,stdout=PIPE).stdout.decode()
+			except CalledProcessError as e:
+				msg('')
+				from .Misc import curl_exit_codes
+				msg(red(curl_exit_codes[e.returncode]))
+				msg(red('Command line:\n  {}'.format( ' '.join((repr(i) if ' ' in i else i) for i in e.cmd) )))
+				from mmgen.exception import MMGenCalledProcessError
+				raise MMGenCalledProcessError(f'Subprocess returned non-zero exit status {e.returncode}')
+
+		def get_data(self):
+
+			if not os.path.exists(cfg.cachedir):
+				os.makedirs(cfg.cachedir)
+
+			if not os.path.exists(self.json_fn):
+				open(self.json_fn,'w').write('{}')
+
+			if gcfg.cached_data:
+				data_type = 'json'
+				data_in = open(self.json_fn).read()
+			else:
+				data_type = self.net_data_type
+				elapsed = int(time.time() - os.stat(self.json_fn).st_mtime)
+				if elapsed >= self.timeout:
+					if gcfg.testing:
+						msg('')
+					fetch_delay()
+					msg_r(f'Fetching data from {self.api_host}...')
+					if self.has_verbose:
+						gcfg._util.vmsg('')
+					data_in = self.get_data_from_network()
+					msg('done')
+					if gcfg.testing:
+						return {}
+				else:
+					die(1,self.rate_limit_errmsg(elapsed))
+
+			if data_type == 'json':
+				try:
+					data = json.loads(data_in)
+				except:
+					self.json_data_error_msg(data_in)
+					die(2,'Retrieved data is not valid JSON, exiting')
+				json_text = data_in
+			elif data_type == 'python':
+				data = data_in
+				json_text = json.dumps(data_in)
+
+			if not data:
+				if gcfg.cached_data:
+					die(1,'No cached data!  Run command without --cached-data option to retrieve data from remote host')
+				else:
+					die(2,'Remote host returned no data!')
+			elif 'error' in data:
+				die(1,data['error'])
+
+			if gcfg.cached_data:
+				msg(f'Using cached data from ~/{self.json_fn_rel}')
+			else:
+				open(self.json_fn,'w').write(json_text)
+				msg(f'JSON data cached to ~/{self.json_fn_rel}')
+				if gcfg.download:
+					sys.exit(0)
+
+			return self.postprocess_data(data)
+
+		def json_data_error_msg(self,json_text):
+			pass
+
+		def postprocess_data(self,data):
+			return data
+
+		@property
+		def json_fn_rel(self):
+			return os.path.relpath(self.json_fn,start=homedir)
+
+	class coinpaprika(base):
+		desc = 'CoinPaprika'
+		api_host = 'api.coinpaprika.com'
+		ratelimit = 240
+		btc_ratelimit = 10
+		net_data_type = 'json'
+		has_verbose = True
+
+		def rate_limit_errmsg(self,elapsed):
+			return (
+				f'Rate limit exceeded!  Retry in {self.timeout-elapsed} seconds' +
+				('' if cfg.btc_only else ', or use --cached-data or --btc')
+			)
+
+		@property
+		def api_url(self):
+			return f'https://{self.api_host}/v1/ticker' + ('/btc-bitcoin' if cfg.btc_only else '')
+
+		@property
+		def json_fn(self):
+			return os.path.join(
+				cfg.cachedir,
+				'ticker-btc.json' if cfg.btc_only else 'ticker.json' )
+
+		@property
+		def timeout(self):
+			return 5 if gcfg.test_suite else self.btc_ratelimit if cfg.btc_only else self.ratelimit
+
+		def json_data_error_msg(self,json_text):
+			tor_captcha_msg = f"""
+				If you’re using Tor, the API request may have failed due to Captcha protection.
+				A workaround for this issue is to retrieve the JSON data with a browser from
+				the following URL:
+
+					{self.api_url}
+
+				and save it to:
+
+					‘{cfg.cachedir}/ticker.json’
+
+				Then invoke the program with --cached-data and without --btc
+			"""
+			msg(json_text[:1024] + '...')
+			msg(orange(fmt(tor_captcha_msg,strip_char='\t')))
+
+		def postprocess_data(self,data):
+			return [data] if cfg.btc_only else data
+
+		@staticmethod
+		def parse_asset_id(s,require_label):
+			sym,label = (*s.split('-',1),None)[:2]
+			if require_label and not label:
+				die(1,f'{s!r}: asset label is missing')
+			return asset_tuple(
+				symbol = sym.upper(),
+				id     = (s.lower() if label else None),
+				source = 'cc' )
 
 def assets_list_gen(cfg_in):
 	for k,v in cfg_in.cfg['assets'].items():
 		yield('')
 		yield(k.upper())
 		for e in v:
-			yield('  {:4s} {}'.format(*e.split('-',1)))
+			out = e.split('-',1)
+			yield('  {:5s} {}'.format(out[0],out[1] if len(out) == 2 else ''))
 
 def gen_data(data):
 	"""
@@ -59,7 +222,7 @@ def gen_data(data):
 	def dup_sym_errmsg(dup_sym):
 		return (
 			f'The symbol {dup_sym!r} is shared by the following assets:\n' +
-			'\n  ' + '\n  '.join(d['id'] for d in data if d['symbol'] == dup_sym) +
+			'\n  ' + '\n  '.join(d['id'] for d in data['cc'] if d['symbol'] == dup_sym) +
 			'\n\nPlease specify the asset by one of the full IDs listed above\n' +
 			f'instead of {dup_sym!r}'
 		)
@@ -103,13 +266,13 @@ def gen_data(data):
 
 	wants = {k:rows_want[k] | usr_wants[k] for k in ('id','symbol')}
 
-	for d in data:
+	for d in data['cc']:
 		if d['id'] == 'btc-bitcoin':
 			btcusd = Decimal(d['price_usd'])
 			break
 
 	for k in ('id','symbol'):
-		for d in data:
+		for d in data['cc']:
 			if wants[k]:
 				if d[k] in wants[k]:
 					if d[k] in found[k]:
@@ -149,87 +312,6 @@ def gen_data(data):
 		'last_updated': None,
 	})
 
-def get_src_data(curl_cmd):
-
-	tor_captcha_msg = f"""
-		If you’re using Tor, the API request may have failed due to Captcha protection.
-		A workaround for this issue is to retrieve the JSON data with a browser from
-		the following URL:
-
-		    {api_url}
-
-		and save it to:
-
-		    ‘{cfg.cachedir}/ticker.json’
-
-		Then invoke the program with --cached-data and without --btc
-	"""
-
-	def rate_limit_errmsg(timeout,elapsed):
-		return (
-			f'Rate limit exceeded!  Retry in {timeout-elapsed} seconds' +
-			('' if cfg.btc_only else ', or use --cached-data or --btc')
-		)
-
-	if not os.path.exists(cfg.cachedir):
-		os.makedirs(cfg.cachedir)
-
-	if cfg.btc_only:
-		fn = os.path.join(cfg.cachedir,'ticker-btc.json')
-		timeout = 5 if gcfg.test_suite else btc_ratelimit
-	else:
-		fn = os.path.join(cfg.cachedir,'ticker.json')
-		timeout = 5 if gcfg.test_suite else ratelimit
-
-	fn_rel = os.path.relpath(fn,start=homedir)
-
-	if not os.path.exists(fn):
-		open(fn,'w').write('{}')
-
-	if gcfg.cached_data:
-		json_text = open(fn).read()
-	else:
-		elapsed = int(time.time() - os.stat(fn).st_mtime)
-		if elapsed >= timeout:
-			msg_r(f'Fetching data from {api_host}...')
-			gcfg._util.vmsg('')
-			try:
-				cp = run(curl_cmd,check=True,stdout=PIPE)
-			except CalledProcessError as e:
-				msg('')
-				from .Misc import curl_exit_codes
-				msg(red(curl_exit_codes[e.returncode]))
-				msg(red('Command line:\n  {}'.format( ' '.join((repr(i) if ' ' in i else i) for i in e.cmd) )))
-				from mmgen.exception import MMGenCalledProcessError
-				raise MMGenCalledProcessError(f'Subprocess returned non-zero exit status {e.returncode}')
-			json_text = cp.stdout.decode()
-			msg('done')
-		else:
-			die(1,rate_limit_errmsg(timeout,elapsed))
-
-	try:
-		data = json.loads(json_text)
-	except:
-		msg(json_text[:1024] + '...')
-		msg(orange(fmt(tor_captcha_msg,strip_char='\t')))
-		die(2,'Retrieved data is not valid JSON, exiting')
-
-	if not data:
-		if gcfg.cached_data:
-			die(1,'No cached data!  Run command without --cached-data option to retrieve data from remote host')
-		else:
-			die(2,'Remote host returned no data!')
-	elif 'error' in data:
-		die(1,data['error'])
-
-	if gcfg.cached_data:
-		msg(f'Using cached data from ~/{fn_rel}')
-	else:
-		open(fn,'w').write(json_text)
-		msg(f'JSON data cached to ~/{fn_rel}')
-
-	return data
-
 def main():
 
 	def update_sample_file(usr_cfg_file):
@@ -243,20 +325,6 @@ def main():
 				sample_file ))
 			open(sample_file,'w').write(usr_data)
 
-	def get_curl_cmd():
-		return ([
-					'curl',
-					'--tr-encoding',
-					'--compressed', # adds 'Accept-Encoding: gzip'
-					'--header', 'Accept: application/json',
-				] +
-				(['--proxy', cfg.proxy] if cfg.proxy else []) +
-				(['--silent'] if not gcfg.verbose else []) +
-				[api_url + ('/btc-bitcoin' if cfg.btc_only else '')]
-			)
-
-	global cfg,cfg_in
-
 	try:
 		from importlib.resources import files # Python 3.9
 	except ImportError:
@@ -269,17 +337,24 @@ def main():
 		die(1,'No portfolio configured!\nTo configure a portfolio, edit the file ~/{}'.format(
 			os.path.relpath(cfg_in.portfolio_file,start=homedir)))
 
-	curl_cmd = get_curl_cmd()
+	if gcfg.list_ids:
+		src_ids = ['cc']
+	elif gcfg.download:
+		assert gcfg.download in DataSource.sources, f'{gcfg.download!r}: invalid data source'
+		src_ids = [gcfg.download]
+	else:
+		src_ids = DataSource.sources
 
-	if gcfg.print_curl:
-		Msg(curl_cmd + '\n' + ' '.join(curl_cmd))
+	ids = random.sample( list(src_ids), k=len(src_ids) ) # shuffle the ids
+
+	src_data = { k: src_cls[k]().get_data() for k in ids }
+
+	if gcfg.testing:
 		return
-
-	src_data = [get_src_data(curl_cmd)] if cfg.btc_only else get_src_data(curl_cmd)
 
 	if gcfg.list_ids:
 		from mmgen.ui import do_pager
-		do_pager('\n'.join(e['id'] for e in src_data))
+		do_pager('\n'.join(e['id'] for e in src_data['cc']))
 		return
 
 	global now
@@ -304,10 +379,7 @@ def make_cfg():
 		return tuple(gen())
 
 	def parse_asset_id(s,require_label=False):
-		sym,label = (*s.split('-',1),None)[:2]
-		if require_label and not label:
-			die(1,f'{s!r}: asset label is missing')
-		return asset_tuple( sym.upper(), (s.lower() if label else None) )
+		return src_cls['cc'].parse_asset_id(s,require_label)
 
 	def parse_usr_asset_arg(key,use_cf_file=False):
 		"""
@@ -327,7 +399,8 @@ def make_cfg():
 					None if rate is None else
 					1 / Decimal(rate[:-1]) if rate.lower().endswith('r') else
 					Decimal(rate) ),
-				rate_asset = parse_asset_id(rate_asset) if rate_asset else None )
+				rate_asset = parse_asset_id(rate_asset) if rate_asset else None,
+				source  = parsed_id.source )
 
 		cl_opt = getattr(gcfg,key)
 		cf_opt = cfg_in.cfg.get(key,[]) if use_cf_file else []
@@ -344,7 +417,8 @@ def make_cfg():
 				id     = parsed_id.id,
 				amount = None if amount is None else Decimal(amount),
 				rate   = None,
-				rate_asset = None )
+				rate_asset = None,
+				source = parsed_id.source )
 
 		ss = s.split(':')
 		assert len(ss) in (2,3,4), f'{s}: malformed argument'
@@ -417,14 +491,15 @@ def make_cfg():
 		'proxy',
 		'portfolio' ])
 
-	global cfg_in,cfg
+	global cfg_in,src_cls,cfg
+
+	src_cls = { k: getattr(DataSource,v) for k,v in DataSource.sources.items() }
 
 	cmd_args = gcfg._args
 	cfg_in = get_cfg_in()
 
 	query_tuple   = namedtuple('query',['asset','to_asset'])
-	asset_data    = namedtuple('asset_data',['symbol','id','amount','rate','rate_asset'])
-	asset_tuple   = namedtuple('asset_tuple',['symbol','id'])
+	asset_data    = namedtuple('asset_data',['symbol','id','amount','rate','rate_asset','source'])
 
 	usr_rows    = parse_usr_asset_arg('add_rows')
 	usr_columns = parse_usr_asset_arg('add_columns',use_cf_file=True)
