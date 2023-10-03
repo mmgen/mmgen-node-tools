@@ -13,13 +13,13 @@ test.test_py_d.ts_regtest: Regtest tests for the test.py test suite
 """
 
 import os
-from mmgen.util import die,gmsg
+
+from mmgen.util import msg_r,die,gmsg
 from mmgen.protocol import init_proto
 from mmgen.proto.btc.regtest import MMGenRegtest
-from ..include.common import *
-from .common import *
 
-from .ts_base import *
+from ..include.common import cfg,imsg,stop_test_daemons,joinpath
+from .ts_base import TestSuiteBase
 
 args1 = ['--bob']
 args2 = ['--bob','--rpc-backend=http']

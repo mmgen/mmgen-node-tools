@@ -21,7 +21,7 @@ mmnode-txfind: Find a transaction in the blockchain or mempool
 """
 
 from mmgen.cfg import Config
-from mmgen.util import msg,Msg,die
+from mmgen.util import msg,Msg,die,is_hex_str
 
 opts_data = {
 	'text': {

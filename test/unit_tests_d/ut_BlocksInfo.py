@@ -3,11 +3,9 @@
 test.unit_tests_d.nt_BlocksInfo: BlocksInfo unit test for the MMGen Node Tools suite
 """
 
-from mmgen.common import *
-from mmgen.exception import *
 from mmgen_node_tools.BlocksInfo import BlocksInfo
 
-from ..include.common import cfg,vmsg
+from ..include.common import vmsg
 
 tip = 50000
 range_vecs = (

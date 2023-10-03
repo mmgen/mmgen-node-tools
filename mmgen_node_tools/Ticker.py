@@ -24,7 +24,7 @@ from subprocess import run,PIPE,CalledProcessError
 from decimal import Decimal
 from collections import namedtuple
 
-from mmgen.color import *
+from mmgen.color import red,yellow,green,blue,orange,gray
 from mmgen.util import msg,msg_r,Msg,die,Die,suf,fmt,fmt_list,fmt_dict,list_gen
 
 homedir = os.getenv('HOME')
@@ -37,8 +37,9 @@ def fetch_delay(fetched_data=[]):
 	if not gcfg.testing:
 		if fetched_data:
 			delay = 1 + random.randrange(1,5000) / 1000
-			msg(f'Waiting {delay:.3f} seconds...')
+			msg_r(f'Waiting {delay:.3f} seconds...')
 			time.sleep(delay)
+			msg('')
 		else:
 			fetched_data.append(None)
 
@@ -265,11 +266,11 @@ class DataSource:
 
 def assets_list_gen(cfg_in):
 	for k,v in cfg_in.cfg['assets'].items():
-		yield('')
-		yield(k.upper())
+		yield ''
+		yield k.upper()
 		for e in v:
 			out = e.split('-',1)
-			yield('  {:5s} {}'.format(out[0],out[1] if len(out) == 2 else ''))
+			yield '  {:5s} {}'.format(out[0],out[1] if len(out) == 2 else '')
 
 def gen_data(data):
 	"""
@@ -421,7 +422,8 @@ def main():
 	if gcfg.list_ids:
 		src_ids = ['cc']
 	elif gcfg.download:
-		assert gcfg.download in DataSource.sources, f'{gcfg.download!r}: invalid data source'
+		if not gcfg.download in DataSource.sources:
+			die(1,f'{gcfg.download!r}: invalid data source')
 		src_ids = [gcfg.download]
 	else:
 		src_ids = DataSource.sources
@@ -449,18 +451,21 @@ def main():
 
 def make_cfg():
 
+	query_tuple = namedtuple('query',['asset','to_asset'])
+	asset_data  = namedtuple('asset_data',['symbol','id','amount','rate','rate_asset','source'])
+
+	def parse_asset_id(s,require_label=False):
+		return src_cls['fi' if re.match(fi_pat,s) else 'cc'].parse_asset_id(s,require_label)
+
 	def get_rows_from_cfg(add_data=None):
 		def gen():
 			for n,(k,v) in enumerate(cfg_in.cfg['assets'].items()):
-				yield(k)
+				yield k
 				if add_data and k in add_data:
 					v += tuple(add_data[k])
 				for e in v:
 					yield parse_asset_id(e,require_label=True)
 		return tuple(gen())
-
-	def parse_asset_id(s,require_label=False):
-		return src_cls['fi' if re.match(fi_pat,s) else 'cc'].parse_asset_id(s,require_label)
 
 	def parse_usr_asset_arg(key,use_cf_file=False):
 		"""
@@ -580,9 +585,6 @@ def make_cfg():
 
 	cmd_args = gcfg._args
 	cfg_in = get_cfg_in()
-
-	query_tuple   = namedtuple('query',['asset','to_asset'])
-	asset_data    = namedtuple('asset_data',['symbol','id','amount','rate','rate_asset','source'])
 
 	usr_rows    = parse_usr_asset_arg('add_rows')
 	usr_columns = parse_usr_asset_arg('add_columns',use_cf_file=True)

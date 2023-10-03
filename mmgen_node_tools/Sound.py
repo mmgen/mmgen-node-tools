@@ -20,7 +20,10 @@ mmgen_node_tools.Sound: audio-related functions for MMGen node tools
 """
 
 import sys,os,time
-from mmgen_node_tools.Util import *
+
+from mmgen.util import die
+
+from mmgen_node_tools.Util import do_system
 
 _alsa_config_file = '/tmp/alsa-config-' + os.path.basename(sys.argv[0])
 _dvols = { 'Master': 78, 'Speaker': 78, 'Headphone': 15, 'PCM': 190 }

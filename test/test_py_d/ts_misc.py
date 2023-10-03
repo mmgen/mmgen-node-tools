@@ -12,10 +12,10 @@
 test.test_py_d.ts_misc: Miscellaneous test groups for the test.py test suite
 """
 
-import shutil
-from ..include.common import *
-from .common import *
-from .ts_base import *
+import os,shutil
+
+from ..include.common import cfg
+from .ts_base import TestSuiteBase
 
 refdir = os.path.join('test','ref','ticker')
 

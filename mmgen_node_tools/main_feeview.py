@@ -145,25 +145,25 @@ def create_data(coin_amt,mempool):
 
 def gen_header(host,mempool,blockcount):
 
-	yield(fmt(f"""
+	yield fmt(f"""
 		Mempool Fee Structure
 		Date:     {make_timestr()} UTC
 		Host:     {host}
 		Network:  {proto.coin.upper()} {proto.network.upper()}
 		Block:    {blockcount}
 		TX count: {len(mempool)}
-		""")).strip()
+		""").strip()
 
 	if cfg.show_empty:
-		yield('Displaying all fee brackets')
+		yield 'Displaying all fee brackets'
 	elif cfg.ignore_below:
-		yield('Ignoring fee brackets with less than {:,} bytes ({})'.format(
-			ignore_below,
-			int2bytespec(ignore_below,'MB','0.6',strip=True,add_space=True),
-			))
+		yield 'Ignoring fee brackets with less than {:,} bytes ({})'.format(
+				ignore_below,
+				int2bytespec(ignore_below,'MB','0.6',strip=True,add_space=True),
+			)
 
 	if cfg.include_current:
-		yield('Including transactions in current fee bracket in Total MB amounts')
+		yield 'Including transactions in current fee bracket in Total MB amounts'
 
 def fmt_mb(n):
 	return int2bytespec(n,'MB',f'0.{precision}',print_sym=False)
@@ -187,17 +187,17 @@ def gen_body(data):
 	for i in data:
 		if not i.skip:
 			cum_bytes = i.tx_bytes_cum + i.tx_bytes if cfg.include_current else i.tx_bytes_cum
-			yield(fs.format(
+			yield fs.format(
 				a = '{}-{}'.format(i.bottom,i.top) if cfg.ranges else i.top,
 				b = fmt_mb(i.tx_bytes),
 				c = fmt_mb(cum_bytes),
-				d = '-' * int(col4_w * ( i.tx_bytes / tx_bytes_max )) ))
+				d = '-' * int(col4_w * ( i.tx_bytes / tx_bytes_max )) )
 
-	yield(fs.format(
+	yield fs.format(
 		a = 'TOTAL',
 		b = '',
 		c = fmt_mb(data[-1].tx_bytes_cum + data[-1].tx_bytes if data else 0),
-		d = '' ))
+		d = '' )
 
 async def main():
 

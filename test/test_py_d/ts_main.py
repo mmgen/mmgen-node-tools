@@ -12,11 +12,10 @@
 test_py_d.ts_main: Basic operations tests for the test.py test suite
 """
 
-import time
+import sys,time
 
-from ..include.common import *
-from .common import *
-from .ts_base import *
+from ..include.common import cfg
+from .ts_base import TestSuiteBase
 
 class TestSuiteMain(TestSuiteBase):
 	'basic operations with fake RPC data'
