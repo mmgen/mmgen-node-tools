@@ -4,3 +4,25 @@ requires = [
     "wheel"
 ]
 build-backend = "setuptools.build_meta"
+
+[tool.pylint.format]
+indent-string = "\t"
+indent-after-paren = 2
+max-line-length = 110
+
+[tool.pylint.main]
+py-version = "3.7"
+recursive = true
+jobs = 0
+
+[tool.pylint."messages control"]
+ignored-modules = [
+	"mmgen.term",
+	"mmgen.color",
+]
+ignored-classes = [
+	"mmgen_node_tools.Ticker.Ticker.base",
+	"mmgen_node_tools.Ticker.DataSource.base",
+	"mmgen_node_tools.PeerBlocks.Display",
+	"mmgen_node_tools.PollDisplay.PollDisplay",
+]

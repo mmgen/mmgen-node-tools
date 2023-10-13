@@ -18,7 +18,7 @@
 #  mmnode-ticker              OK
 #  mmnode-txfind              -
 
-all_tests='unit misc scripts btc btc_rt bch_rt ltc_rt'
+all_tests='unit lint misc scripts btc btc_rt bch_rt ltc_rt'
 
 groups_desc="
 	default  - All tests minus the extra tests
@@ -29,14 +29,22 @@ groups_desc="
 "
 
 init_groups() {
-	dfl_tests=$all_tests
-	extra_tests=''
+	dfl_tests='unit misc scripts btc btc_rt bch_rt ltc_rt'
+	extra_tests='lint'
 	noalt_tests='unit misc scripts btc btc_rt'
 	quick_tests='unit misc scripts btc btc_rt'
-	qskip_tests='bch_rt ltc_rt'
+	qskip_tests='lint bch_rt ltc_rt'
 }
 
 init_tests() {
+
+	d_lint="code errors with static code analyzer"
+	t_lint="
+		- $pylint --errors-only mmgen_node_tools
+		- $pylint --errors-only test
+		- $pylint --errors-only --disable=relative-beyond-top-level test/cmdtest_py_d
+	"
+
 	d_unit="low-level subsystems"
 	t_unit="- $unit_tests_py"
 
