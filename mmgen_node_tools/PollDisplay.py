@@ -16,7 +16,7 @@ import sys,threading
 from mmgen.util import msg
 from mmgen.term import get_char
 
-class PollDisplay():
+class PollDisplay:
 
 	info = None
 	input = None

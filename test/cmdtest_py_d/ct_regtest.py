@@ -107,7 +107,7 @@ class CmdTestRegtest(CmdTestBase):
 		CmdTestBase.__init__(self,trunner,cfgs,spawn)
 		if trunner == None:
 			return
-		if self.proto.testnet:
+		if cfg._proto.testnet:
 			die(2,'--testnet and --regtest options incompatible with regtest test suite')
 		self.proto = init_proto( cfg, self.proto.coin, network='regtest', need_amt=True )
 		self.addrs = gen_addrs(self.proto,'regtest',[1,2,3,4,5])

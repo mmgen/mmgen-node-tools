@@ -27,6 +27,52 @@ from time import strftime,gmtime
 from mmgen.util import msg,Msg,Msg_r,die,suf,secs_to_ms,secs_to_dhms,is_int
 from mmgen.rpc import json_encoder
 
+class RangeParser:
+
+	debug = False
+
+	def __init__(self,caller,arg):
+		self.caller = caller
+		self.arg = self.orig_arg = arg
+
+	def parse(self,target):
+		ret = getattr(self,'parse_'+target)()
+		if self.debug:
+			msg(f'arg after parse({target}): {self.arg}')
+		return ret
+
+	def finalize(self):
+		if self.arg:
+			die(1,f'{self.orig_arg!r}: invalid range specifier')
+
+	def parse_from_tip(self):
+		m = re.match(r'-([0-9]+)(.*)',self.arg)
+		if m:
+			res,self.arg = (m[1],m[2])
+			return self.caller.check_nblocks(int(res))
+
+	def parse_abs_range(self):
+		m = re.match(r'([^+-]+)(-([^+-]+)){0,1}(.*)',self.arg)
+		if m:
+			if self.debug:
+				msg(f'abs_range parse: first={m[1]}, last={m[3]}')
+			self.arg = m[4]
+			return (
+				self.caller.conv_blkspec(m[1]),
+				self.caller.conv_blkspec(m[3]) if m[3] else None
+			)
+		return (None,None)
+
+	def parse_add(self):
+		m = re.match(r'\+([0-9*]+)(.*)',self.arg)
+		if m:
+			res,self.arg = (m[1],m[2])
+			if res.strip('*') != res:
+				die(1,f"'+{res}': malformed nBlocks specifier")
+			if len(res) > 30:
+				die(1,f"'+{res}': overly long nBlocks specifier")
+			return self.caller.check_nblocks(eval(res)) # res is only digits plus '*', so eval safe
+
 class BlocksInfo:
 
 	total_bytes = 0
@@ -298,49 +344,8 @@ class BlocksInfo:
 
 	def parse_rangespec(self,arg):
 
-		class RangeParser:
-			debug = False
+		p = RangeParser(self,arg)
 
-			def __init__(rp,arg):
-				rp.arg = rp.orig_arg = arg
-
-			def parse(rp,target):
-				ret = getattr(rp,'parse_'+target)()
-				if rp.debug: msg(f'arg after parse({target}): {rp.arg}')
-				return ret
-
-			def finalize(rp):
-				if rp.arg:
-					die(1,f'{rp.orig_arg!r}: invalid range specifier')
-
-			def parse_from_tip(rp):
-				m = re.match(r'-([0-9]+)(.*)',rp.arg)
-				if m:
-					res,rp.arg = (m[1],m[2])
-					return self.check_nblocks(int(res))
-
-			def parse_abs_range(rp):
-				m = re.match(r'([^+-]+)(-([^+-]+)){0,1}(.*)',rp.arg)
-				if m:
-					if rp.debug: msg(f'abs_range parse: first={m[1]}, last={m[3]}')
-					rp.arg = m[4]
-					return (
-						self.conv_blkspec(m[1]),
-						self.conv_blkspec(m[3]) if m[3] else None
-					)
-				return (None,None)
-
-			def parse_add(rp):
-				m = re.match(r'\+([0-9*]+)(.*)',rp.arg)
-				if m:
-					res,rp.arg = (m[1],m[2])
-					if res.strip('*') != res:
-						die(1,f"'+{res}': malformed nBlocks specifier")
-					if len(res) > 30:
-						die(1,f"'+{res}': overly long nBlocks specifier")
-					return self.check_nblocks(eval(res)) # res is only digits plus '*', so eval safe
-
-		p = RangeParser(arg)
 		from_tip   = p.parse('from_tip')
 		first,last = (self.tip-from_tip,None) if from_tip else p.parse('abs_range')
 		add1       = p.parse('add')
@@ -708,8 +713,8 @@ class BlocksInfo:
 
 class JSONBlocksInfo(BlocksInfo):
 
-	def __init__(self,cfg,cmd_args,opt,rpc):
-		super().__init__(cfg,cmd_args,opt,rpc)
+	def __init__(self,cfg,cmd_args,rpc):
+		super().__init__(cfg,cmd_args,rpc)
 		if self.cfg.json_raw:
 			self.output_block = self.output_block_raw
 			self.fmt_stat_item = self.fmt_stat_item_raw

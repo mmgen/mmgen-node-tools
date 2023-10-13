@@ -12,6 +12,8 @@
 mmnode-addrbal: Get balances for arbitrary addresses in the blockchain
 """
 
+import sys
+
 from mmgen.obj import CoinTxID,Int
 from mmgen.cfg import Config
 from mmgen.util import msg,Msg,die,suf,make_timestr,async_run

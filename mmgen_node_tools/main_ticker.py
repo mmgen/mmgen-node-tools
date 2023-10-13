@@ -216,14 +216,14 @@ import os
 
 from mmgen.util import fmt_list,fmt_dict
 from mmgen.cfg import Config
-import mmgen_node_tools.Ticker as tck
+from . import Ticker
 
-tck.gcfg = Config( opts_data=opts_data, do_post_init=True )
+gcfg = Config( opts_data=opts_data, do_post_init=True )
 
-tck.make_cfg()
+Ticker.make_cfg(gcfg)
 
 from .Ticker import dfl_cachedir,homedir,DataSource,assets_list_gen,cfg_in,src_cls
 
-tck.gcfg._post_init()
+gcfg._post_init()
 
-tck.main()
+Ticker.main()

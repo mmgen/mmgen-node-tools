@@ -49,7 +49,7 @@ async def main():
 		d = await c.call('getnettotals')
 		return [float(e) for e in (d['totalbytesrecv'],d['totalbytessent'],d['timemillis'])]
 
-	rs = None
+	rs,ss,ts = (None,None,None)
 	while True:
 		r,s,t = await get_data()
 
@@ -64,7 +64,7 @@ async def main():
 		if rs is not None:
 			sys.stderr.write('{}{}{}'.format(ERASE_LINE,CUR_UP,ERASE_LINE))
 
-		rs,ss,ts = r,s,t
+		rs,ss,ts = (r,s,t)
 
 try:
 	async_run(main())

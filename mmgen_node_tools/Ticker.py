@@ -449,7 +449,7 @@ def main():
 		'\n'.join(getattr(Ticker,cfg.clsname)(data).gen_output()) + '\n'
 	)
 
-def make_cfg():
+def make_cfg(gcfg_arg):
 
 	query_tuple = namedtuple('query',['asset','to_asset'])
 	asset_data  = namedtuple('asset_data',['symbol','id','amount','rate','rate_asset','source'])
@@ -578,7 +578,9 @@ def make_cfg():
 		'proxy2',
 		'portfolio' ])
 
-	global cfg_in,src_cls,cfg
+	global gcfg,cfg_in,src_cls,cfg
+
+	gcfg = gcfg_arg
 
 	src_cls = { k: getattr(DataSource,v) for k,v in DataSource.sources.items() }
 	fi_pat = src_cls['fi'].asset_id_pat
