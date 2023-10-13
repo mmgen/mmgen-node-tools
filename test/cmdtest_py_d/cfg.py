@@ -9,16 +9,16 @@
 #   https://gitlab.com/mmgen/mmgen-node-tools
 
 """
-test.test_py_d.cfg: configuration data for test.py
+test.cmdtest_py_d.cfg: configuration data for cmdtest.py
 """
 
 import os
 
 cmd_groups_dfl = {
-	'main':        ('TestSuiteMain',{}),
-	'helpscreens': ('TestSuiteHelp',{'modname':'misc','full_data':True}),
-	'scripts':     ('TestSuiteScripts',{'modname':'misc'}),
-	'regtest':     ('TestSuiteRegtest',{}),
+	'main':        ('CmdTestMain',{}),
+	'helpscreens': ('CmdTestHelp',{'modname':'misc','full_data':True}),
+	'scripts':     ('CmdTestScripts',{'modname':'misc'}),
+	'regtest':     ('CmdTestRegtest',{}),
 }
 
 cmd_groups_extra = {}

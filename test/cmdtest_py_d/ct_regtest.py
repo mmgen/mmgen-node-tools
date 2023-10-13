@@ -9,7 +9,7 @@
 #   https://gitlab.com/mmgen/mmgen-node-tools
 
 """
-test.test_py_d.ts_regtest: Regtest tests for the test.py test suite
+test.cmdtest_py_d.ct_regtest: Regtest tests for the cmdtest.py test suite
 """
 
 import os
@@ -19,7 +19,7 @@ from mmgen.protocol import init_proto
 from mmgen.proto.btc.regtest import MMGenRegtest
 
 from ..include.common import cfg,imsg,stop_test_daemons,joinpath
-from .ts_base import TestSuiteBase
+from .ct_base import CmdTestBase
 
 args1 = ['--bob']
 args2 = ['--bob','--rpc-backend=http']
@@ -31,7 +31,7 @@ def gen_addrs(proto,network,keys):
 	tool.addrtype = proto.mmtypes[-1]
 	return [tool.privhex2addr('{:064x}'.format(key)) for key in keys]
 
-class TestSuiteRegtest(TestSuiteBase):
+class CmdTestRegtest(CmdTestBase):
 	'various operations via regtest mode'
 	networks = ('btc','ltc','bch')
 	passthru_opts = ('coin',)
@@ -104,7 +104,7 @@ class TestSuiteRegtest(TestSuiteBase):
 	}
 
 	def __init__(self,trunner,cfgs,spawn):
-		TestSuiteBase.__init__(self,trunner,cfgs,spawn)
+		CmdTestBase.__init__(self,trunner,cfgs,spawn)
 		if trunner == None:
 			return
 		if self.proto.testnet:

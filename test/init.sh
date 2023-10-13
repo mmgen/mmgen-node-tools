@@ -45,37 +45,56 @@ build_mmgen_extmod() {
 }
 
 create_dir_links() {
-	for target in 'mmgen' 'scripts'; do
-		src="$mm_repo/$target"
-		if [ -e $target ]; then
-			[ $(realpath --relative-to=. $target) == $src ] || die "'$target' does not point to '$src'"
+	for link_name in 'mmgen' 'scripts'; do
+		target="$mm_repo/$link_name"
+		if [ -e $link_name ]; then
+			[ $(realpath --relative-to=. $link_name) == $target ] || die "'$link_name' does not point to '$target'"
 		else
-			echo "Creating symlink: $target"
-			ln -s $src
+			echo "Creating symlink: $link_name"
+			ln -s $target
 		fi
 	done
 }
 
 create_test_links() {
-	sources='
-		test/include
-		test/overlay/__init__.py
-		test/overlay/fakemods/mmgen
-		test/__init__.py
-		test/test.py
-		test/unit_tests.py
-		test/test-release.sh
-		test/test_py_d/common.py
-		test/test_py_d/ts_base.py
-		cmds/mmgen-regtest
+	paths='
+		test/include                   symbolic
+		test/overlay/__init__.py       symbolic
+		test/overlay/fakemods/mmgen    symbolic
+		test/__init__.py               symbolic
+		test/cmdtest.py                hard
+		test/unit_tests.py             hard
+		test/test-release.sh           symbolic
+		test/cmdtest_py_d/common.py    symbolic
+		test/cmdtest_py_d/ct_base.py   symbolic
+		cmds/mmgen-regtest             symbolic
 	'
-	for src in $sources; do
-		pfx=$(echo $src | sed -r 's/[^/]//g' | sed 's/\//..\//g')
-		if [ ! -e $src ]; then
-			echo "Creating symlink: $src"
-			( cd "$(dirname $src)" && ln -s "$pfx$mm_repo/$src" )
+	while read path type; do
+		[ "$path" ] || continue
+		pfx=$(echo $path | sed -r 's/[^/]//g' | sed 's/\//..\//g')
+		symlink_arg=$(if [ $type == 'symbolic' ]; then echo --symbolic; fi)
+		target="$mm_repo/$path"
+		if [ ! -e "$target" ]; then
+			echo "Target path $target is missing! Cannot proceed"
+			exit 1
 		fi
-	done
+		fs="%-8s %-16s %s -> %s\n"
+		if [ $type == 'hard' ]; then
+			if [ -L $path ]; then
+				printf "$fs" "Deleting" "symbolic link:" $path $target
+				rm -rf $path
+			elif [ -e $path ]; then
+				if [ "$(stat --printf=%i $path)" -ne "$(stat --printf=%i $target)" ]; then
+					printf "$fs" "Deleting" "stale hard link:" $path "?"
+					rm -rf $path
+				fi
+			fi
+		fi
+		if [ ! -e $path ]; then # link is either absent or a broken symlink
+			printf "$fs" "Creating" "$type link:" $path $target
+			( cd "$(dirname $path)" && ln -f $symlink_arg $pfx$target )
+		fi
+	done <<<$paths
 }
 
 set -e

@@ -9,15 +9,15 @@
 #   https://gitlab.com/mmgen/mmgen
 
 """
-test_py_d.ts_main: Basic operations tests for the test.py test suite
+cmdtest_py_d.ct_main: Basic operations tests for the cmdtest.py test suite
 """
 
 import sys,time
 
 from ..include.common import cfg
-from .ts_base import TestSuiteBase
+from .ct_base import CmdTestBase
 
-class TestSuiteMain(TestSuiteBase):
+class CmdTestMain(CmdTestBase):
 	'basic operations with fake RPC data'
 	tmpdir_nums = [3]
 	networks = ('btc',) # fake data, so test peerblocks for BTC mainnet only

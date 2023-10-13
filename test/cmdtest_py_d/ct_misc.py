@@ -9,17 +9,17 @@
 #   https://gitlab.com/mmgen/mmgen-node-tools
 
 """
-test.test_py_d.ts_misc: Miscellaneous test groups for the test.py test suite
+test.cmdtest_py_d.ct_misc: Miscellaneous test groups for the cmdtest.py test suite
 """
 
 import os,shutil
 
 from ..include.common import cfg
-from .ts_base import TestSuiteBase
+from .ct_base import CmdTestBase
 
 refdir = os.path.join('test','ref','ticker')
 
-class TestSuiteHelp(TestSuiteBase):
+class CmdTestHelp(CmdTestBase):
 	'help, info and usage screens'
 	networks = ('btc','ltc','bch')
 	tmpdir_nums = []
@@ -52,7 +52,7 @@ class TestSuiteHelp(TestSuiteBase):
 	def longhelpscreens(self):
 		return self.helpscreens(arg='--longhelp',expect='USAGE:.*LONG OPTIONS:')
 
-class TestSuiteScripts(TestSuiteBase):
+class CmdTestScripts(CmdTestBase):
 	'scripts not requiring a coin daemon'
 	networks = ('btc',)
 	tmpdir_nums = [2]

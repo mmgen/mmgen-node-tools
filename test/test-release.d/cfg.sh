@@ -41,20 +41,20 @@ init_tests() {
 	t_unit="- $unit_tests_py"
 
 	d_misc="miscellaneous features"
-	t_misc="- $test_py helpscreens"
+	t_misc="- $cmdtest_py helpscreens"
 
 	d_scripts="scripts not requiring a coin daemon"
-	t_scripts="- $test_py scripts"
+	t_scripts="- $cmdtest_py scripts"
 
 	d_btc="Bitcoin with emulated RPC data"
-	t_btc="- $test_py main"
+	t_btc="- $cmdtest_py main"
 
 	d_btc_rt="Bitcoin regtest"
-	t_btc_rt="- $test_py regtest"
+	t_btc_rt="- $cmdtest_py regtest"
 
 	d_bch_rt="Bitcoin Cash Node (BCH) regtest"
-	t_bch_rt="- $test_py --coin=bch regtest"
+	t_bch_rt="- $cmdtest_py --coin=bch regtest"
 
 	d_ltc_rt="Litecoin regtest"
-	t_ltc_rt="- $test_py --coin=ltc regtest"
+	t_ltc_rt="- $cmdtest_py --coin=ltc regtest"
 }
