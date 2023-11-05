@@ -12,14 +12,14 @@
 mmgen_node_tools.Ticker: Display price information for cryptocurrency and other assets
 """
 
-# We use deprecated coinpaprika ‘ticker’ API for now because it returns ~45% less data.
+# v3.2.dev4: switch to new coinpaprika ‘tickers’ API call (supports ‘limit’ parameter, more historical data)
 # Old ‘ticker’ API  (/v1/ticker):  data['BTC']['price_usd']
 # New ‘tickers’ API (/v1/tickers): data['BTC']['quotes']['USD']['price']
 
 # Possible alternatives:
 # - https://min-api.cryptocompare.com/data/pricemultifull?fsyms=BTC,LTC&tsyms=USD,EUR
 
-import sys,os,re,time,json,yaml,random
+import sys,os,re,time,datetime,json,yaml,random
 from subprocess import run,PIPE,CalledProcessError
 from decimal import Decimal
 from collections import namedtuple
@@ -159,6 +159,10 @@ class DataSource:
 		btc_ratelimit = 10
 		net_data_type = 'json'
 		has_verbose = True
+		dfl_asset_limit = 2000
+
+		def __init__(self):
+			self.asset_limit = int(gcfg.asset_limit or self.dfl_asset_limit)
 
 		def rate_limit_errmsg(self,elapsed):
 			return (
@@ -168,7 +172,10 @@ class DataSource:
 
 		@property
 		def api_url(self):
-			return f'https://{self.api_host}/v1/ticker' + ('/btc-bitcoin' if cfg.btc_only else '')
+			return (
+				f'https://{self.api_host}/v1/tickers/btc-bitcoin' if cfg.btc_only else
+				f'https://{self.api_host}/v1/tickers?limit={self.asset_limit}' if self.asset_limit else
+				f'https://{self.api_host}/v1/tickers' )
 
 		@property
 		def json_fn(self):
@@ -352,7 +359,7 @@ def gen_data(data):
 
 	for d in data['cc']:
 		if d['id'] == 'btc-bitcoin':
-			btcusd = Decimal(d['price_usd'])
+			btcusd = Decimal(str(d['quotes']['USD']['price']))
 			break
 
 	get_id = src_cls['fi'].get_id
@@ -378,13 +385,12 @@ def gen_data(data):
 				if d[k] in wants[k]:
 					if d[k] in found[k]:
 						die(1,dup_sym_errmsg(d[k]))
-					if not d.get('_converted'):
-						d['price_usd'] = Decimal(d['price_usd'])
-						d['price_btc'] = Decimal(d['price_btc'])
-						d['percent_change_7d'] = Decimal(d['percent_change_7d'])
-						d['percent_change_24h'] = Decimal(d['percent_change_24h'])
-						d['last_updated'] = int(d['last_updated'])
-						d['_converted'] = True
+					if not 'price_usd' in d:
+						d['price_usd'] = Decimal(str(d['quotes']['USD']['price']))
+						d['price_btc'] = Decimal(str(d['quotes']['USD']['price'])) / btcusd
+						d['percent_change_24h'] = d['quotes']['USD']['percent_change_24h']
+						d['percent_change_7d']  = d['quotes']['USD']['percent_change_7d']
+						d['last_updated'] = int(datetime.datetime.fromisoformat(d['last_updated']).timestamp())
 					yield (d['id'],d)
 					found[k].add(d[k])
 					wants[k].remove(d[k])

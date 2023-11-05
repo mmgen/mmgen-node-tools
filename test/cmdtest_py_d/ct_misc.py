@@ -132,7 +132,7 @@ class CmdTestScripts(CmdTestBase):
 			[],
 			[
 				'USD BTC',
-				'BTC 23250.77 1.00000000 ETH 1659.66 0.07146397'
+				'BTC 23250.77 1.00000000 ETH 1659.66 0.07138094'
 			])
 
 
@@ -144,8 +144,8 @@ class CmdTestScripts(CmdTestBase):
 				r'INR \(INDIAN RUPEE\) = 0.012579 USD',
 				'USD EURUSD=X INR BTC CHG_7d CHG_24h UPDATED',
 				'BITCOIN',
-				r'ETHEREUM 1,659.66 1,559.5846 131,943.14 0.07146397 \+21.42 \+1.82',
-				r'MONERO 158.97 149.3870 12,638.36 0.00684527 \+7.28 \+1.21 2022-08-02 18:25:59',
+				r'ETHEREUM 1,659.66 1,559.5846 131,943.14 0.07138094 \+21.42 \+1.82',
+				r'MONERO 158.97 149.3870 12,638.36 0.00683732 \+7.28 \+1.21 2022-08-02 18:25:59',
 				r'INDIAN RUPEE 0.01 0.0118 1.00 0.00000054 -- --',
 			])
 
@@ -156,8 +156,8 @@ class CmdTestScripts(CmdTestBase):
 			[
 				'Adjusting prices by -0.77%',
 				'USD BTC CHG_7d CHG_24h UPDATED',
-				r'LITECOIN 58.56 0.00252162 \+12.79 \+0.40 2022-08-02 18:25:59',
-				r'MONERO 157.76 0.00679284 \+7.28 \+1.21'
+				r'LITECOIN 58.56 0.00251869 \+12.79 \+0.40 2022-08-02 18:25:59',
+				r'MONERO 157.76 0.00678495 \+7.28 \+1.21'
 			])
 		os.unlink(os.path.join(self.nt_datadir,'ticker-cfg.yaml'))
 		return t
@@ -174,7 +174,7 @@ class CmdTestScripts(CmdTestBase):
 			['--wide','--portfolio'],
 			[
 				'USD BTC CHG_7d CHG_24h UPDATED',
-				r'ETHEREUM 1,659.66 0.07146397 \+21.42 \+1.82 2022-08-02 18:25:59',
+				r'ETHEREUM 1,659.66 0.07138094 \+21.42 \+1.82 2022-08-02 18:25:59',
 				'CARDANO','ALGORAND',
 				'PORTFOLIO','BITCOIN','ETHEREUM','MONERO','CARDANO','ALGORAND','TOTAL'
 			])

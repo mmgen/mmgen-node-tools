@@ -25,6 +25,9 @@ opts_data = {
 		'options': """
 -h, --help            Print this help message
 --, --longhelp        Print help message for long options (common options)
+-a, --asset-limit=N   Retrieve data for top ‘N’ cryptocurrencies by market
+                      cap (default: {al}).  To retrieve all available data,
+                      specify a value of zero.
 -A, --adjust=P        Adjust prices by percentage ‘P’.  In ‘trading’ mode,
                       spot and adjusted prices are shown in separate columns.
 -b, --btc             Fetch and display data for Bitcoin only
@@ -137,13 +140,14 @@ Financial data is obtained from {fi.desc}, which currently allows Tor.
 
                              RATE LIMITING NOTE
 
-To protect user privacy, all filtering and processing of cryptocurrency data
-is performed client side so that the remote server does not know which assets
-are being examined.  This means that data for ALL available crypto assets
-(currently over 8000) is fetched with each invocation of the script.  A rate
-limit of {cc.ratelimit} seconds between calls is thus imposed to prevent abuse of the
-remote server.  When the --btc option is in effect, this limit is reduced to
-{cc.btc_ratelimit} seconds.  To bypass the rate limit entirely, use --cached-data.
+To protect user privacy, filtering and processing of cryptocurrency data is
+performed client side so that the remote server does not know which assets
+are being examined.  This is done by fetching data for the top {al} crypto
+assets by market cap (configurable via the --asset-limit option) with each
+invocation of the script.  A rate limit of {cc.ratelimit} seconds between calls is thus
+imposed to prevent abuse of the remote server.  When the --btc option is in
+effect, this limit is reduced to {cc.btc_ratelimit} seconds.  To bypass the rate limit
+entirely, use --cached-data.
 
 Note that financial data obtained from {fi.api_host} is filtered in the
 request, which has privacy implications.  The rate limit for financial data
@@ -201,11 +205,13 @@ To add a portfolio, edit the file
 		'options': lambda s: s.format(
 			dfl_cachedir = os.path.relpath(dfl_cachedir,start=homedir),
 			ds           = fmt_dict(DataSource.get_sources(),fmt='equal_compact'),
+			al           = DataSource.coinpaprika.dfl_asset_limit,
 		),
 		'notes': lambda s: s.format(
 			assets = fmt_list(assets_list_gen(cfg_in),fmt='col',indent='  '),
 			cfg    = os.path.relpath(cfg_in.cfg_file,start=homedir),
 			pf_cfg = os.path.relpath(cfg_in.portfolio_file,start=homedir),
+			al     = DataSource.coinpaprika.dfl_asset_limit,
 			cc     = src_cls['cc'](),
 			fi     = src_cls['fi'](),
 		)
