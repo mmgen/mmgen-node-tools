@@ -48,6 +48,7 @@ class DataSource:
 			'cc': 'coinpaprika'
 		}, {
 			'fi': 'yahoospot',
+			'hi': 'yahoohist',
 		}
 	]
 
@@ -248,7 +249,9 @@ class DataSource:
 				'symbol': sym.upper(),
 				'price_usd': price_usd,
 				'price_btc': price_usd / btcusd,
-				'percent_change_7d': None,
+				'percent_change_1y': data['pct_chg_1y'],
+				'percent_change_30d': data['pct_chg_4wks'],
+				'percent_change_7d': data['pct_chg_1wk'],
 				'percent_change_24h': data['regularMarketChangePercent']['raw'] * 100,
 				'last_updated': data['regularMarketTime'],
 			}
@@ -272,6 +275,7 @@ class DataSource:
 
 			kwargs = {
 				'formatted': True,
+				'asynchronous': True,
 				'proxies': { 'https': cfg.proxy2 },
 			}
 
@@ -296,6 +300,33 @@ class DataSource:
 				symbol = s.upper(),
 				id     = s.lower(),
 				source = 'fi' )
+
+	class yahoohist(yahoospot):
+
+		json_fn_basename = 'ticker-finance-history.json'
+		data_desc = 'historical financial data'
+		net_data_type = 'json'
+		period = '1y'
+		interval = '1wk'
+
+		def process_network_data(self,ticker):
+			return ticker.history(
+				period   = self.period,
+				interval = self.interval).to_json(orient='index')
+
+		def postprocess_data(self,data):
+			def gen():
+				keys = set()
+				for key,val in data.items():
+					if m := re.match(r"\('(.*?)', datetime\.date\((.*)\)\)$",key):
+						date = '{}-{:>02}-{:>02}'.format(*m[2].split(', '))
+						if (sym := m[1]) in keys:
+							d[date] = val
+						else:
+							keys.add(sym)
+							d = {date:val}
+							yield (sym,d)
+			return dict(gen())
 
 def assets_list_gen(cfg_in):
 	for k,v in cfg_in.cfg['assets'].items():
@@ -378,6 +409,16 @@ def gen_data(data):
 			if id in wants['id']:
 				if id in found['id']:
 					die(1,dup_sym_errmsg(id))
+				if m := data['hi'].get(k):
+					spot = v['regularMarketPrice']['raw']
+					hist = tuple(m.values())
+					v['pct_chg_1wk'], v['pct_chg_4wks'], v['pct_chg_1y'] = (
+						(spot / hist[-2]['close'] - 1) * 100,
+						(spot / hist[-5]['close'] - 1) * 100, # 4 weeks ≈ 1 month
+						(spot / hist[0]['close'] - 1) * 100,
+					)
+				else:
+					v['pct_chg_1wk'] = v['pct_chg_4wks'] = v['pct_chg_1y'] = None
 				yield ( id, conv_func(id,v,btcusd) )
 				found['id'].add(id)
 				wants['id'].remove(id)

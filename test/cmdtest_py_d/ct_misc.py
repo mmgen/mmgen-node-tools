@@ -102,6 +102,7 @@ class CmdTestScripts(CmdTestBase):
 		self.spawn('',msg_only=True)
 		shutil.copy2(os.path.join(refdir,'ticker.json'),self.tmpdir)
 		shutil.copy2(os.path.join(refdir,'ticker-finance.json'),self.tmpdir)
+		shutil.copy2(os.path.join(refdir,'ticker-finance-history.json'),self.tmpdir)
 		shutil.copy2(os.path.join(refdir,'ticker-btc.json'),self.tmpdir)
 		return 'ok'
 
@@ -146,7 +147,7 @@ class CmdTestScripts(CmdTestBase):
 				'BITCOIN',
 				r'ETHEREUM 1,659.66 1,559.5846 131,943.14 0.07138094 \+36.41 \+29.99 \+21.42 \+1.82',
 				r'MONERO 158.97 149.3870 12,638.36 0.00683732 \+12.38 \+10.19 \+7.28 \+1.21 2022-08-02 18:25:59',
-				r'S&P 500 4,320.06 4,059.5604 343,444.77 0.18580285 -- -- -- -0.23',
+				r'S&P 500 4,320.06 4,059.5604 343,444.77 0.18580285 -1.71 \+12.93 \+9.05 -0.23',
 				r'INDIAN RUPEE 0.01 0.0118 1.00 0.00000054 -- -- -- --',
 			])
 
