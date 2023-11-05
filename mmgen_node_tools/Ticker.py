@@ -32,25 +32,33 @@ dfl_cachedir = os.path.join(homedir,'.cache','mmgen-node-tools')
 cfg_fn = 'ticker-cfg.yaml'
 portfolio_fn = 'ticker-portfolio.yaml'
 asset_tuple = namedtuple('asset_tuple',['symbol','id','source'])
-
-def fetch_delay(fetched_data=[]):
-	if not gcfg.testing:
-		if fetched_data:
-			delay = 1 + random.randrange(1,5000) / 1000
-			msg_r(f'Waiting {delay:.3f} seconds...')
-			time.sleep(delay)
-			msg('')
-		else:
-			fetched_data.append(None)
+last_api_host = None
 
 class DataSource:
 
-	sources = {
-		'cc': 'coinpaprika',
-		'fi': 'yahooquery'
-	}
+	source_groups = [
+		{
+			'cc': 'coinpaprika'
+		}, {
+			'fi': 'yahoospot',
+		}
+	]
+
+	@classmethod
+	def get_sources(cls,randomize=False):
+		g = random.sample(cls.source_groups,k=len(cls.source_groups)) if randomize else cls.source_groups
+		return {k:v for a in g for k,v in a.items()}
 
 	class base:
+
+		def fetch_delay(self):
+			global last_api_host
+			if not gcfg.testing and last_api_host and last_api_host != self.api_host:
+				delay = 1 + random.randrange(1,5000) / 1000
+				msg_r(f'Waiting {delay:.3f} seconds...')
+				time.sleep(delay)
+				msg('')
+			last_api_host = self.api_host
 
 		def get_data_from_network(self):
 
@@ -90,11 +98,11 @@ class DataSource:
 			else:
 				data_type = self.net_data_type
 				elapsed = int(time.time() - os.stat(self.json_fn).st_mtime)
-				if elapsed >= self.timeout:
+				if elapsed >= self.timeout or gcfg.testing:
 					if gcfg.testing:
 						msg('')
-					fetch_delay()
-					msg_r(f'Fetching data from {self.api_host}...')
+					self.fetch_delay()
+					msg_r(f'Fetching {self.data_desc} from {self.api_host}...')
 					if self.has_verbose:
 						gcfg._util.vmsg('')
 					data_in = self.get_data_from_network()
@@ -145,6 +153,7 @@ class DataSource:
 
 	class coinpaprika(base):
 		desc = 'CoinPaprika'
+		data_desc = 'cryptocurrency data'
 		api_host = 'api.coinpaprika.com'
 		ratelimit = 240
 		btc_ratelimit = 10
@@ -201,14 +210,16 @@ class DataSource:
 				id     = (s.lower() if label else None),
 				source = 'cc' )
 
-	class yahooquery(base):
+	class yahoospot(base):
 
 		desc = 'Yahoo Finance'
+		data_desc = 'spot financial data'
 		api_host = 'finance.yahoo.com'
 		ratelimit = 30
 		net_data_type = 'python'
 		has_verbose = False
 		asset_id_pat = r'^\^.*|.*=[xf]$'
+		json_fn_basename = 'ticker-finance.json'
 
 		@staticmethod
 		def get_id(sym,data):
@@ -233,29 +244,37 @@ class DataSource:
 
 		@property
 		def json_fn(self):
-			return os.path.join( cfg.cachedir, 'ticker-finance.json' )
+			return os.path.join( cfg.cachedir, self.json_fn_basename )
 
 		@property
 		def timeout(self):
 			return 5 if gcfg.test_suite else self.ratelimit
 
+		@property
+		def symbols(self):
+			return [r.symbol for r in cfg.rows if isinstance(r,tuple) and r.source == 'fi']
+
 		def get_data_from_network(self):
 
-			arg = [r.symbol for r in cfg.rows if isinstance(r,tuple) and r.source == 'fi']
-
-			kwargs = { 'formatted': True, 'proxies': { 'https': cfg.proxy2 } }
+			kwargs = {
+				'formatted': True,
+				'proxies': { 'https': cfg.proxy2 },
+			}
 
 			if gcfg.test_suite:
 				kwargs.update({ 'timeout': 1, 'retry': 0 })
 
 			if gcfg.testing:
 				Msg('\nyahooquery.Ticker(\n  {},\n  {}\n)'.format(
-					arg,
+					self.symbols,
 					fmt_dict(kwargs,fmt='kwargs') ))
 				return
 
 			from yahooquery import Ticker
-			return Ticker(arg,**kwargs).price
+			return self.process_network_data( Ticker(self.symbols,**kwargs) )
+
+		def process_network_data(self,ticker):
+			return ticker.price
 
 		@staticmethod
 		def parse_asset_id(s,require_label):
@@ -422,15 +441,13 @@ def main():
 	if gcfg.list_ids:
 		src_ids = ['cc']
 	elif gcfg.download:
-		if not gcfg.download in DataSource.sources:
+		if not gcfg.download in DataSource.get_sources():
 			die(1,f'{gcfg.download!r}: invalid data source')
 		src_ids = [gcfg.download]
 	else:
-		src_ids = DataSource.sources
+		src_ids = DataSource.get_sources(randomize=True)
 
-	ids = random.sample( list(src_ids), k=len(src_ids) ) # shuffle the ids
-
-	src_data = { k: src_cls[k]().get_data() for k in ids }
+	src_data = { k: src_cls[k]().get_data() for k in src_ids }
 
 	if gcfg.testing:
 		return
@@ -582,7 +599,7 @@ def make_cfg(gcfg_arg):
 
 	gcfg = gcfg_arg
 
-	src_cls = { k: getattr(DataSource,v) for k,v in DataSource.sources.items() }
+	src_cls = { k: getattr(DataSource,v) for k,v in DataSource.get_sources().items() }
 	fi_pat = src_cls['fi'].asset_id_pat
 
 	cmd_args = gcfg._args
@@ -673,8 +690,7 @@ class Ticker:
 				from mmgen.util2 import format_elapsed_hr
 				fmt_func = format_elapsed_hr
 			else:
-				fmt_func = lambda t,now: time.strftime('%F %X',time.gmtime(t)) # ticker API
-				# t.replace('T',' ').replace('Z','') # tickers API
+				fmt_func = lambda t,now: time.strftime('%F %X',time.gmtime(t))
 
 			d = self.data
 			max_w = 0

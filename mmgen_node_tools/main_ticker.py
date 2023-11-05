@@ -14,10 +14,10 @@ mmnode-ticker: Display price information for cryptocurrency and other assets
 
 opts_data = {
 	'sets': [
-		('wide', True, 'percent_change',  True),
-		('wide', True, 'name_labels',     True),
-		('wide', True, 'thousands_comma', True),
-		('wide', True, 'update_time',     True),
+		('wide',   True, 'percent_change',  True),
+		('wide',   True, 'name_labels',     True),
+		('wide',   True, 'thousands_comma', True),
+		('wide',   True, 'update_time',     True),
 	],
 	'text': {
 		'desc':  'Display prices for cryptocurrency and other assets',
@@ -35,8 +35,8 @@ opts_data = {
                       live data from server
 -D, --cachedir=D      Read and write cached JSON data to directory ‘D’
                       instead of ‘~/{dfl_cachedir}’
--d, --download=D      Retrieve data ‘D’ from source, save to file and exit
-                      (valid options: {ds})
+-d, --download=D      Retrieve and cache asset data ‘D’ from network (valid
+                      options: {ds})
 -e, --add-precision=N Add ‘N’ digits of precision to columns
 -E, --elapsed         Show elapsed time in UPDATED column (see --update-time)
 -F, --portfolio       Display portfolio data
@@ -200,7 +200,7 @@ To add a portfolio, edit the file
 	'code': {
 		'options': lambda s: s.format(
 			dfl_cachedir = os.path.relpath(dfl_cachedir,start=homedir),
-			ds           = fmt_dict(DataSource.sources,fmt='equal'),
+			ds           = fmt_dict(DataSource.get_sources(),fmt='equal_compact'),
 		),
 		'notes': lambda s: s.format(
 			assets = fmt_list(assets_list_gen(cfg_in),fmt='col',indent='  '),
