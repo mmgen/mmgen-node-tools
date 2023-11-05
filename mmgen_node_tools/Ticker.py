@@ -34,6 +34,13 @@ portfolio_fn = 'ticker-portfolio.yaml'
 asset_tuple = namedtuple('asset_tuple',['symbol','id','source'])
 last_api_host = None
 
+percent_cols = {
+	'd': 'day',
+	'w': 'week',
+	'm': 'month',
+	'y': 'year',
+}
+
 class DataSource:
 
 	source_groups = [
@@ -390,6 +397,8 @@ def gen_data(data):
 						d['price_btc'] = Decimal(str(d['quotes']['USD']['price'])) / btcusd
 						d['percent_change_24h'] = d['quotes']['USD']['percent_change_24h']
 						d['percent_change_7d']  = d['quotes']['USD']['percent_change_7d']
+						d['percent_change_30d'] = d['quotes']['USD']['percent_change_30d']
+						d['percent_change_1y']  = d['quotes']['USD']['percent_change_1y']
 						d['last_updated'] = int(datetime.datetime.fromisoformat(d['last_updated']).timestamp())
 					yield (d['id'],d)
 					found[k].add(d[k])
@@ -496,6 +505,15 @@ def make_cfg(gcfg_arg):
 				for e in v:
 					yield parse_asset_id(e,require_label=True)
 		return tuple(gen())
+
+	def parse_percent_cols(arg):
+		if arg is None:
+			return []
+		res = arg.lower().split(',')
+		for s in res:
+			if s not in percent_cols:
+				die(1,f'{arg!r}: invalid --percent-cols parameter (valid letters: {fmt_list(percent_cols)})')
+		return res
 
 	def parse_usr_asset_arg(key,use_cf_file=False):
 		"""
@@ -606,7 +624,8 @@ def make_cfg(gcfg_arg):
 		'cachedir',
 		'proxy',
 		'proxy2',
-		'portfolio' ])
+		'portfolio',
+		'percent_cols' ])
 
 	global gcfg,cfg_in,src_cls,cfg
 
@@ -645,7 +664,8 @@ def make_cfg(gcfg_arg):
 		cachedir    = gcfg.cachedir or cfg_in.cfg.get('cachedir') or dfl_cachedir,
 		proxy       = proxy,
 		proxy2      = None if proxy2 == 'none' else '' if proxy2 == '' else (proxy2 or proxy),
-		portfolio   = get_portfolio() if cfg_in.portfolio and gcfg.portfolio and not query else None
+		portfolio   = get_portfolio() if cfg_in.portfolio and gcfg.portfolio and not query else None,
+		percent_cols = parse_percent_cols(gcfg.percent_cols)
 	)
 
 def get_cfg_in():
@@ -802,7 +822,7 @@ class Ticker:
 				yield '-' * self.hl_wid
 				if not cfg.btc_only:
 					yield self.fs_num.format(
-						lbl = 'TOTAL', pc1='', pc2='', upd='', amt='',
+						lbl = 'TOTAL', pc3='', pc4='', pc1='', pc2='', upd='', amt='',
 						**{ k.replace('-','_'): v for k,v in self.prices['total'].items() }
 					)
 
@@ -851,6 +871,8 @@ class Ticker:
 				lbl = (self.create_label(d['id']) if gcfg.name_labels else d['symbol']),
 				pc1 = fmt_pct(d.get('percent_change_7d')),
 				pc2 = fmt_pct(d.get('percent_change_24h')),
+				pc3 = fmt_pct(d.get('percent_change_1y')),
+				pc4 = fmt_pct(d.get('percent_change_30d')),
 				upd = d.get('last_updated_fmt'),
 				amt = amt_fmt,
 				**{ k.replace('-','_'): v * (1 if amt is None else amt) for k,v in p.items() }
@@ -873,8 +895,10 @@ class Ticker:
 
 			col_fs_data = {
 				'label':       fd(f'{{lbl:{self.col1_wid}}}',f'{{lbl:{self.col1_wid}}}',self.col1_wid),
-				'pct7d':       fd(' {pc1:7}', ' {pc1:7}', 8),
-				'pct24h':      fd(' {pc2:7}', ' {pc2:7}', 8),
+				'pct1y':       fd(' {pc3:7}', ' {pc3:7}', 8),
+				'pct1m':       fd(' {pc4:7}', ' {pc4:7}', 8),
+				'pct1w':       fd(' {pc1:7}', ' {pc1:7}', 8),
+				'pct1d':       fd(' {pc2:7}', ' {pc2:7}', 8),
 				'update_time': fd('  {upd}',  '  {upd}',  max((19 if cfg.portfolio else 0),self.upd_w) + 2),
 				'amt':         fd('  {amt}',  '  {amt}',  21),
 			}
@@ -891,8 +915,10 @@ class Ticker:
 				[asset.id for asset in self.usr_col_assets] +
 				[a for a,b in (
 					( 'btc-bitcoin',  not cfg.btc_only ),
-					( 'pct7d', gcfg.percent_change ),
-					( 'pct24h', gcfg.percent_change ),
+					( 'pct1y', 'y' in cfg.percent_cols ),
+					( 'pct1m', 'm' in cfg.percent_cols ),
+					( 'pct1w', 'w' in cfg.percent_cols ),
+					( 'pct1d', 'd' in cfg.percent_cols ),
 					( 'update_time', gcfg.update_time ),
 				) if b]
 			)
@@ -915,6 +941,8 @@ class Ticker:
 				lbl = '',
 				pc1 = ' CHG_7d',
 				pc2 = 'CHG_24h',
+				pc3 = 'CHG_1y',
+				pc4 = 'CHG_30d',
 				upd = 'UPDATED',
 				amt = '         AMOUNT',
 				usd_us_dollar = 'USD',

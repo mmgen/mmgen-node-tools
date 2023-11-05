@@ -138,15 +138,16 @@ class CmdTestScripts(CmdTestBase):
 
 	def ticker4(self):
 		return self.ticker(
-			['--wide','--add-columns=eurusd=x,inr-indian-rupee:79.5'],
+			['--widest','--add-columns=eurusd=x,inr-indian-rupee:79.5'],
 			[
 				r'EURUSD=X \(EUR/USD\) = 1.0642 USD ' +
 				r'INR \(INDIAN RUPEE\) = 0.012579 USD',
-				'USD EURUSD=X INR BTC CHG_7d CHG_24h UPDATED',
+				'USD EURUSD=X INR BTC CHG_1y CHG_30d CHG_7d CHG_24h UPDATED',
 				'BITCOIN',
-				r'ETHEREUM 1,659.66 1,559.5846 131,943.14 0.07138094 \+21.42 \+1.82',
-				r'MONERO 158.97 149.3870 12,638.36 0.00683732 \+7.28 \+1.21 2022-08-02 18:25:59',
-				r'INDIAN RUPEE 0.01 0.0118 1.00 0.00000054 -- --',
+				r'ETHEREUM 1,659.66 1,559.5846 131,943.14 0.07138094 \+36.41 \+29.99 \+21.42 \+1.82',
+				r'MONERO 158.97 149.3870 12,638.36 0.00683732 \+12.38 \+10.19 \+7.28 \+1.21 2022-08-02 18:25:59',
+				r'S&P 500 4,320.06 4,059.5604 343,444.77 0.18580285 -- -- -- -0.23',
+				r'INDIAN RUPEE 0.01 0.0118 1.00 0.00000054 -- -- -- --',
 			])
 
 	def ticker5(self):

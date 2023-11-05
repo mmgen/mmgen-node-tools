@@ -14,7 +14,11 @@ mmnode-ticker: Display price information for cryptocurrency and other assets
 
 opts_data = {
 	'sets': [
-		('wide',   True, 'percent_change',  True),
+		('widest', True, 'percent_cols',    'd,w,m,y'),
+		('widest', True, 'name_labels',     True),
+		('widest', True, 'thousands_comma', True),
+		('widest', True, 'update_time',     True),
+		('wide',   True, 'percent_cols',    'd,w'),
 		('wide',   True, 'name_labels',     True),
 		('wide',   True, 'thousands_comma', True),
 		('wide',   True, 'update_time',     True),
@@ -45,7 +49,9 @@ opts_data = {
 -F, --portfolio       Display portfolio data
 -l, --list-ids        List IDs of all available assets
 -n, --name-labels     Label rows with asset names rather than symbols
--p, --percent-change  Add percentage change columns
+-p, --percent-cols=C  Add daily, weekly, monthly, or yearly percentage change
+                      columns ‘C’ (specify with comma-separated letters
+                      {pc})
 -P, --pager           Pipe the output to a pager
 -r, --add-rows=LIST   Add rows for asset specifiers in LIST (comma-separated,
                       see ASSET SPECIFIERS below). Can also be used to supply
@@ -54,7 +60,8 @@ opts_data = {
 -T, --thousands-comma Use comma as a thousands separator
 -u, --update-time     Include UPDATED (last update time) column
 -v, --verbose         Be more verbose
--w, --wide            Display all optional columns (equivalent to -punT)
+-w, --wide            Display most optional columns (same as -unT -p d,w)
+-W, --widest          Display all optional columns (same as -unT -p d,w,m,y)
 -x, --proxy=P         Connect via proxy ‘P’.  Set to the empty string to
                       completely disable or ‘none’ to allow override from
                       environment. Consult the curl manpage for --proxy usage.
@@ -169,9 +176,10 @@ $ mmnode-ticker -w -c eurusd=x,omr-omani-rial:2.59r -e2 -x http://vpnhost:8118
 # Wide display, elapsed update time, add EUR, BGN columns and BGN/EUR rate:
 $ mmnode-ticker -wE -c eurusd=x,bgn-bulgarian-lev:0.5113r:eurusd=x
 
-# Wide display, use cached data from previous network query, show portfolio
-# (see above), pipe output to pager, add DOGE row:
-$ mmnode-ticker -wCFP -r doge
+# Widest display with all percentage change columns, use cached data from
+# previous network query, show portfolio (see above), pipe output to pager,
+# add DOGE row:
+$ mmnode-ticker -WCFP -r doge
 
 # Display 17.234 XMR priced in all configured assets (‘trading’ mode):
 $ mmnode-ticker xmr:17.234
@@ -206,6 +214,7 @@ To add a portfolio, edit the file
 			dfl_cachedir = os.path.relpath(dfl_cachedir,start=homedir),
 			ds           = fmt_dict(DataSource.get_sources(),fmt='equal_compact'),
 			al           = DataSource.coinpaprika.dfl_asset_limit,
+			pc           = fmt_list(Ticker.percent_cols,fmt='bare'),
 		),
 		'notes': lambda s: s.format(
 			assets = fmt_list(assets_list_gen(cfg_in),fmt='col',indent='  '),
