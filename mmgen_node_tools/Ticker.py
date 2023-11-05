@@ -232,8 +232,8 @@ class DataSource:
 				'id': sym,
 				'name': data['shortName'],
 				'symbol': sym.upper(),
-				'price_usd': str(price_usd),
-				'price_btc': str(price_usd / btcusd),
+				'price_usd': price_usd,
+				'price_btc': price_usd / btcusd,
 				'percent_change_7d': None,
 				'percent_change_24h': data['regularMarketChangePercent']['raw'] * 100,
 				'last_updated': data['regularMarketTime'],
@@ -378,6 +378,13 @@ def gen_data(data):
 				if d[k] in wants[k]:
 					if d[k] in found[k]:
 						die(1,dup_sym_errmsg(d[k]))
+					if not d.get('_converted'):
+						d['price_usd'] = Decimal(d['price_usd'])
+						d['price_btc'] = Decimal(d['price_btc'])
+						d['percent_change_7d'] = Decimal(d['percent_change_7d'])
+						d['percent_change_24h'] = Decimal(d['percent_change_24h'])
+						d['last_updated'] = int(d['last_updated'])
+						d['_converted'] = True
 					yield (d['id'],d)
 					found[k].add(d[k])
 					wants[k].remove(d[k])
@@ -394,13 +401,13 @@ def gen_data(data):
 			User-supplied rate overrides rate from source data.
 			"""
 			_id = asset.id or f'{asset.symbol}-user-asset-{asset.symbol}'.lower()
-			ra_rate = Decimal(rate_assets[asset.rate_asset.symbol]['price_usd']) if asset.rate_asset else 1
+			ra_rate = rate_assets[asset.rate_asset.symbol]['price_usd'] if asset.rate_asset else 1
 			yield ( _id, {
 				'symbol': asset.symbol,
 				'id': _id,
 				'name': ' '.join(_id.split('-')[1:]),
-				'price_usd': str(Decimal(ra_rate/asset.rate)),
-				'price_btc': str(Decimal(ra_rate/asset.rate/btcusd)),
+				'price_usd': ra_rate / asset.rate,
+				'price_btc': ra_rate / asset.rate / btcusd,
 				'last_updated': None,
 			})
 
@@ -408,8 +415,8 @@ def gen_data(data):
 		'symbol': 'USD',
 		'id': 'usd-us-dollar',
 		'name': 'US Dollar',
-		'price_usd': '1.0',
-		'price_btc': str(Decimal(1/btcusd)),
+		'price_usd': Decimal(1),
+		'price_btc': Decimal(1) / btcusd,
 		'last_updated': None,
 	})
 
@@ -678,7 +685,7 @@ class Ticker:
 			)) + 1
 
 			self.rows = [row._replace(id=self.get_id(row)) if isinstance(row,tuple) else row for row in cfg.rows]
-			self.col_usd_prices = {k:Decimal(self.data[k]['price_usd']) for k in self.col_ids}
+			self.col_usd_prices = {k:self.data[k]['price_usd'] for k in self.col_ids}
 
 			self.prices = {row.id:self.get_row_prices(row.id)
 				for row in self.rows if isinstance(row,tuple) and row.id in data}
@@ -717,7 +724,7 @@ class Ticker:
 			self.upd_w = max_w
 
 		def init_prec(self):
-			exp = [(a.id,Decimal.adjusted(self.prices[a.id]['usd-us-dollar'])) for a in self.usr_col_assets]
+			exp = [(a.id, self.prices[a.id]['usd-us-dollar'].adjusted() ) for a in self.usr_col_assets]
 			self.uprec = { k: max(0,v+4) + cfg.add_prec for k,v in exp }
 			self.uwid  = { k: 12 + max(0, abs(v)-6) + cfg.add_prec for k,v in exp }
 
@@ -737,13 +744,13 @@ class Ticker:
 
 			for asset in self.usr_col_assets:
 				if asset.symbol != 'USD':
-					usdprice = Decimal(self.data[asset.id]['price_usd'])
+					usdprice = self.data[asset.id]['price_usd']
 					yield '{} ({}) = {:{}.{}f} USD'.format(
 						asset.symbol,
 						self.create_label(asset.id),
 						usdprice,
 						self.comma,
-						max(2,int(-usdprice.adjusted())+4) )
+						max(2, 4-usdprice.adjusted()) )
 
 			if hasattr(self,'subhdr'):
 				yield self.subhdr
@@ -818,17 +825,14 @@ class Ticker:
 			if id in self.data:
 				d = self.data[id]
 				return { k: (
-						Decimal(d['price_btc']) if k == 'btc-bitcoin' else
-						Decimal(d['price_usd']) / self.col_usd_prices[k]
+						d['price_btc'] if k == 'btc-bitcoin' else
+						d['price_usd'] / self.col_usd_prices[k]
 					) * self.adjust for k in self.col_ids }
 
 		def fmt_row(self,d,amt=None,amt_fmt=None):
 
-			def fmt_pct(d):
-				if d in ('',None):
-					return gray('     --')
-				n = Decimal(d)
-				return (red,green)[n>=0](f'{n:+7.2f}')
+			def fmt_pct(n):
+				return gray('     --') if n == None else (red,green)[n>=0](f'{n:+7.2f}')
 
 			p = self.prices[d['id']]
 
@@ -927,8 +931,8 @@ class Ticker:
 				if self.offer:
 					real_price = (
 						self.asset.amount
-						* Decimal(data[self.asset.id]['price_usd'])
-						/ Decimal(data[self.to_asset.id]['price_usd'])
+						* data[self.asset.id]['price_usd']
+						/ data[self.to_asset.id]['price_usd']
 					)
 					if self.adjust != 1:
 						die(1,'the --adjust option may not be combined with TO_AMOUNT in the trade specifier')
@@ -943,7 +947,7 @@ class Ticker:
 
 			self.usr_col_assets = [self.asset] + ([self.to_asset] if self.to_asset else [])
 			for a in self.usr_col_assets:
-				self.prices[a.id]['usd-us-dollar'] = Decimal(data[a.id]['price_usd'])
+				self.prices[a.id]['usd-us-dollar'] = data[a.id]['price_usd']
 
 			self.format_last_update_col(cross_assets=self.usr_col_assets)
 
@@ -953,7 +957,7 @@ class Ticker:
 		def get_row_prices(self,id):
 			if id in self.data:
 				d = self.data[id]
-				return { k: self.col_usd_prices[self.asset.id] / Decimal(d['price_usd']) for k in self.col_ids }
+				return { k: self.col_usd_prices[self.asset.id] / d['price_usd'] for k in self.col_ids }
 
 		def init_fs(self):
 			self.max_wid = max(
