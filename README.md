@@ -8,7 +8,13 @@ Currently tested on Linux only.  Some scripts may not work under Windows/MSYS2.
 
 ## Install:
 
-First, install [MMGen][6].
+### Stable version:
+
+	$ python3 -m pip install --user --upgrade mmgen-node-tools
+
+### Development version:
+
+First, install the latest development version of [MMGen][6].
 
 Then,
 
