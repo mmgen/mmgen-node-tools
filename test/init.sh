@@ -31,22 +31,22 @@ done
 
 shift $((OPTIND-1))
 
-mm_repo='../mmgen'
+wallet_repo='../mmgen-wallet'
 
 die()   { echo -e ${YELLOW}ERROR: $1$RESET; false; }
 becho() { echo -e $BLUE$1$RESET; }
 
 check_mmgen_repo() {
-	( cd $mm_repo; python3 ./setup.py --url | grep -iq 'mmgen' )
+	( cd $wallet_repo; python3 ./setup.py --url | grep -iq 'mmgen' )
 }
 
 build_mmgen_extmod() {
-	( cd $mm_repo; python3 ./setup.py build_ext --inplace )
+	( cd $wallet_repo; python3 ./setup.py build_ext --inplace )
 }
 
 create_dir_links() {
 	for link_name in 'mmgen' 'scripts'; do
-		target="$mm_repo/$link_name"
+		target="$wallet_repo/$link_name"
 		if [ -e $link_name ]; then
 			[ $(realpath --relative-to=. $link_name) == $target ] || die "'$link_name' does not point to '$target'"
 		else
@@ -73,7 +73,7 @@ create_test_links() {
 		[ "$path" ] || continue
 		pfx=$(echo $path | sed -r 's/[^/]//g' | sed 's/\//..\//g')
 		symlink_arg=$(if [ $type == 'symbolic' ]; then echo --symbolic; fi)
-		target="$mm_repo/$path"
+		target="$wallet_repo/$path"
 		if [ ! -e "$target" ]; then
 			echo "Target path $target is missing! Cannot proceed"
 			exit 1
@@ -101,7 +101,7 @@ set -e
 
 becho 'Initializing MMGen Node Tools Test Suite'
 
-check_mmgen_repo || die "MMGen repository not found at $mm_repo!"
+check_mmgen_repo || die "MMGen Wallet repository not found at $wallet_repo!"
 
 build_mmgen_extmod
 
