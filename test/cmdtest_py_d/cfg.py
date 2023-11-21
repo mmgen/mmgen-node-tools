@@ -12,7 +12,7 @@
 test.cmdtest_py_d.cfg: configuration data for cmdtest.py
 """
 
-import os
+cmd_groups_altcoin = []
 
 cmd_groups_dfl = {
 	'main':        ('CmdTestMain',{}),
@@ -29,4 +29,5 @@ cfgs = {
 	'3':  {}, # main
 }
 
-def fixup_cfgs(): pass
+def fixup_cfgs():
+	pass

@@ -47,9 +47,15 @@ build_mmgen_extmod() {
 create_dir_links() {
 	for link_name in 'mmgen' 'scripts'; do
 		target="$wallet_repo/$link_name"
-		if [ -e $link_name ]; then
-			[ $(realpath --relative-to=. $link_name) == $target ] || die "'$link_name' does not point to '$target'"
-		else
+		if [ -L $link_name ]; then
+			[ "$(realpath --relative-to=. $link_name 2>/dev/null)" == $target ] || {
+				echo "Removing broken symlink '$link_name'"
+				rm $link_name
+			}
+		elif [ -e $link_name ]; then
+			die "'$link_name' is not a symbolic link. Please remove or relocate it and re-run this script"
+		fi
+		if [ ! -e $link_name ]; then
 			echo "Creating symlink: $link_name"
 			ln -s $target
 		fi
