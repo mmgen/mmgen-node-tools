@@ -12,17 +12,16 @@ If installing as user (without venv), make sure that `~/.local/bin` is in `PATH`
 
 > Install [MSYS2 and the MMGen Wallet dependencies][8], skipping installation of
 > scrypt, libsecp256k1 and the wallet itself if desired.
-
+>
 > Install some additional dependencies:
-
-```bash
-	$ pacman -S \
-		mingw-w64-ucrt-x86_64-python-pandas \
-		mingw-w64-ucrt-x86_64-python-tqdm \
-		mingw-w64-ucrt-x86_64-python-lxml
-	$ python3 -m pip install requests-futures
-	$ python3 -m pip install --no-deps yahooquery
-```
+> ```bash
+> $ pacman -S \
+> 	mingw-w64-ucrt-x86_64-python-pandas \
+> 	mingw-w64-ucrt-x86_64-python-tqdm \
+> 	mingw-w64-ucrt-x86_64-python-lxml
+> $ python3 -m pip install requests-futures
+> $ python3 -m pip install --no-deps yahooquery
+> ```
 
 #### Linux:
 
@@ -53,15 +52,15 @@ located in the same directory.*
 #### Windows/MSYS2:
 
 > *Tested only on NTFS – with ReFS your mileage may vary*
-
+>
 > Turn on Developer Mode to enable symlinks:
-```
-	Settings -> Update & Security -> For developers -> Developer Mode: On
-```
+> ```
+> Settings -> Update & Security -> For developers -> Developer Mode: On
+> ```
 > and add this to your `~/.bashrc`:
-```bash
-	export MSYS=winsymlinks:nativestrict
-```
+> ```bash
+> export MSYS=winsymlinks:nativestrict
+> ```
 > Close and reopen the MSYS2 terminal to update your environment.
 
 Initialize the test framework (must be run at least once after cloning, and
