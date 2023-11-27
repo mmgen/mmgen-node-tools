@@ -12,7 +12,7 @@
 test.cmdtest_py_d.ct_regtest: Regtest tests for the cmdtest.py test suite
 """
 
-import os
+import sys,os
 
 from mmgen.util import msg_r,die,gmsg
 from mmgen.protocol import init_proto
@@ -134,6 +134,8 @@ class CmdTestRegtest(CmdTestBase):
 	def netrate2(self):
 		t = self.netrate( [], r'sent:.*' )
 		t.kill(15)
+		if sys.platform == 'win32':
+			return 'ok'
 		t.req_exit_val = -15
 		return t
 

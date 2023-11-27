@@ -35,7 +35,7 @@ class CmdTestMain(CmdTestBase):
 			"'mmnode-peerblocks' script",
 			('peerblocks1', '--help'),
 			('peerblocks2', 'interactive (popen spawn)'),
-			('peerblocks3', 'interactive, 80 columns (pexpect_spawn)'),
+			('peerblocks3', 'interactive, 80 columns (pexpect_spawn [on Linux])'),
 		),
 	}
 
@@ -94,4 +94,6 @@ class CmdTestMain(CmdTestBase):
 		return t
 
 	def peerblocks3(self):
-		return self.peerblocks2(['--columns=80'],pexpect_spawn=True)
+		return self.peerblocks2(
+			['--columns=80'],
+			pexpect_spawn = sys.platform != 'win32' )
