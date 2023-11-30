@@ -15,10 +15,7 @@ If installing as user (without venv), make sure that `~/.local/bin` is in `PATH`
 >
 > Install some additional dependencies:
 > ```bash
-> $ pacman -S \
-> 	mingw-w64-ucrt-x86_64-python-pandas \
-> 	mingw-w64-ucrt-x86_64-python-tqdm \
-> 	mingw-w64-ucrt-x86_64-python-lxml
+> $ pacman -S mingw-w64-ucrt-x86_64-python-pandas
 > $ python3 -m pip install requests-futures
 > $ python3 -m pip install --no-deps yahooquery
 > ```
@@ -35,7 +32,7 @@ $ python3 -m pip install --upgrade mmgen-node-tools
 
 ### Development version:
 
-Install the latest development version of [MMGen Wallet][6] for your platform.
+Install the latest development version of [MMGen Wallet][6] for your platform:
 
 ```bash
 $ git clone https://github.com/mmgen/mmgen-node-tools
@@ -65,32 +62,34 @@ located in the same directory.*
 
 Initialize the test framework (must be run at least once after cloning, and
 possibly again after a pull if tests have been updated):
-
-	$ test/init.sh
-
+```
+$ test/init.sh
+```
 BTC-only testing:
-
-	$ test/test-release.sh -A
-
+```
+$ test/test-release.sh -A
+```
 Full testing:
-
-	$ test/test-release.sh
+```
+$ test/test-release.sh
+```
 
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 Homepage:
-[Clearnet](https://mmgen-wallet.cc) |
+[Clearnet](https://mmgen.org) |
 [I2P](http://mmgen-wallet.i2p) |
 [Onion](http://mmgen55rtcahqfp2hn3v7syqv2wqanks5oeezqg3ykwfkebmouzjxlad.onion)    
 Code repository:
-[Clearnet](https://mmgen.org/project/mmgen/mmgen-wallet) |
-[I2P](http://mmgen-wallet.i2p/project/mmgen/mmgen-wallet) |
-[Onion](http://mmgen55rtcahqfp2hn3v7syqv2wqanks5oeezqg3ykwfkebmouzjxlad.onion/project/mmgen/mmgen-wallet)    
+[Clearnet](https://mmgen.org/project/mmgen/mmgen-node-tools) |
+[I2P](http://mmgen-wallet.i2p/project/mmgen/mmgen-node-tools) |
+[Onion](http://mmgen55rtcahqfp2hn3v7syqv2wqanks5oeezqg3ykwfkebmouzjxlad.onion/project/mmgen/mmgen-node-tools)    
 Code repository mirrors:
-[Github](https://github.com/mmgen/mmgen-wallet) |
-[Gitlab](https://gitlab.com/mmgen/mmgen-wallet) |
-[Gitflic](https://gitflic.ru/project/mmgen/mmgen-wallet)     
+[Github](https://github.com/mmgen/mmgen-node-tools) |
+[Gitlab](https://gitlab.com/mmgen/mmgen-node-tools) |
+[Gitflic](https://gitflic.ru/project/mmgen/mmgen-node-tools)     
 [Keybase](https://keybase.io/mmgen) |
+[Twitter](https://twitter.com/TheMMGenProject) |
 [Reddit](https://www.reddit.com/user/mmgen-py) |
 [Bitcointalk](https://bitcointalk.org/index.php?topic=567069.new#new)   
 [PGP Signing Key][5]: 5C84 CB45 AEE2 250F 31A6 A570 3F8B 1861 E32B 7DA2    
@@ -99,7 +98,6 @@ Donate:
 &nbsp;⊙&nbsp;BCH:&nbsp;*15TLdmi5NYLdqmtCqczUs5pBPkJDXRs83w*    
 &nbsp;⊙&nbsp;XMR:&nbsp;*8B14zb8wgLuKDdse5p8f3aKpFqRdB4i4xj83b7BHYABHMvHifWxiDXeKRELnaxL5FySfeRRS5girgUvgy8fQKsYMEzPUJ8h*
 
-[4]: https://bitcointalk.org/index.php?topic=567069.0
 [5]: https://github.com/mmgen/mmgen-wallet/wiki/MMGen-Signing-Keys
 [6]: https://github.com/mmgen/mmgen-wallet/
 [7]: https://github.com/mmgen/mmgen-wallet/wiki/Install-MMGen-on-Linux
