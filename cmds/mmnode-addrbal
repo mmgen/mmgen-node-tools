@@ -14,4 +14,4 @@ mmnode-addrbal: Get balances for arbitrary addresses in the blockchain
 
 from mmgen.main import launch
 
-launch('addrbal',package='mmgen_node_tools')
+launch(mod='addrbal',package='mmgen_node_tools')

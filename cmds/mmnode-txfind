@@ -14,4 +14,4 @@ mmnode-txfind: Find a transaction in the blockchain or mempool
 
 from mmgen.main import launch
 
-launch('txfind',package='mmgen_node_tools')
+launch(mod='txfind',package='mmgen_node_tools')

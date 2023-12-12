@@ -14,4 +14,4 @@ mmnode-feeview: Visualize the fee structure of a node’s mempool
 
 from mmgen.main import launch
 
-launch('feeview',package='mmgen_node_tools')
+launch(mod='feeview',package='mmgen_node_tools')

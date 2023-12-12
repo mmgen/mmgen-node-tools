@@ -14,4 +14,4 @@ mmnode-ticker: Display price information for cryptocurrency and other assets
 
 from mmgen.main import launch
 
-launch('ticker',package='mmgen_node_tools')
+launch(mod='ticker',package='mmgen_node_tools')

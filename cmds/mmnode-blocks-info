@@ -14,4 +14,4 @@ mmnode-blocks-info: Display information about a block or range of blocks
 
 from mmgen.main import launch
 
-launch('blocks_info',package='mmgen_node_tools')
+launch(mod='blocks_info',package='mmgen_node_tools')

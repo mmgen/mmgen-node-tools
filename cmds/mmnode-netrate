@@ -14,4 +14,4 @@ mmnode-netrate: Bitcoin daemon network rate monitor
 
 from mmgen.main import launch
 
-launch('netrate',package='mmgen_node_tools')
+launch(mod='netrate',package='mmgen_node_tools')

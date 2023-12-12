@@ -14,4 +14,4 @@ mmnode-halving-calculator: Estimate date(s) of future block subsidy halving(s)
 
 from mmgen.main import launch
 
-launch('halving_calculator',package='mmgen_node_tools')
+launch(mod='halving_calculator',package='mmgen_node_tools')

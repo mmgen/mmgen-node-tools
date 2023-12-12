@@ -14,4 +14,4 @@ mmnode-peerblocks: List blocks in flight, disconnect stalling nodes
 
 from mmgen.main import launch
 
-launch('peerblocks',package='mmgen_node_tools')
+launch(mod='peerblocks',package='mmgen_node_tools')
