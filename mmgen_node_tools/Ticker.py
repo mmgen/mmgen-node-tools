@@ -193,7 +193,7 @@ class DataSource:
 
 		@property
 		def timeout(self):
-			return 5 if gcfg.test_suite else self.btc_ratelimit if cfg.btc_only else self.ratelimit
+			return 0 if gcfg.test_suite else self.btc_ratelimit if cfg.btc_only else self.ratelimit
 
 		def json_data_error_msg(self,json_text):
 			tor_captcha_msg = f"""
@@ -265,7 +265,7 @@ class DataSource:
 
 		@property
 		def timeout(self):
-			return 5 if gcfg.test_suite else self.ratelimit
+			return 0 if gcfg.test_suite else self.ratelimit
 
 		@property
 		def symbols(self):

@@ -10,6 +10,7 @@
 
 RED="\e[31;1m" GREEN="\e[32;1m" YELLOW="\e[33;1m" BLUE="\e[34;1m" RESET="\e[0m"
 
+set -e
 set -o errtrace
 set -o functrace
 
@@ -17,14 +18,19 @@ trap 'echo -e "${GREEN}Exiting at user request$RESET"; exit' INT
 trap 'echo -e "${RED}Node Tools test suite initialization exited with error (line $BASH_LINENO) $RESET"' ERR
 umask 0022
 
+STDOUT_DEVNULL='>/dev/null'
+STDERR_DEVNULL='2>/dev/null'
+
 PROGNAME=$(basename $0)
-while getopts h OPT
+while getopts hv OPT
 do
 	case "$OPT" in
 	h)  printf "  %-16s Initialize the MMGen Node Tools test suite\n" "${PROGNAME}:"
 		echo   "  USAGE:           $PROGNAME"
 		echo   "  OPTIONS: '-h'  Print this help message"
+		echo   "            -v   Be more verbose"
 		exit ;;
+	v)  VERBOSE=1 STDOUT_DEVNULL='' STDERR_DEVNULL='' ;;
 	*)  exit ;;
 	esac
 done
@@ -41,7 +47,10 @@ check_mmgen_repo() {
 }
 
 build_mmgen_extmod() {
-	( cd $wallet_repo; python3 ./setup.py build_ext --inplace )
+	(
+		cd $wallet_repo
+		eval "python3 ./setup.py build_ext --inplace $STDOUT_DEVNULL $STDERR_DEVNULL"
+	)
 }
 
 create_dir_links() {
@@ -49,14 +58,14 @@ create_dir_links() {
 		target="$wallet_repo/$link_name"
 		if [ -L $link_name ]; then
 			[ "$(realpath --relative-to=. $link_name 2>/dev/null)" == $target ] || {
-				echo "Removing broken symlink '$link_name'"
+				[ "$VERBOSE" ] && echo "Removing broken symlink '$link_name'"
 				rm $link_name
 			}
 		elif [ -e $link_name ]; then
 			die "'$link_name' is not a symbolic link. Please remove or relocate it and re-run this script"
 		fi
 		if [ ! -e $link_name ]; then
-			echo "Creating symlink: $link_name"
+			[ "$VERBOSE" ] && echo "Creating symlink: $link_name"
 			ln -s $target
 		fi
 	done
@@ -87,23 +96,21 @@ create_test_links() {
 		fs="%-8s %-16s %s -> %s\n"
 		if [ $type == 'hard' ]; then
 			if [ -L $path ]; then
-				printf "$fs" "Deleting" "symbolic link:" $path $target
+				[ "$VERBOSE" ] && printf "$fs" "Deleting" "symbolic link:" $path $target
 				rm -rf $path
 			elif [ -e $path ]; then
 				if [ "$(stat --printf=%i $path)" -ne "$(stat --printf=%i $target)" ]; then
-					printf "$fs" "Deleting" "stale hard link:" $path "?"
+					[ "$VERBOSE" ] && printf "$fs" "Deleting" "stale hard link:" $path "?"
 					rm -rf $path
 				fi
 			fi
 		fi
 		if [ ! -e $path ]; then # link is either absent or a broken symlink
-			printf "$fs" "Creating" "$type link:" $path $target
+			[ "$VERBOSE" ] && printf "$fs" "Creating" "$type link:" $path $target
 			( cd "$(dirname $path)" && ln -f $symlink_arg $pfx$target )
 		fi
 	done <<<$paths
 }
-
-set -e
 
 becho 'Initializing MMGen Node Tools Test Suite'
 
@@ -111,8 +118,12 @@ check_mmgen_repo || die "MMGen Wallet repository not found at $wallet_repo!"
 
 build_mmgen_extmod
 
+[ "$VERBOSE" ] && becho 'Creating links to mmgen-wallet repo'
+
 create_dir_links
 
 create_test_links
 
-becho 'OK'
+[ "$VERBOSE" ] && becho 'OK'
+
+true
