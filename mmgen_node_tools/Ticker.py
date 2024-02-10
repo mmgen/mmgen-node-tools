@@ -440,7 +440,8 @@ def gen_data(data):
 						d['percent_change_7d']  = d['quotes']['USD']['percent_change_7d']
 						d['percent_change_30d'] = d['quotes']['USD']['percent_change_30d']
 						d['percent_change_1y']  = d['quotes']['USD']['percent_change_1y']
-						d['last_updated'] = int(datetime.datetime.fromisoformat(d['last_updated']).timestamp())
+						# .replace('Z','+00:00') -- Python 3.9 backport
+						d['last_updated'] = int(datetime.datetime.fromisoformat(d['last_updated'].replace('Z','+00:00')).timestamp())
 					yield (d['id'],d)
 					found[k].add(d[k])
 					wants[k].remove(d[k])
