@@ -106,10 +106,11 @@ class CmdTestScripts(CmdTestBase):
 		shutil.copy2(os.path.join(refdir,'ticker-btc.json'),self.tmpdir)
 		return 'ok'
 
-	def ticker(self,args=[],expect_list=None,cached=True):
+	def ticker(self, args=[], expect_list=None, cached=True, exit_val=None):
 		t = self.spawn(
 			f'mmnode-ticker',
-			(['--cached-data'] if cached else []) + self.ticker_args + args )
+			(['--cached-data'] if cached else []) + self.ticker_args + args,
+			exit_val = exit_val)
 		if expect_list:
 			t.match_expect_list(expect_list)
 		return t
@@ -120,12 +121,11 @@ class CmdTestScripts(CmdTestBase):
 		return t
 
 	def ticker2(self):
-		t = self.ticker(cached=False)
+		t = self.ticker(cached=False, exit_val=3)
 		if not cfg.skipping_deps:
 			t.expect('Creating')
 			t.expect('Creating')
-		ret = t.expect(['proxy host could not be resolved','ProxyError'])
-		t.req_exit_val = 3 if ret == 0 else 1
+		t.expect(['proxy host could not be resolved', 'ProxyError'])
 		return t
 
 	def ticker3(self):
@@ -165,9 +165,8 @@ class CmdTestScripts(CmdTestBase):
 		return t
 
 	def ticker6(self):
-		t = self.ticker( ['--wide','--portfolio'], None )
+		t = self.ticker(['--wide','--portfolio'], None, exit_val=1)
 		t.expect('No portfolio')
-		t.req_exit_val = 1
 		return t
 
 	def ticker7(self): # demo

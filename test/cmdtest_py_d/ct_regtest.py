@@ -39,6 +39,8 @@ class CmdTestRegtest(CmdTestBase):
 	tmpdir_nums = [1]
 	color = True
 	deterministic = False
+	bdb_wallet = True
+
 	cmd_group_in = (
 		('setup',                       'regtest mode setup'),
 		('subgroup.netrate',            []),
@@ -111,20 +113,27 @@ class CmdTestRegtest(CmdTestBase):
 			die(2,'--testnet and --regtest options incompatible with regtest test suite')
 		self.proto = init_proto( cfg, self.proto.coin, network='regtest', need_amt=True )
 		self.addrs = gen_addrs(self.proto,'regtest',[1,2,3,4,5])
-		self.regtest = MMGenRegtest(cfg,self.proto.coin)
+
+		self.use_bdb_wallet = self.bdb_wallet or self.proto.coin != 'BTC'
+		self.regtest = MMGenRegtest(cfg, self.proto.coin, bdb_wallet=self.use_bdb_wallet)
 
 	def setup(self):
 		stop_test_daemons(self.proto.network_id,force=True,remove_datadir=True)
 		from shutil import rmtree
-		try: rmtree(joinpath(self.tr.data_dir,'regtest'))
-		except: pass
-		t = self.spawn('mmgen-regtest',['-n','setup'])
+		try:
+			rmtree(joinpath(self.tr.data_dir,'regtest'))
+		except:
+			pass
+		t = self.spawn(
+			'mmgen-regtest',
+			(['--bdb-wallet'] if self.use_bdb_wallet else [])
+			+ ['--setup-no-stop-daemon', 'setup'])
 		for s in ('Starting','Creating','Creating','Creating','Mined','Setup complete'):
 			t.expect(s)
 		return t
 
-	def netrate(self,add_args,expect_str):
-		t = self.spawn( 'mmnode-netrate', args1 + add_args )
+	def netrate(self, add_args, expect_str, exit_val=None):
+		t = self.spawn('mmnode-netrate', args1 + add_args, exit_val=exit_val)
 		t.expect(expect_str,regex=True)
 		return t
 
@@ -132,11 +141,10 @@ class CmdTestRegtest(CmdTestBase):
 		return self.netrate( ['--help'], 'USAGE:.*' )
 
 	def netrate2(self):
-		t = self.netrate( [], r'sent:.*' )
+		t = self.netrate([], r'sent:.*', exit_val=-15)
 		t.kill(15)
 		if sys.platform == 'win32':
 			return 'ok'
-		t.req_exit_val = -15
 		return t
 
 	def halving_calculator(self,add_args,expect_list):
@@ -326,7 +334,7 @@ class CmdTestRegtest(CmdTestBase):
 			return await do_tx(
 				[{ 'txid': tx_input['txid'], 'vout': 0 }],
 				outputs,
-				r.miner_wif )
+				await r.miner_wif)
 
 		async def do_tx2(tx,pairno):
 			fee = fees[pairno]
