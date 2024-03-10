@@ -25,7 +25,7 @@ from decimal import Decimal
 from collections import namedtuple
 
 from mmgen.color import red,yellow,green,blue,orange,gray
-from mmgen.util import msg,msg_r,Msg,die,Die,suf,fmt,fmt_list,fmt_dict,list_gen
+from mmgen.util import msg,msg_r,Msg,Msg_r,die,Die,suf,fmt,fmt_list,fmt_dict,list_gen
 from mmgen.ui import do_pager
 
 homedir = os.getenv('HOME')
@@ -75,7 +75,7 @@ class DataSource:
 				['curl', '--tr-encoding', '--header', 'Accept: application/json',True],
 				['--compressed'], # adds 'Accept-Encoding: gzip'
 				['--proxy', cfg.proxy, isinstance(cfg.proxy,str)],
-				['--silent', not gcfg.verbose],
+				['--silent', not cfg.verbose],
 				[self.api_url]
 			)
 
@@ -101,7 +101,9 @@ class DataSource:
 			if not os.path.exists(self.json_fn):
 				open(self.json_fn,'w').write('{}')
 
-			if gcfg.cached_data:
+			use_cached_data = cfg.cached_data and not gcfg.download
+
+			if use_cached_data:
 				data_type = 'json'
 				data_in = open(self.json_fn).read()
 			else:
@@ -112,8 +114,8 @@ class DataSource:
 						msg('')
 					self.fetch_delay()
 					msg_r(f'Fetching {self.data_desc} from {self.api_host}...')
-					if self.has_verbose:
-						gcfg._util.vmsg('')
+					if self.has_verbose and cfg.verbose:
+						msg('')
 					data_in = self.get_data_from_network()
 					msg('done')
 					if gcfg.testing:
@@ -133,14 +135,14 @@ class DataSource:
 				json_text = json.dumps(data_in)
 
 			if not data:
-				if gcfg.cached_data:
+				if use_cached_data:
 					die(1,'No cached data!  Run command without --cached-data option to retrieve data from remote host')
 				else:
 					die(2,'Remote host returned no data!')
 			elif 'error' in data:
 				die(1,data['error'])
 
-			if gcfg.cached_data:
+			if use_cached_data:
 				msg(f'Using cached data from ~/{self.json_fn_rel}')
 			else:
 				open(self.json_fn,'w').write(json_text)
@@ -171,7 +173,7 @@ class DataSource:
 		dfl_asset_limit = 2000
 
 		def __init__(self):
-			self.asset_limit = int(gcfg.asset_limit or self.dfl_asset_limit)
+			self.asset_limit = int(cfg.asset_limit or self.dfl_asset_limit)
 
 		def rate_limit_errmsg(self,elapsed):
 			return (
@@ -528,9 +530,8 @@ def main():
 
 	data = dict(gen_data(src_data))
 
-	gcfg._util.stdout_or_pager(
-		'\n'.join(getattr(Ticker,cfg.clsname)(data).gen_output()) + '\n'
-	)
+	(do_pager if cfg.pager else Msg_r)(
+		'\n'.join(getattr(Ticker,cfg.clsname)(data).gen_output()) + '\n')
 
 def make_cfg(gcfg_arg):
 
@@ -670,7 +671,15 @@ def make_cfg(gcfg_arg):
 		'proxy',
 		'proxy2',
 		'portfolio',
-		'percent_cols' ])
+		'percent_cols',
+		'asset_limit',
+		'cached_data',
+		'elapsed',
+		'name_labels',
+		'pager',
+		'thousands_comma',
+		'update_time',
+		'verbose'])
 
 	global gcfg,cfg_in,src_cls,cfg
 
@@ -704,18 +713,26 @@ def make_cfg(gcfg_arg):
 		query       = query,
 		adjust      = ( lambda x: (100 + x) / 100 if x else 1 )( Decimal(gcfg.adjust or 0) ),
 		clsname     = 'trading' if query else 'overview',
-		btc_only    = gcfg.btc,
-		add_prec    = parse_add_precision(gcfg.add_precision),
+		btc_only    = gcfg.btc or cfg_in.cfg.get('btc'),
+		add_prec    = parse_add_precision(gcfg.add_precision or cfg_in.cfg.get('add_precision')),
 		cachedir    = gcfg.cachedir or cfg_in.cfg.get('cachedir') or dfl_cachedir,
 		proxy       = proxy,
 		proxy2      = None if proxy2 == 'none' else '' if proxy2 == '' else (proxy2 or proxy),
 		portfolio   =
 			get_portfolio()
 				if cfg_in.portfolio
-				and gcfg.portfolio
+				and (gcfg.portfolio or cfg_in.cfg.get('portfolio'))
 				and not query
 			else None,
-		percent_cols = parse_percent_cols(gcfg.percent_cols)
+		percent_cols    = parse_percent_cols(gcfg.percent_cols or cfg_in.cfg.get('percent_cols')),
+		asset_limit     = gcfg.asset_limit     or cfg_in.cfg.get('asset_limit'),
+		cached_data     = gcfg.cached_data     or cfg_in.cfg.get('cached_data'),
+		elapsed         = gcfg.elapsed         or cfg_in.cfg.get('elapsed'),
+		name_labels     = gcfg.name_labels     or cfg_in.cfg.get('name_labels'),
+		pager           = gcfg.pager           or cfg_in.cfg.get('pager'),
+		thousands_comma = gcfg.thousands_comma or cfg_in.cfg.get('thousands_comma'),
+		update_time     = gcfg.update_time     or cfg_in.cfg.get('update_time'),
+		verbose         = gcfg.verbose         or cfg_in.cfg.get('verbose'),
 	)
 
 def get_cfg_in():
@@ -753,10 +770,10 @@ class Ticker:
 
 		def __init__(self,data):
 
-			self.comma = ',' if gcfg.thousands_comma else ''
+			self.comma = ',' if cfg.thousands_comma else ''
 
 			self.col1_wid = max(len('TOTAL'),(
-				max(len(self.create_label(d['id'])) for d in data.values()) if gcfg.name_labels else
+				max(len(self.create_label(d['id'])) for d in data.values()) if cfg.name_labels else
 				max(len(d['symbol']) for d in data.values())
 			)) + 1
 
@@ -769,7 +786,7 @@ class Ticker:
 
 		def format_last_update_col(self,cross_assets=()):
 
-			if gcfg.elapsed:
+			if cfg.elapsed:
 				from mmgen.util2 import format_elapsed_hr
 				fmt_func = format_elapsed_hr
 			else:
@@ -918,7 +935,7 @@ class Ticker:
 					amt_fmt = amt_fmt.rstrip('0').rstrip('.')
 
 			return self.fs_num.format(
-				lbl = (self.create_label(d['id']) if gcfg.name_labels else d['symbol']),
+				lbl = self.create_label(d['id']) if cfg.name_labels else d['symbol'],
 				pc1 = fmt_pct(d.get('percent_change_7d')),
 				pc2 = fmt_pct(d.get('percent_change_24h')),
 				pc3 = fmt_pct(d.get('percent_change_1y')),
@@ -969,11 +986,11 @@ class Ticker:
 					( 'pct1m', 'm' in cfg.percent_cols ),
 					( 'pct1w', 'w' in cfg.percent_cols ),
 					( 'pct1d', 'd' in cfg.percent_cols ),
-					( 'update_time', gcfg.update_time ),
+					( 'update_time', cfg.update_time ),
 				) if b]
 			)
 			cols2 = list(cols)
-			if gcfg.update_time:
+			if cfg.update_time:
 				cols2.pop()
 			cols2.append('amt')
 
@@ -1058,7 +1075,7 @@ class Ticker:
 			if self.show_adj:
 				self.fs_str += ' {p_adj}'
 				self.hl_wid += self.max_wid + 1
-			if gcfg.update_time:
+			if cfg.update_time:
 				self.fs_str += '  {upd}'
 				self.hl_wid += self.upd_w + 2
 
@@ -1071,7 +1088,7 @@ class Ticker:
 				if self.show_adj else '' )
 
 			return self.fs_str.format(
-				lbl = (self.create_label(id) if gcfg.name_labels else d['symbol']),
+				lbl = self.create_label(id) if cfg.name_labels else d['symbol'],
 				p_spot = green(p_spot) if id in self.hl_ids else p_spot,
 				p_adj  = yellow(p_adj) if id in self.hl_ids else p_adj,
 				upd = d.get('last_updated_fmt'),
