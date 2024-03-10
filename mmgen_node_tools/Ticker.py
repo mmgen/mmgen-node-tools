@@ -26,6 +26,7 @@ from collections import namedtuple
 
 from mmgen.color import red,yellow,green,blue,orange,gray
 from mmgen.util import msg,msg_r,Msg,die,Die,suf,fmt,fmt_list,fmt_dict,list_gen
+from mmgen.ui import do_pager
 
 homedir = os.getenv('HOME')
 dfl_cachedir = os.path.join(homedir,'.cache','mmgen-node-tools')
@@ -407,6 +408,8 @@ def gen_data(data):
 		id = get_id(k,v)
 		if wants['id']:
 			if id in wants['id']:
+				if not isinstance(v,dict):
+					die(2, str(v))
 				if id in found['id']:
 					die(1,dup_sym_errmsg(id))
 				if m := data['hi'].get(k):
@@ -517,7 +520,6 @@ def main():
 		return
 
 	if gcfg.list_ids:
-		from mmgen.ui import do_pager
 		do_pager('\n'.join(e['id'] for e in src_data['cc']))
 		return
 
@@ -628,9 +630,10 @@ def make_cfg(gcfg_arg):
 	def get_portfolio():
 		return {k:Decimal(v) for k,v in cfg_in.portfolio.items() if (not gcfg.btc) or k == 'btc-bitcoin'}
 
-	def parse_add_precision(s):
-		if not s:
+	def parse_add_precision(arg):
+		if not arg:
 			return 0
+		s = str(arg)
 		if not (s.isdigit() and s.isascii()):
 			die(1,f'{s}: invalid parameter for --add-precision (not an integer)')
 		if int(s) > 30:
@@ -706,7 +709,12 @@ def make_cfg(gcfg_arg):
 		cachedir    = gcfg.cachedir or cfg_in.cfg.get('cachedir') or dfl_cachedir,
 		proxy       = proxy,
 		proxy2      = None if proxy2 == 'none' else '' if proxy2 == '' else (proxy2 or proxy),
-		portfolio   = get_portfolio() if cfg_in.portfolio and gcfg.portfolio and not query else None,
+		portfolio   =
+			get_portfolio()
+				if cfg_in.portfolio
+				and gcfg.portfolio
+				and not query
+			else None,
 		percent_cols = parse_percent_cols(gcfg.percent_cols)
 	)
 

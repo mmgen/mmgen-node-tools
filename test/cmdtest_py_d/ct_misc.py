@@ -121,11 +121,12 @@ class CmdTestScripts(CmdTestBase):
 		return t
 
 	def ticker2(self):
-		t = self.ticker(cached=False, exit_val=3)
+		t = self.ticker(cached=False)
 		if not cfg.skipping_deps:
 			t.expect('Creating')
 			t.expect('Creating')
-		t.expect(['proxy host could not be resolved', 'ProxyError'])
+		ret = t.expect(['proxy host could not be resolved', 'ProxyError'])
+		t.exit_val = 1 if ret else 3
 		return t
 
 	def ticker3(self):
