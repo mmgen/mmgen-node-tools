@@ -53,6 +53,7 @@ opts_data = {
                       columns ‘C’ (specify with comma-separated letters
                       {pc})
 -P, --pager           Pipe the output to a pager
+-q, --quiet           Produce quieter output
 -r, --add-rows=LIST   Add rows for asset specifiers in LIST (comma-separated,
                       see ASSET SPECIFIERS below). Can also be used to supply
                       a USD exchange rate for missing assets.

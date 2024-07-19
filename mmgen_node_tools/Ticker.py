@@ -136,17 +136,24 @@ class DataSource:
 
 			if not data:
 				if use_cached_data:
-					die(1,'No cached data!  Run command without --cached-data option to retrieve data from remote host')
+					die(1,
+						f'No cached {self.data_desc}! Run command without the --cached-data option, '
+						'or use --download to retrieve data from remote host')
 				else:
 					die(2,'Remote host returned no data!')
 			elif 'error' in data:
 				die(1,data['error'])
 
 			if use_cached_data:
-				msg(f'Using cached data from ~/{self.json_fn_rel}')
+				if not cfg.quiet:
+					msg(f'Using cached data from ~/{self.json_fn_rel}')
 			else:
-				open(self.json_fn,'w').write(json_text)
-				msg(f'JSON data cached to ~/{self.json_fn_rel}')
+				if os.path.exists(self.json_fn):
+					os.rename(self.json_fn, self.json_fn + '.bak')
+				with open(self.json_fn, 'w') as fh:
+					fh.write(json_text)
+				if not cfg.quiet:
+					msg(f'JSON data cached to ~/{self.json_fn_rel}')
 				if gcfg.download:
 					sys.exit(0)
 
@@ -679,6 +686,7 @@ def make_cfg(gcfg_arg):
 		'pager',
 		'thousands_comma',
 		'update_time',
+		'quiet',
 		'verbose'])
 
 	global gcfg,cfg_in,src_cls,cfg
@@ -732,6 +740,7 @@ def make_cfg(gcfg_arg):
 		pager           = gcfg.pager           or cfg_in.cfg.get('pager'),
 		thousands_comma = gcfg.thousands_comma or cfg_in.cfg.get('thousands_comma'),
 		update_time     = gcfg.update_time     or cfg_in.cfg.get('update_time'),
+		quiet           = gcfg.quiet           or cfg_in.cfg.get('quiet'),
 		verbose         = gcfg.verbose         or cfg_in.cfg.get('verbose'),
 	)
 
