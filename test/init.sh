@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # mmgen = Multi-Mode GENerator, a command-line cryptocurrency wallet
 # Copyright (C)2013-2022 The MMGen Project <mmgen@tuta.io>
@@ -17,6 +17,12 @@ set -o functrace
 trap 'echo -e "${GREEN}Exiting at user request$RESET"; exit' INT
 trap 'echo -e "${RED}Node Tools test suite initialization exited with error (line $BASH_LINENO) $RESET"' ERR
 umask 0022
+
+for i in '-c' '-f'; do
+	stat $i %i / >/dev/null 2>&1 && stat_fmt_opt=$i
+done
+
+[ "$stat_fmt_opt" ] || { echo 'No suitable ‘stat’ binary found. Cannot proceed'; exit; }
 
 STDOUT_DEVNULL='>/dev/null'
 STDERR_DEVNULL='2>/dev/null'
@@ -77,6 +83,7 @@ create_test_links() {
 		test/overlay/__init__.py       symbolic
 		test/overlay/fakemods/mmgen    symbolic
 		test/__init__.py               symbolic
+		test/clean.py                  symbolic
 		test/cmdtest.py                hard
 		test/unit_tests.py             hard
 		test/test-release.sh           symbolic
@@ -87,7 +94,7 @@ create_test_links() {
 	while read path type; do
 		[ "$path" ] || continue
 		pfx=$(echo $path | sed -r 's/[^/]//g' | sed 's/\//..\//g')
-		symlink_arg=$(if [ $type == 'symbolic' ]; then echo --symbolic; fi)
+		symlink_arg=$(if [ $type == 'symbolic' ]; then echo -s; fi)
 		target="$wallet_repo/$path"
 		if [ ! -e "$target" ]; then
 			echo "Target path $target is missing! Cannot proceed"
@@ -99,7 +106,7 @@ create_test_links() {
 				[ "$VERBOSE" ] && printf "$fs" "Deleting" "symbolic link:" $path $target
 				rm -rf $path
 			elif [ -e $path ]; then
-				if [ "$(stat --printf=%i $path)" -ne "$(stat --printf=%i $target)" ]; then
+				if [ "$(stat $stat_fmt_opt %i $path)" -ne "$(stat $stat_fmt_opt %i $target)" ]; then
 					[ "$VERBOSE" ] && printf "$fs" "Deleting" "stale hard link:" $path "?"
 					rm -rf $path
 				fi

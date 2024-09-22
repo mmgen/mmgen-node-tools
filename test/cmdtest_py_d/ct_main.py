@@ -96,4 +96,4 @@ class CmdTestMain(CmdTestBase):
 	def peerblocks3(self):
 		return self.peerblocks2(
 			['--columns=80'],
-			pexpect_spawn = sys.platform != 'win32' )
+			pexpect_spawn = sys.platform == 'linux')

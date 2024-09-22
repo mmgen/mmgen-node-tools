@@ -20,9 +20,9 @@ If installing as user (without venv), make sure that `~/.local/bin` is in `PATH`
 > $ python3 -m pip install --no-deps yahooquery
 > ```
 
-#### Linux:
+#### Linux, macOS:
 
-> Install the [required MMGen Wallet packages][7] for your Linux distribution.
+> Install some [required packages][7] with your package manager and pip.
 
 ### Stable version:
 
@@ -100,5 +100,5 @@ Donate:
 
 [5]: https://github.com/mmgen/mmgen-wallet/wiki/MMGen-Signing-Keys
 [6]: https://github.com/mmgen/mmgen-wallet/
-[7]: https://github.com/mmgen/mmgen-wallet/wiki/Install-MMGen-on-Linux
+[7]: https://github.com/mmgen/mmgen-wallet/wiki/Install-MMGen-Wallet-on-Linux-or-macOS
 [8]: https://github.com/mmgen/mmgen-wallet/wiki/Install-MMGen-on-Microsoft-Windows#a_m

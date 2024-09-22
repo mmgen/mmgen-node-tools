@@ -30,4 +30,9 @@ cfgs = {
 }
 
 def fixup_cfgs():
-	pass
+	import os
+
+	for k in cfgs:
+		cfgs[k]['tmpdir'] = os.path.join('test', 'tmp', str(k))
+
+fixup_cfgs()
