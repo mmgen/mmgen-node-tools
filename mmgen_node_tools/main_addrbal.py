@@ -38,7 +38,7 @@ def do_output(proto,addr_data,blk_hdrs):
 	indent = ' ' * (col1w + 2)
 
 	for n,(addr,unspents) in enumerate(addr_data.items(),1):
-		Msg(f'\n{n:{col1w}}) Address: {addr.hl()}')
+		Msg(f'\n{n:{col1w}}) Address: {addr.hl(addr.view_pref)}')
 
 		if unspents:
 			heights = { u['height'] for u in unspents }
@@ -93,7 +93,7 @@ def do_output_tabular(proto,addr_data,blk_hdrs):
 		if unspents:
 			Msg(fs.format(
 				n = str(n) + ')',
-				a = addr.fmt(width=max_addrw,color=True),
+				a = addr.fmt(addr.view_pref, width=max_addrw, color=True),
 				u = red(str(len(unspents)).rjust(5)),
 				b = unspents[0]['height'],
 				t = make_timestr( blk_hdrs[unspents[0]['height']]['time'] ),
@@ -104,7 +104,7 @@ def do_output_tabular(proto,addr_data,blk_hdrs):
 		else:
 			Msg(fs.format(
 				n = str(n) + ')',
-				a = addr.fmt(width=max_addrw,color=True),
+				a = addr.fmt(addr.view_pref, width=max_addrw, color=True),
 				u = '    -',
 				b = '-',
 				t = '',

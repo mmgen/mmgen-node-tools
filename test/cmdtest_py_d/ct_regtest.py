@@ -112,7 +112,7 @@ class CmdTestRegtest(CmdTestBase):
 		if cfg._proto.testnet:
 			die(2,'--testnet and --regtest options incompatible with regtest test suite')
 		self.proto = init_proto( cfg, self.proto.coin, network='regtest', need_amt=True )
-		self.addrs = gen_addrs(self.proto,'regtest',[1,2,3,4,5])
+		self.addrs = [a.views[a.view_pref] for a in gen_addrs(self.proto,'regtest',[1,2,3,4,5])]
 
 		self.use_bdb_wallet = self.bdb_wallet or self.proto.coin != 'BTC'
 		self.regtest = MMGenRegtest(cfg, self.proto.coin, bdb_wallet=self.use_bdb_wallet)
