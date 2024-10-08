@@ -35,7 +35,6 @@ class CmdTestRegtest(CmdTestBase):
 	'various operations via regtest mode'
 	networks = ('btc','ltc','bch')
 	passthru_opts = ('coin',)
-	extra_spawn_args = ['--regtest=1']
 	tmpdir_nums = [1]
 	color = True
 	deterministic = False
@@ -177,57 +176,57 @@ class CmdTestRegtest(CmdTestBase):
 	def sendto2(self): return self.sendto(self.addrs[0],'0.234')
 	def sendto3(self): return self.sendto(self.addrs[1],'0.345')
 
-	def addrbal(self,args,expect_list):
-		t = self.spawn('mmnode-addrbal',args)
+	def addrbal(self, args, expect_list):
+		t = self.spawn('mmnode-addrbal', args2 + args)
 		t.match_expect_list(expect_list)
 		return t
 
 	def addrbal_single(self):
 		return self.addrbal(
-			args2 + [self.addrs[0]],
+			[self.addrs[0]],
 			[
 				f'Balance: 0.357 {cfg.coin}',
 				'2 unspent outputs in 2 blocks',
-				'394','0.123',
-				'395','0.234'
+				'394', '0.123',
+				'395', '0.234'
 			])
 
 	def addrbal_multiple(self):
 		return self.addrbal(
-			args2 + [self.addrs[1],self.addrs[0]],
+			[self.addrs[1], self.addrs[0]],
 			[
-				'396','0.345',
-				'394','0.123',
-				'395','0.234'
+				'396', '0.345',
+				'394', '0.123',
+				'395', '0.234'
 			])
 
 	def addrbal_multiple_tabular1(self):
 		return self.addrbal(
-			args2 + ['--tabular',self.addrs[1],self.addrs[0]],
+			['--tabular', self.addrs[1], self.addrs[0]],
 			[
-				self.addrs[1] + ' 1 396','0.345',
-				self.addrs[0] + ' 2 395','0.357'
+				self.addrs[1] + ' 1 396', '0.345',
+				self.addrs[0] + ' 2 395', '0.357'
 			])
 
 	def addrbal_multiple_tabular2(self):
 		return self.addrbal(
-			args2 + ['--tabular','--first-block',self.addrs[1],self.addrs[0]],
+			['--tabular', '--first-block', self.addrs[1], self.addrs[0]],
 			[
-				self.addrs[1] + ' 1 396','396','0.345',
-				self.addrs[0] + ' 2 394','395','0.357'
+				self.addrs[1] + ' 1 396', '396', '0.345',
+				self.addrs[0] + ' 2 394', '395', '0.357'
 			])
 
 	def addrbal_nobal1(self):
 		return self.addrbal(
-			args2 + [self.addrs[2]], ['Address has no balance'] )
+			[self.addrs[2]], ['Address has no balance'])
 
 	def addrbal_nobal2(self):
 		return self.addrbal(
-			args2 + [self.addrs[2],self.addrs[3]], ['Addresses have no balances'] )
+			[self.addrs[2], self.addrs[3]], ['Addresses have no balances'])
 
 	def addrbal_nobal3(self):
 		return self.addrbal(
-			args2 + [self.addrs[4],self.addrs[0],self.addrs[3]],
+			[self.addrs[4], self.addrs[0], self.addrs[3]],
 			[
 				'No balance',
 				'2 unspent outputs in 2 blocks',
@@ -237,7 +236,7 @@ class CmdTestRegtest(CmdTestBase):
 
 	def addrbal_nobal3_tabular1(self):
 		return self.addrbal(
-			args2 + ['--tabular',self.addrs[4],self.addrs[0],self.addrs[3]],
+			['--tabular', self.addrs[4], self.addrs[0], self.addrs[3]],
 			[
 				self.addrs[4] + ' - - -',
 				self.addrs[0] + ' 2 395','0.357',
@@ -246,7 +245,7 @@ class CmdTestRegtest(CmdTestBase):
 
 	def addrbal_nobal3_tabular2(self):
 		return self.addrbal(
-			args2 + ['--tabular','--first-block',self.addrs[4],self.addrs[0],self.addrs[3]],
+			['--tabular', '--first-block', self.addrs[4], self.addrs[0], self.addrs[3]],
 			[
 				self.addrs[4] + ' - - - -',
 				self.addrs[0] + ' 2 394','395','0.357',
@@ -254,39 +253,45 @@ class CmdTestRegtest(CmdTestBase):
 			])
 
 	def blocks_info(self,args,expect_list):
-		t = self.spawn('mmnode-blocks-info',args)
+		t = self.spawn('mmnode-blocks-info', args1 + args)
 		t.match_expect_list(expect_list)
 		return t
 
 	def blocks_info1(self):
-		return self.blocks_info( args1 + ['--help'], ['USAGE:','OPTIONS:'])
+		return self.blocks_info(
+			['--help'],
+			['USAGE:','OPTIONS:'])
 
 	def blocks_info2(self):
-		return self.blocks_info( args1, [
-			'Current height: 396',
-		])
+		return self.blocks_info(
+			[],
+			['Current height: 396'])
 
 	def blocks_info3(self):
-		return self.blocks_info( args1 + ['+100'], [
-			'Range: 297-396',
-			'Current height: 396',
-			'Next diff adjust: 2016'
-		])
+		return self.blocks_info(
+			['+100'],
+			[
+				'Range: 297-396',
+				'Current height: 396',
+				'Next diff adjust: 2016'
+			])
 
 	def blocks_info4(self):
 		n1,i1,o1,n2,i2,o2 = (2,1,3,6,3,9) if cfg.coin == 'BCH' else (2,1,4,6,3,12)
-		return self.blocks_info( args1 + ['--miner-info','--fields=all','--stats=all','+3'], [
-			'Averages',
-			f'nTx: {n1}',
-			f'Inputs: {i1}',
-			f'Outputs: {o1}',
-			'Totals',
-			f'nTx: {n2}',
-			f'Inputs: {i2}',
-			f'Outputs: {o2}',
-			'Current height: 396',
-			'Next diff adjust: 2016'
-		])
+		return self.blocks_info(
+			['--miner-info', '--fields=all', '--stats=all', '+3'],
+			[
+				'Averages',
+				f'nTx: {n1}',
+				f'Inputs: {i1}',
+				f'Outputs: {o1}',
+				'Totals',
+				f'nTx: {n2}',
+				f'Inputs: {i2}',
+				f'Outputs: {o2}',
+				'Current height: 396',
+				'Next diff adjust: 2016'
+			])
 
 	async def feeview_setup(self):
 
@@ -380,7 +385,7 @@ class CmdTestRegtest(CmdTestBase):
 		return 'ok'
 
 	def _feeview(self,args,expect_list=[]):
-		t = self.spawn('mmnode-feeview',args)
+		t = self.spawn('mmnode-feeview', args1 + args)
 		if expect_list:
 			t.match_expect_list(expect_list)
 		return t

@@ -50,7 +50,7 @@ class CmdTestHelp(CmdTestBase):
 		return t
 
 	def longhelpscreens(self):
-		return self.helpscreens(arg='--longhelp',expect='USAGE:.*LONG OPTIONS:')
+		return self.helpscreens(arg='--longhelp',expect='USAGE:.*GLOBAL OPTIONS:')
 
 class CmdTestScripts(CmdTestBase):
 	'scripts not requiring a coin daemon'

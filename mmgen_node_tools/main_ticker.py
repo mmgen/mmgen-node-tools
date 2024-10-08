@@ -234,7 +234,7 @@ from mmgen.util import fmt_list,fmt_dict
 from mmgen.cfg import Config
 from . import Ticker
 
-gcfg = Config( opts_data=opts_data, do_post_init=True )
+gcfg = Config(opts_data=opts_data, caller_post_init=True)
 
 Ticker.make_cfg(gcfg)
 
