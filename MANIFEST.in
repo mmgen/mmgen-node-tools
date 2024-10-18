@@ -4,7 +4,7 @@ include mmgen_node_tools/data/*
 
 include test/init.sh
 include test/test-release.d/*.sh
-include test/unit_tests_d/*.py
+include test/modtest_d/*.py
 include test/cmdtest_d/*.py
 include test/overlay/fakemods/mmgen_node_tools/*.py
 include test/ref/*/*

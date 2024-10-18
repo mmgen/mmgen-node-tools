@@ -77,6 +77,10 @@ create_dir_links() {
 	done
 }
 
+delete_old_stuff() {
+	rm -rf test/unit_tests.py
+}
+
 create_test_links() {
 	paths='
 		test/include                   symbolic
@@ -85,7 +89,7 @@ create_test_links() {
 		test/__init__.py               symbolic
 		test/clean.py                  symbolic
 		test/cmdtest.py                hard
-		test/unit_tests.py             hard
+		test/modtest.py                hard
 		test/test-release.sh           symbolic
 		test/cmdtest_d/common.py       symbolic
 		test/cmdtest_d/ct_base.py      symbolic
@@ -120,6 +124,8 @@ create_test_links() {
 }
 
 becho 'Initializing MMGen Node Tools Test Suite'
+
+delete_old_stuff
 
 check_mmgen_repo || die "MMGen Wallet repository not found at $wallet_repo!"
 
