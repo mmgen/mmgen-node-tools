@@ -9,7 +9,7 @@
 #   https://gitlab.com/mmgen/mmgen-node-tools
 
 """
-test.cmdtest_py_d.ct_misc: Miscellaneous test groups for the cmdtest.py test suite
+test.cmdtest_d.ct_misc: Miscellaneous test groups for the cmdtest.py test suite
 """
 
 import os,shutil

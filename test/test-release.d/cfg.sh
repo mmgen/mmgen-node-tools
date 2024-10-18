@@ -42,7 +42,7 @@ init_tests() {
 	t_lint="
 		- $pylint --errors-only mmgen_node_tools
 		- $pylint --errors-only test
-		- $pylint --errors-only --disable=relative-beyond-top-level test/cmdtest_py_d
+		- $pylint --errors-only --disable=relative-beyond-top-level test/cmdtest_d
 	"
 
 	d_unit="low-level subsystems"

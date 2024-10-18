@@ -9,7 +9,7 @@
 #   https://gitlab.com/mmgen/mmgen-wallet
 
 """
-cmdtest_py_d.ct_main: Basic operations tests for the cmdtest.py test suite
+cmdtest_d.ct_main: Basic operations tests for the cmdtest.py test suite
 """
 
 import sys,time
