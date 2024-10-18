@@ -44,7 +44,7 @@ def do_output(proto,addr_data,blk_hdrs):
 			heights = { u['height'] for u in unspents }
 			Msg('{}Balance: {}'.format(
 				indent,
-				proto.coin_amt(sum(u['amount'] for u in unspents)).hl2(unit=True,fs='{:,}') )),
+				sum(proto.coin_amt(u['amount']) for u in unspents).hl2(unit=True, fs='{:,}'))),
 			Msg('{}{} unspent output{} in {} block{}'.format(
 				indent,
 				red(str(len(unspents))),
@@ -99,7 +99,7 @@ def do_output_tabular(proto,addr_data,blk_hdrs):
 				t = make_timestr( blk_hdrs[unspents[0]['height']]['time'] ),
 				B = unspents[-1]['height'],
 				T = make_timestr( blk_hdrs[unspents[-1]['height']]['time'] ),
-				A = proto.coin_amt(sum(u['amount'] for u in unspents)).fmt(color=True,iwidth=7,prec=8)
+				A = sum(proto.coin_amt(u['amount']) for u in unspents).fmt(color=True, iwidth=7, prec=8)
 			))
 		else:
 			Msg(fs.format(

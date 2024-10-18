@@ -23,6 +23,7 @@ mmgen_node_tools.BlocksInfo: Display information about a block or range of block
 import re,json
 from collections import namedtuple
 from time import strftime,gmtime
+from decimal import Decimal
 
 from mmgen.util import msg,Msg,Msg_r,die,suf,secs_to_ms,secs_to_dhms,is_int
 from mmgen.rpc import json_encoder
@@ -241,14 +242,14 @@ class BlocksInfo:
 			'tf': lambda arg: '{:.8f}'.format(arg * from_satoshi),
 			'su': lambda arg: str(arg * from_satoshi).rstrip('0').rstrip('.'),
 			'fe': lambda arg: str(arg),
-			'di': lambda arg: '{:.2e}'.format(arg),
+			'di': lambda arg: '{:.2e}'.format(Decimal(arg)),
 		}
 
 		if self.cfg.coin == 'BCH':
 			self.fmt_funcs.update({
 				'su': lambda arg: str(arg).rstrip('0').rstrip('.'),
-				'fe': lambda arg: str(int(arg * to_satoshi)),
-				'tf': lambda arg: '{:.8f}'.format(arg),
+				'fe': lambda arg: str(int(Decimal(arg) * to_satoshi)),
+				'tf': lambda arg: '{:.8f}'.format(Decimal(arg)),
 			})
 
 		self.fnames = tuple(
@@ -547,7 +548,7 @@ class BlocksInfo:
 		else:
 			sample_blks = min(min_sample_blks,self.tip)
 			start_hdr = await c.call('getblockheader',await c.call('getblockhash',self.tip-sample_blks))
-			diff_adj = float(tip_hdr['difficulty'] / start_hdr['difficulty'])
+			diff_adj = Decimal(tip_hdr['difficulty']) / Decimal(start_hdr['difficulty'])
 			time1 = rel_hdr['time'] - start_hdr['time']
 			time2 = tip_hdr['time'] - rel_hdr['time']
 			bdi = ((time1 * diff_adj) + time2) / sample_blks
@@ -570,9 +571,18 @@ class BlocksInfo:
 					'sample_blks':  ('{}',     sample_blks)
 				}
 			),
-			('Cur difficulty:    {}', 'cur_diff',            '{:.2e}',  tip_hdr['difficulty']),
+			('Cur difficulty:    {}', 'cur_diff',            '{:.2e}',  Decimal(tip_hdr['difficulty'])),
 			('Est. diff adjust: {}%', 'est_diff_adjust_pct', '{:+.2f}', ((600 / bdi) - 1) * 100),
 		))
+
+	def sum_field_avg(self, field):
+		return self.sum_field_total(field) // len(self.res)
+
+	def sum_field_total(self, field):
+		if isinstance(getattr(self.res[0], field), str):
+			return sum(Decimal(getattr(block, field)) for block in self.res)
+		else:
+			return sum(getattr(block, field) for block in self.res)
 
 	async def create_col_avg_stats(self):
 		def gen():
@@ -580,7 +590,7 @@ class BlocksInfo:
 				if field in self.avg_stats_skip:
 					yield ( field, ('{}','') )
 				else:
-					ret = sum(getattr(block,field) for block in self.res) // len(self.res)
+					ret = self.sum_field_avg(field)
 					func = self.fields[field].fmt_func
 					yield ( field, ( (self.fmt_funcs[func] if func else '{}'), ret ))
 		if not self.header_printed:
@@ -590,9 +600,10 @@ class BlocksInfo:
 
 	def avg_stats_data(self,data,spec_conv,spec_val):
 		coin = self.rpc.proto.coin
+
 		return data(
 			hdr = 'Averages for processed blocks:',
-			func = lambda field: sum(getattr(block,field) for block in self.res) // len(self.res),
+			func = self.sum_field_avg,
 			spec_sufs = { 'subsidy': f' {coin}', 'totalfee': f' {coin}' },
 			spec_convs = {
 				'interval':    spec_conv(0,  lambda arg: secs_to_ms(arg)),
@@ -616,7 +627,7 @@ class BlocksInfo:
 		coin = self.rpc.proto.coin
 		return data(
 			hdr = 'Totals for processed blocks:',
-			func = lambda field: sum(getattr(block,field) for block in self.res),
+			func = self.sum_field_total,
 			spec_sufs = { 'subsidy': f' {coin}', 'totalfee': f' {coin}', 'reward': f' {coin}' },
 			spec_convs = {
 				'interval': spec_conv(0,  lambda arg: secs_to_dhms(arg)),

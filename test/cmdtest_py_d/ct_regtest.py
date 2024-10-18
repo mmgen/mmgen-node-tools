@@ -13,6 +13,7 @@ test.cmdtest_py_d.ct_regtest: Regtest tests for the cmdtest.py test suite
 """
 
 import sys,os
+from decimal import Decimal
 
 from mmgen.util import msg_r,die,gmsg
 from mmgen.protocol import init_proto
@@ -316,13 +317,13 @@ class CmdTestRegtest(CmdTestBase):
 
 			# very approximate tx size estimation:
 			ibytes,wbytes,obytes = (148,0,34) if self.proto.coin == 'BCH' else (43,108,31)
-			x = (ibytes + (wbytes//4) + (obytes * nPairs)) * self.proto.coin_amt(self.proto.coin_amt.satoshi)
+			x = (ibytes + (wbytes//4) + (obytes * nPairs)) * self.proto.coin_amt.satoshi
 
 			n = n_in - 1
 			vmax = high - low
 
 			for i in range(n_in):
-				yield (low + (i/n)**6 * vmax) * x
+				yield Decimal(low + (i/n)**6 * vmax) * x
 
 		async def do_tx(inputs,outputs,wif):
 			tx_hex = await r.rpc_call( 'createrawtransaction', inputs, outputs )
@@ -335,14 +336,14 @@ class CmdTestRegtest(CmdTestBase):
 			tx_input = us[7] # 25 BTC in coinbase -- us[0] could have < 25 BTC
 			fee = self.proto.coin_amt('0.001')
 			outputs = {p.addr:tx1_amt for p in pairs[:nTxs]}
-			outputs.update({burn_addr: tx_input['amount'] - (tx1_amt*nTxs) - fee})
+			outputs.update({burn_addr: self.proto.coin_amt(tx_input['amount']) - (tx1_amt*nTxs) - fee})
 			return await do_tx(
 				[{ 'txid': tx_input['txid'], 'vout': 0 }],
 				outputs,
 				await r.miner_wif)
 
 		async def do_tx2(tx,pairno):
-			fee = fees[pairno]
+			fee = self.proto.coin_amt(fees[pairno], from_decimal=True)
 			outputs = {p.addr:tx2_amt for p in pairs}
 			outputs.update({burn_addr: tx1_amt - (tx2_amt*len(pairs)) - fee})
 			return await do_tx(
