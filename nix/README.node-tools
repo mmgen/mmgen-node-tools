@@ -1,0 +1,11 @@
+Nix configuration directory for the MMGen Node Tools suite
+
+Usage is as described in ‘nix/README’ in the mmgen-wallet repository, with the
+following differences:
+
+  a) all commands are executed from the repository root of mmgen-node-tools
+     instead of mmgen-wallet
+
+  b) for NixOS, complete the steps as described up until the rebuild step.
+     Copy the contents of this directory to ‘/etc/nixos/mmgen-project’ (this
+     will overwrite ‘default.nix’), and continue with the rebuild step.
