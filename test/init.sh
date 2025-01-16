@@ -28,15 +28,17 @@ STDOUT_DEVNULL='>/dev/null'
 STDERR_DEVNULL='2>/dev/null'
 
 PROGNAME=$(basename $0)
-while getopts hv OPT
+while getopts hcv OPT
 do
 	case "$OPT" in
 	h)  printf "  %-16s Initialize the MMGen Node Tools test suite\n" "${PROGNAME}:"
 		echo   "  USAGE:           $PROGNAME"
 		echo   "  OPTIONS: '-h'  Print this help message"
+		echo   "            -c   Create links from mmgen-wallet ‘cmds’ subdirectory"
 		echo   "            -v   Be more verbose"
 		exit ;;
 	v)  VERBOSE=1 STDOUT_DEVNULL='' STDERR_DEVNULL='' ;;
+	c)  CMD_LINKS=1 ;;
 	*)  exit ;;
 	esac
 done
@@ -123,6 +125,17 @@ create_test_links() {
 	done <<<$paths
 }
 
+create_cmd_links() {
+	[ "$VERBOSE" ] && becho 'Creating links to mmgen-wallet repo ‘cmds’ subdirectory'
+	(
+		filenames=$(cd $wallet_repo/cmds && ls)
+		cd cmds
+		for filename in $filenames; do
+			[ -e $filename ] || ln -s "../$wallet_repo/cmds/$filename"
+		done
+	)
+}
+
 becho 'Initializing MMGen Node Tools Test Suite'
 
 delete_old_stuff
@@ -136,6 +149,8 @@ build_mmgen_extmod
 create_dir_links
 
 create_test_links
+
+[ "$CMD_LINKS" ] && create_cmd_links
 
 [ "$VERBOSE" ] && becho 'OK'
 
