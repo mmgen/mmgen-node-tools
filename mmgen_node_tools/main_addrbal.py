@@ -142,10 +142,10 @@ async def main(req_addrs):
 				addr = re.match('addr\((.*?)\)',unspent['desc'])[1]
 				addr_data[addr].append(unspent)
 		else:
-			from mmgen.proto.btc.tx.base import scriptPubKey2addr
+			from mmgen.proto.btc.tx.base import decodeScriptPubKey
 			for unspent in sorted(res['unspents'],key=lambda x: x['height']):
-				addr = scriptPubKey2addr( proto, unspent['scriptPubKey'] )[0]
-				addr_data[addr].append(unspent)
+				ds = decodeScriptPubKey(proto, unspent['scriptPubKey'])
+				addr_data[ds.addr].append(unspent)
 
 		good_addrs = len([v for v in addr_data.values() if v])
 
