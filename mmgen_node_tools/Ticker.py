@@ -799,7 +799,7 @@ class Ticker:
 				from mmgen.util2 import format_elapsed_hr
 				fmt_func = format_elapsed_hr
 			else:
-				fmt_func = lambda t,now: time.strftime('%F %X',time.gmtime(t))
+				fmt_func = lambda t,now: time.strftime('%F %X', time.gmtime(t))
 
 			d = self.data
 			max_w = 0
@@ -820,15 +820,17 @@ class Ticker:
 						msg(str(e))
 						pass
 					else:
-						t_fmt = d[row.id]['last_updated_fmt'] = fmt_func( (min(t,min_t) if min_t else t), now )
-						max_w = max(len(t_fmt),max_w)
+						t_fmt = d[row.id]['last_updated_fmt'] = fmt_func(
+							(min(t,min_t) if min_t else t),
+							now = now)
+						max_w = max(len(t_fmt), max_w)
 
 			self.upd_w = max_w
 
 		def init_prec(self):
-			exp = [(a.id, self.prices[a.id]['usd-us-dollar'].adjusted() ) for a in self.usr_col_assets]
-			self.uprec = { k: max(0,v+4) + cfg.add_prec for k,v in exp }
-			self.uwid  = { k: 12 + max(0, abs(v)-6) + cfg.add_prec for k,v in exp }
+			exp = [(a.id, self.prices[a.id]['usd-us-dollar'].adjusted()) for a in self.usr_col_assets]
+			self.uprec = {k: max(0, v+4) + cfg.add_prec for k, v in exp}
+			self.uwid  = {k: 12 + max(0, abs(v)-6) + cfg.add_prec for k, v in exp}
 
 		def get_id(self,asset):
 			if asset.id:

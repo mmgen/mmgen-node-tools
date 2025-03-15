@@ -60,7 +60,7 @@ def do_output(proto,addr_data,blk_hdrs):
 					make_timestr( blk_hdrs[u['height']]['time'] ),
 					CoinTxID(u['txid']).hl(),
 					red(str(u['vout']).rjust(4)),
-					proto.coin_amt(u['amount']).fmt(color=True,iwidth=6,prec=8)
+					proto.coin_amt(u['amount']).fmt(6, color=True, prec=8)
 				))
 		else:
 			Msg(f'{indent}No balance')
@@ -93,18 +93,18 @@ def do_output_tabular(proto,addr_data,blk_hdrs):
 		if unspents:
 			Msg(fs.format(
 				n = str(n) + ')',
-				a = addr.fmt(addr.view_pref, width=max_addrw, color=True),
+				a = addr.fmt(addr.view_pref, max_addrw, color=True),
 				u = red(str(len(unspents)).rjust(5)),
 				b = unspents[0]['height'],
 				t = make_timestr( blk_hdrs[unspents[0]['height']]['time'] ),
 				B = unspents[-1]['height'],
 				T = make_timestr( blk_hdrs[unspents[-1]['height']]['time'] ),
-				A = sum(proto.coin_amt(u['amount']) for u in unspents).fmt(color=True, iwidth=7, prec=8)
+				A = sum(proto.coin_amt(u['amount']) for u in unspents).fmt(7, color=True, prec=8)
 			))
 		else:
 			Msg(fs.format(
 				n = str(n) + ')',
-				a = addr.fmt(addr.view_pref, width=max_addrw, color=True),
+				a = addr.fmt(addr.view_pref, max_addrw, color=True),
 				u = '    -',
 				b = '-',
 				t = '',

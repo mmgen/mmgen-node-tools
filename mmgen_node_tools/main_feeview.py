@@ -87,7 +87,7 @@ if cfg.ignore_below:
 	ignore_below = parse_bytespec(cfg.ignore_below)
 
 precision = (
-	check_int_between(cfg.precision,min_prec,max_prec,'--precision arg')
+	check_int_between(cfg.precision, min_prec, max_prec, desc='--precision arg')
 	if cfg.precision else dfl_prec )
 
 from mmgen.term import get_terminal_size
