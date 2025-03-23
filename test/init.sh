@@ -95,6 +95,8 @@ create_test_links() {
 		test/test-release.sh           symbolic
 		test/cmdtest_d/common.py       symbolic
 		test/cmdtest_d/ct_base.py      symbolic
+		test/cmdtest_d/runner.py       symbolic
+		test/cmdtest_d/group_mgr.py    symbolic
 		cmds/mmgen-regtest             symbolic
 	'
 	while read path type; do

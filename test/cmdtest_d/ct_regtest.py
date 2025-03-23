@@ -105,8 +105,8 @@ class CmdTestRegtest(CmdTestBase):
 	),
 	}
 
-	def __init__(self,trunner,cfgs,spawn):
-		CmdTestBase.__init__(self,trunner,cfgs,spawn)
+	def __init__(self, cfg, trunner, cfgs, spawn):
+		CmdTestBase.__init__(self, cfg, trunner, cfgs, spawn)
 		if trunner == None:
 			return
 		if cfg._proto.testnet:
