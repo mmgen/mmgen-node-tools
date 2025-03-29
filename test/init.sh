@@ -81,23 +81,28 @@ create_dir_links() {
 
 delete_old_stuff() {
 	rm -rf test/unit_tests.py
+	rm -rf test/cmdtest_d/common.py
+	rm -rf test/cmdtest_d/ct_base.py
+	rm -rf test/cmdtest_d/group_mgr.py
+	rm -rf test/cmdtest_d/runner.py
 }
 
 create_test_links() {
 	paths='
-		test/include                   symbolic
-		test/overlay/__init__.py       symbolic
-		test/overlay/fakemods/mmgen    symbolic
-		test/__init__.py               symbolic
-		test/clean.py                  symbolic
-		test/cmdtest.py                hard
-		test/modtest.py                hard
-		test/test-release.sh           symbolic
-		test/cmdtest_d/common.py       symbolic
-		test/cmdtest_d/ct_base.py      symbolic
-		test/cmdtest_d/runner.py       symbolic
-		test/cmdtest_d/group_mgr.py    symbolic
-		cmds/mmgen-regtest             symbolic
+		test/include                        symbolic
+		test/overlay/__init__.py            symbolic
+		test/overlay/fakemods/mmgen         symbolic
+		test/__init__.py                    symbolic
+		test/clean.py                       symbolic
+		test/cmdtest.py                     hard
+		test/modtest.py                     hard
+		test/test-release.sh                symbolic
+		test/cmdtest_d/base.py              symbolic
+		test/cmdtest_d/include/common.py    symbolic
+		test/cmdtest_d/include/runner.py    symbolic
+		test/cmdtest_d/include/group_mgr.py symbolic
+		test/cmdtest_d/include/pexpect.py   symbolic
+		cmds/mmgen-regtest                  symbolic
 	'
 	while read path type; do
 		[ "$path" ] || continue

@@ -9,18 +9,18 @@
 #   https://gitlab.com/mmgen/mmgen-node-tools
 
 """
-test.cmdtest_d.ct_regtest: Regtest tests for the cmdtest.py test suite
+test.cmdtest_d.regtest: Regtest tests for the cmdtest.py test suite
 """
 
-import sys,os
+import sys, os
 from decimal import Decimal
 
-from mmgen.util import msg_r,die,gmsg
+from mmgen.util import msg_r, die, gmsg
 from mmgen.protocol import init_proto
 from mmgen.proto.btc.regtest import MMGenRegtest
 
-from ..include.common import cfg,imsg,stop_test_daemons,joinpath
-from .ct_base import CmdTestBase
+from ..include.common import cfg, imsg, stop_test_daemons, joinpath
+from .base import CmdTestBase
 
 args1 = ['--bob']
 args2 = ['--bob','--rpc-backend=http']

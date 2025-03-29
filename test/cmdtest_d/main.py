@@ -9,13 +9,13 @@
 #   https://gitlab.com/mmgen/mmgen-wallet
 
 """
-cmdtest_d.ct_main: Basic operations tests for the cmdtest.py test suite
+cmdtest_d.main: Basic operations tests for the cmdtest.py test suite
 """
 
-import sys,time
+import sys, time
 
 from ..include.common import cfg
-from .ct_base import CmdTestBase
+from .base import CmdTestBase
 
 class CmdTestMain(CmdTestBase):
 	'basic operations with fake RPC data'

@@ -32,7 +32,8 @@ $ python3 -m pip install --upgrade mmgen-node-tools
 
 ### Development version:
 
-Install the latest development version of [MMGen Wallet][6] for your platform:
+First install the latest development version of [MMGen Wallet][6] for your
+platform.  Then perform the following steps:
 
 ```bash
 $ git clone https://github.com/mmgen/mmgen-node-tools

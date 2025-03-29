@@ -9,7 +9,7 @@
 #   https://gitlab.com/mmgen/mmgen-node-tools
 
 """
-test.cmdtest_d.cfg: configuration data for cmdtest.py
+test.cmdtest_d.include.cfg: configuration data for cmdtest.py
 """
 
 cmd_groups_altcoin = []

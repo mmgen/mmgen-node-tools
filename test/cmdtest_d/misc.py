@@ -9,13 +9,13 @@
 #   https://gitlab.com/mmgen/mmgen-node-tools
 
 """
-test.cmdtest_d.ct_misc: Miscellaneous test groups for the cmdtest.py test suite
+test.cmdtest_d.misc: Miscellaneous test groups for the cmdtest.py test suite
 """
 
-import os,shutil
+import os, shutil
 
 from ..include.common import cfg
-from .ct_base import CmdTestBase
+from .base import CmdTestBase
 
 refdir = os.path.join('test','ref','ticker')
 
