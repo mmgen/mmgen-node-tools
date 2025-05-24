@@ -103,7 +103,7 @@ class fee_bracket:
 
 def log(data,fn):
 	import json
-	from mmgen.rpc import json_encoder
+	from mmgen.rpc.util import json_encoder
 	from mmgen.fileutil import write_data_to_file
 	write_data_to_file(
 		cfg     = cfg,

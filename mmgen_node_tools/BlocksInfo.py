@@ -26,7 +26,7 @@ from time import strftime,gmtime
 from decimal import Decimal
 
 from mmgen.util import msg,Msg,Msg_r,die,suf,secs_to_ms,secs_to_dhms,is_int
-from mmgen.rpc import json_encoder
+from mmgen.rpc.util import json_encoder
 
 class RangeParser:
 
