@@ -33,7 +33,7 @@ def timespec2secs(ts):
 	mul = { 's': 1, 'm': 60, 'h': 60*60, 'd': 60*60*24 }
 	pat = r'^([0-9]+)([smhd]*)$'
 	m = re.match(pat,ts)
-	if m == None:
+	if m is None:
 		die(2,"'%s': invalid time specifier" % ts)
 	a,b = m.groups()
 	return int(a) * (mul[b] if b else 1)

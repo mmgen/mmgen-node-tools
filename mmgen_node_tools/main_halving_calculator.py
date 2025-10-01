@@ -21,7 +21,6 @@ mmnode-halving-calculator: Estimate date(s) of future block subsidy halving(s)
 """
 
 import time
-from decimal import Decimal
 
 from mmgen.cfg import Config
 from mmgen.util import async_run
@@ -148,8 +147,8 @@ async def main():
 				b = 'BLOCK',
 				c = 'DATE',
 				d = '',
-				e = f'BDI (mins)',
-				f = f'SUBSIDY ({proto.coin})',
+				e = 'BDI (mins)',
+				f = 'SUBSIDY ({proto.coin})',
 				g = f'MINED ({proto.coin})',
 				h = f'TOTAL MINED ({proto.coin})'
 			)

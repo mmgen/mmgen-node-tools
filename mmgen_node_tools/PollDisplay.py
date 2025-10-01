@@ -52,7 +52,7 @@ class PollDisplay:
 				count += 1
 
 		async def process_input():
-			if self.input == None:
+			if self.input is None:
 				sys.exit(1)
 			elif self.input == 'q':
 				msg('')

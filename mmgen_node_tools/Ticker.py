@@ -19,13 +19,13 @@ mmgen_node_tools.Ticker: Display price information for cryptocurrency and other 
 # Possible alternatives:
 # - https://min-api.cryptocompare.com/data/pricemultifull?fsyms=BTC,LTC&tsyms=USD,EUR
 
-import sys,os,re,time,datetime,json,yaml,random
-from subprocess import run,PIPE,CalledProcessError
+import sys, os, re, time, datetime, json, yaml, random
+from subprocess import run, PIPE, CalledProcessError
 from decimal import Decimal
 from collections import namedtuple
 
-from mmgen.color import red,yellow,green,blue,orange,gray
-from mmgen.util import msg,msg_r,Msg,Msg_r,die,Die,suf,fmt,fmt_list,fmt_dict,list_gen
+from mmgen.color import red, yellow, green, blue, orange, gray
+from mmgen.util import msg, msg_r, Msg, Msg_r, die, fmt, fmt_list, fmt_dict, list_gen
 from mmgen.ui import do_pager
 
 homedir = os.getenv('HOME')
@@ -89,9 +89,11 @@ class DataSource:
 				msg('')
 				from .Misc import curl_exit_codes
 				msg(red(curl_exit_codes[e.returncode]))
-				msg(red('Command line:\n  {}'.format( ' '.join((repr(i) if ' ' in i else i) for i in e.cmd) )))
+				msg(red('Command line:\n  {}'.format(
+					' '.join((repr(i) if ' ' in i else i) for i in e.cmd))))
 				from mmgen.exception import MMGenCalledProcessError
-				raise MMGenCalledProcessError(f'Subprocess returned non-zero exit status {e.returncode}')
+				raise MMGenCalledProcessError(
+					f'Subprocess returned non-zero exit status {e.returncode}')
 
 		def get_data(self):
 
@@ -327,15 +329,16 @@ class DataSource:
 		def postprocess_data(self,data):
 			def gen():
 				keys = set()
-				for key,val in data.items():
+				d = {}
+				for key, val in data.items():
 					if m := re.match(r"\('(.*?)', datetime\.date\((.*)\)\)$",key):
 						date = '{}-{:>02}-{:>02}'.format(*m[2].split(', '))
 						if (sym := m[1]) in keys:
 							d[date] = val
 						else:
 							keys.add(sym)
-							d = {date:val}
-							yield (sym,d)
+							d = {date: val}
+							yield (sym, d)
 			return dict(gen())
 
 def assets_list_gen(cfg_in):
@@ -936,7 +939,7 @@ class Ticker:
 		def fmt_row(self,d,amt=None,amt_fmt=None):
 
 			def fmt_pct(n):
-				return gray('     --') if n == None else (red,green)[n>=0](f'{n:+7.2f}')
+				return gray('     --') if n is None else (red,green)[n>=0](f'{n:+7.2f}')
 
 			p = self.prices[d['id']]
 

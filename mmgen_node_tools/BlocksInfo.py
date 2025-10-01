@@ -361,7 +361,7 @@ class BlocksInfo:
 		if p.debug: msg(repr(self.range_data(first,last,from_tip,nblocks,step)))
 
 		if nblocks:
-			if first == None:
+			if first is None:
 				first = self.tip - nblocks + 1
 			last = first + nblocks - 1
 
