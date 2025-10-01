@@ -197,18 +197,18 @@ class BlocksInfo:
 			return parse_cs_uarg(self.cfg.stats.lower(),self.all_stats,self.dfl_stats,'stat')
 
 		def parse_cmd_args(): # => (block_list, first, last, step)
-			if not cmd_args:
-				return (None,self.tip,self.tip,None)
-			elif len(cmd_args) == 1:
-				r = self.parse_rangespec(cmd_args[0])
-				return (
-					list(range(r.first,r.last+1,r.step)) if r.step else None,
-					r.first,
-					r.last,
-					r.step
-				)
-			else:
-				return ([self.conv_blkspec(a) for a in cmd_args],None,None,None)
+			match cmd_args:
+				case [] | None:
+					return (None, self.tip, self.tip, None)
+				case [arg]:
+					r = self.parse_rangespec(arg)
+					return (
+						list(range(r.first, r.last+1, r.step)) if r.step else None,
+						r.first,
+						r.last,
+						r.step)
+				case [*args]:
+					return ([self.conv_blkspec(a) for a in args], None, None, None)
 
 		self.cfg = cfg
 		self.rpc = rpc
@@ -323,25 +323,29 @@ class BlocksInfo:
 			repl = (name if add_name else '') + ':' + (fill_char if name in fill else '')
 			yield (ls + self.fields[name].fs.replace(':',repl) + rs)
 
-	def conv_blkspec(self,arg):
-		if str(arg).lower() == 'cur':
-			return self.tip
-		elif is_int(arg):
-			if int(arg) < 0:
-				die(1,f'{arg}: block number must be non-negative')
-			elif int(arg) > self.tip:
-				die(1,f'{arg}: requested block height greater than current chain tip!')
-			else:
-				return int(arg)
-		else:
-			die(1,f'{arg}: invalid block specifier')
+	def conv_blkspec(self, arg):
+		match arg:
+			case str() if arg.lower() == 'cur':
+				return self.tip
+			case x if is_int(x):
+				match int(arg):
+					case x if x < 0:
+						die(1, f'{x}: block number must be non-negative')
+					case x if x > self.tip:
+						die(1, f'{x}: requested block height greater than current chain tip!')
+					case x:
+						return x
+			case _:
+				die(1, f'{arg}: invalid block specifier')
 
-	def check_nblocks(self,arg):
-		if arg <= 0:
-			die(1,'nBlocks must be a positive integer')
-		elif arg > self.tip:
-			die(1, f"'{arg}': nBlocks must be less than current chain height")
-		return arg
+	def check_nblocks(self, arg):
+		match arg:
+			case x if x <= 0:
+				die(1, 'nBlocks must be a positive integer')
+			case x if x > self.tip:
+				die(1, f'{arg}: nBlocks must be less than current chain height')
+			case _:
+				return arg
 
 	def parse_rangespec(self,arg):
 
@@ -487,20 +491,21 @@ class BlocksInfo:
 	def fmt_stat_item(self,fs,s):
 		return fs.format(s) if type(fs) == str else fs(s)
 
-	async def output_stats(self,res,sname):
+	async def output_stats(self, res, sname):
 
 		def gen(data):
 			for d in data:
-				if len(d) == 2:
-					yield (indent+d[0]).format(**{k:self.fmt_stat_item(*v) for k,v in d[1].items()})
-				elif len(d) == 4:
-					yield (indent+d[0]).format(self.fmt_stat_item(d[2],d[3]))
-				elif type(d) == str:
-					yield d
-				else:
-					assert False, f'{d}: invalid stats data'
+				match d:
+					case [a, b]:
+						yield (indent + a).format(**{k:self.fmt_stat_item(*v) for k, v in b.items()})
+					case [a, _, b, c]:
+						yield (indent + a).format(self.fmt_stat_item(b, c))
+					case str():
+						yield d
+					case _:
+						assert False, f'{d}: invalid stats data'
 
-		foo,data = await res
+		foo, data = await res
 		indent = '' if sname in self.noindent_stats else '  '
 		Msg('\n'.join(gen(data)))
 
@@ -755,13 +760,16 @@ class JSONBlocksInfo(BlocksInfo):
 
 		def gen(data):
 			for d in data:
-				if len(d) == 2:
-					for k,v in d[1].items():
-						yield (k,self.fmt_stat_item(*v))
-				elif len(d) == 4:
-					yield (d[1],self.fmt_stat_item(d[2],d[3]))
-				elif type(d) != str:
-					assert False, f'{d}: invalid stats data'
+				match d:
+					case [_, a]:
+						for k, v in a.items():
+							yield (k, self.fmt_stat_item(*v))
+					case [_, a, b, c]:
+						yield (a, self.fmt_stat_item(b, c))
+					case str():
+						pass
+					case _:
+						assert False, f'{d}: invalid stats data'
 
 		varname,data = await res
 		Msg_r(', "{}_data": {}'.format( varname, json.dumps(dict(gen(data)),cls=json_encoder) ))

@@ -125,16 +125,17 @@ class DataSource:
 				else:
 					die(1,self.rate_limit_errmsg(elapsed))
 
-			if data_type == 'json':
-				try:
-					data = json.loads(data_in)
-				except:
-					self.json_data_error_msg(data_in)
-					die(2,'Retrieved data is not valid JSON, exiting')
-				json_text = data_in
-			elif data_type == 'python':
-				data = data_in
-				json_text = json.dumps(data_in)
+			match data_type:
+				case 'json':
+					try:
+						data = json.loads(data_in)
+					except:
+						self.json_data_error_msg(data_in)
+						die(2,'Retrieved data is not valid JSON, exiting')
+					json_text = data_in
+				case 'python':
+					data = data_in
+					json_text = json.dumps(data_in)
 
 			if not data:
 				if use_cached_data:
