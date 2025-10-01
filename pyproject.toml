@@ -5,6 +5,41 @@ requires = [
 ]
 build-backend = "setuptools.build_meta"
 
+[tool.ruff]
+line-length = 106
+indent-width = 4
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "tab"
+
+[tool.ruff.lint]
+ignore = [
+	"E401", # multiple imports per line
+	"E701", # multiple statements per line
+	"E721", # use isinstance()
+	"E731", # lambda instead of def
+	"E402", # module import not top of file
+	"E722", # bare except
+	"E713", # membership 'not in'
+	"E741", # ambiguous variable name
+]
+
+[tool.ruff.lint.per-file-ignores]
+"test/include/common.py"        = [ "F821" ]         # undefined name 'cfg'
+"test/misc/input_func.py"       = [ "F401" ]         # imported but unused
+"test/modtest_d/cashaddr.py"    = [ "F841" ]         # assigned to but never used
+"test/modtest_d/dep.py"         = [ "F401" ]         # imported but unused
+"test/modtest_d/testdep.py"     = [ "F401" ]         # imported but unused
+"test/modtest_d/obj.py"         = [ "F841" ]         # assigned to but never used
+"test/objtest_d/*"              = [ "F401" ]         # imported but unused
+"test/objattrtest_d/*"          = [ "F401" ]         # imported but unused
+"test/overlay/fakemods/*"       = [ "F403", "F405" ] # `import *` used
+"test/*.py"                     = [ "F401" ]         # imported but unused
+"test/colortest.py"             = [ "F403", "F405" ] # `import *` used
+"test/tooltest2.py"             = [ "F403", "F405" ] # `import *` used
+"test/overlay/tree/*"           = [ "ALL" ]
+
 [tool.pylint.format]
 indent-string = "\t"
 indent-after-paren = 2
