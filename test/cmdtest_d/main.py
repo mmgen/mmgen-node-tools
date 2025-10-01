@@ -41,7 +41,7 @@ class CmdTestMain(CmdTestBase):
 
 	def peerblocks(self,args,expect_list=None,pexpect_spawn=False):
 		t = self.spawn(
-			f'mmnode-peerblocks',
+			'mmnode-peerblocks',
 			args,
 			pexpect_spawn = pexpect_spawn )
 		if cfg.exact_output: # disable echoing of input

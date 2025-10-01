@@ -107,7 +107,7 @@ class CmdTestRegtest(CmdTestBase):
 
 	def __init__(self, cfg, trunner, cfgs, spawn):
 		CmdTestBase.__init__(self, cfg, trunner, cfgs, spawn)
-		if trunner == None:
+		if trunner is None:
 			return
 		if cfg._proto.testnet:
 			die(2,'--testnet and --regtest options incompatible with regtest test suite')
@@ -328,7 +328,7 @@ class CmdTestRegtest(CmdTestBase):
 		async def do_tx(inputs,outputs,wif):
 			tx_hex = await r.rpc_call( 'createrawtransaction', inputs, outputs )
 			tx = await r.rpc_call( 'signrawtransactionwithkey', tx_hex, [wif], [], self.proto.sighash_type )
-			assert tx['complete'] == True
+			assert tx['complete']
 			return tx['hex']
 
 		async def do_tx1():
@@ -371,13 +371,13 @@ class CmdTestRegtest(CmdTestBase):
 		imsg(f'Creating funding transaction with {nTxs} outputs of value {tx1_amt} {self.proto.coin}')
 		tx1_hex = await do_tx1()
 
-		imsg(f'Relaying funding transaction')
+		imsg('Relaying funding transaction')
 		await r.rpc_call('sendrawtransaction',tx1_hex)
 
-		imsg(f'Mining a block')
+		imsg('Mining a block')
 		await r.generate(1,silent=True)
 
-		imsg(f'Generating fees for mempool transactions')
+		imsg('Generating fees for mempool transactions')
 		fees = list(gen_fees(nTxs,2,120))
 
 		imsg(f'Creating and relaying {nTxs} mempool transactions with {nPairs} outputs each')

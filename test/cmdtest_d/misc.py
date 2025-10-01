@@ -32,7 +32,7 @@ class CmdTestHelp(CmdTestBase):
 	color = True
 
 	def version(self):
-		t = self.spawn(f'mmnode-netrate',['--version'])
+		t = self.spawn('mmnode-netrate', ['--version'])
 		t.expect('MMNODE-NETRATE version')
 		return t
 
@@ -108,7 +108,7 @@ class CmdTestScripts(CmdTestBase):
 
 	def ticker(self, args=[], expect_list=None, cached=True, exit_val=None):
 		t = self.spawn(
-			f'mmnode-ticker',
+			'mmnode-ticker',
 			(['--cached-data'] if cached else []) + self.ticker_args + args,
 			exit_val = exit_val)
 		if expect_list:
