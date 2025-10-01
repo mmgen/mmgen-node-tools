@@ -31,10 +31,10 @@ opts_data = {
 	}
 }
 
-async def main():
+from mmgen.cfg import Config
+cfg = Config(opts_data=opts_data)
 
-	from mmgen.cfg import Config
-	cfg = Config(opts_data=opts_data)
+async def main():
 
 	from mmgen.rpc import rpc_init
 	rpc = await rpc_init(cfg,ignore_wallet=True)
@@ -48,4 +48,4 @@ async def main():
 		await peers.run(rpc)
 
 from mmgen.util import async_run
-async_run(main())
+async_run(cfg, main)

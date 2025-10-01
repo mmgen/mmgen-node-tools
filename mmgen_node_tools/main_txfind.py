@@ -92,4 +92,4 @@ msgs = msg_data['quiet' if cfg.quiet else 'normal']
 if len(cfg._args) != 1:
 	die(1,'One transaction ID must be specified')
 
-sys.exit(async_run(main(cfg._args[0])))
+sys.exit(async_run(cfg, main, args=[cfg._args[0]]))

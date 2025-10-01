@@ -220,4 +220,4 @@ async def main():
 			await c.call('getblockcount') )) + '\n\n' +
 		'\n'.join(gen_body(data)) + '\n' )
 
-async_run(main())
+async_run(cfg, main)

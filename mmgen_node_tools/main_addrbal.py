@@ -167,6 +167,6 @@ if len(cfg._args) < 1:
 	die(1,'This command requires at least one coin address argument')
 
 try:
-	async_run(main(cfg._args))
+	async_run(cfg, main, args=[cfg._args])
 except KeyboardInterrupt:
 	sys.stderr.write('\n')

@@ -67,6 +67,6 @@ async def main():
 		rs,ss,ts = (r,s,t)
 
 try:
-	async_run(main())
+	async_run(cfg, main)
 except KeyboardInterrupt:
 	sys.stderr.write('\n')
