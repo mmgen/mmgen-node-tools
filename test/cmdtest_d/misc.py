@@ -125,7 +125,7 @@ class CmdTestScripts(CmdTestBase):
 		if not cfg.skipping_deps:
 			t.expect('Creating')
 			t.expect('Creating')
-		ret = t.expect(['proxy host could not be resolved', 'ProxyError'])
+		ret = t.expect(['proxy host could not be resolved', 'unexpected keyword'])
 		t.exit_val = 1 if ret else 3
 		return t
 

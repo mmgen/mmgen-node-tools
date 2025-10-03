@@ -12,13 +12,17 @@
 test.cmdtest_d.include.cfg: configuration data for cmdtest.py
 """
 
+from collections import namedtuple
+
 cmd_groups_altcoin = []
 
+gd = namedtuple('cmd_groups_data', ['clsname', 'params'])
+
 cmd_groups_dfl = {
-	'main':        ('CmdTestMain',{}),
-	'helpscreens': ('CmdTestHelp',{'modname':'misc','full_data':True}),
-	'scripts':     ('CmdTestScripts',{'modname':'misc'}),
-	'regtest':     ('CmdTestRegtest',{}),
+	'main':        gd('CmdTestMain', {}),
+	'helpscreens': gd('CmdTestHelp', {'modname': 'misc', 'full_data': True}),
+	'scripts':     gd('CmdTestScripts', {'modname': 'misc'}),
+	'regtest':     gd('CmdTestRegtest', {}),
 }
 
 cmd_groups_extra = {}
