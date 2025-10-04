@@ -75,6 +75,7 @@ class DataSource:
 				['--compressed'], # adds 'Accept-Encoding: gzip'
 				['--proxy', cfg.proxy, isinstance(cfg.proxy, str)],
 				['--silent', not cfg.verbose],
+				['--connect-timeout', str(gcfg.http_timeout), gcfg.http_timeout],
 				[self.api_url])
 
 			if gcfg.testing:
@@ -289,6 +290,9 @@ class DataSource:
 
 			if gcfg.test_suite:
 				kwargs.update({'timeout': 1, 'retry': 0})
+
+			if gcfg.http_timeout:
+				kwargs.update({'timeout': gcfg.http_timeout})
 
 			if gcfg.testing:
 				Msg('\nyahooquery.Ticker(\n  {},\n  {}\n)'.format(
