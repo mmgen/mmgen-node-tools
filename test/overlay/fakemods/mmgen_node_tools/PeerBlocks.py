@@ -294,15 +294,14 @@ class fake_data:
 		20 7303 7307 7310 7311 7316 7322 7334 7343 7344 7350 7356 7363 7374 7377 7384 7225
 		21 7310 7311 7316 7322 7334 7343 7344 7350 7356 7363 7374 7377 7384 7225 7317 7386
 		22 7316 7322 7334 7343 7344 7350 7356 7363 7374 7377 7384 7225 7317 7386 7398 7409
-	"""
-	}
+	"""}
 
 	def make_data():
 
 		def gen_address_data():
 			for line in fake_data.addresses.strip().split('\n'):
 				data = line.split(maxsplit=2)
-				yield (data[0], {k:v for k,v in zip(('id','addr','subver'),data)})
+				yield (data[0], {k: v for k, v in zip(('id', 'addr', 'subver'), data)})
 
 		def gen_iterations_data():
 			for line in fake_data.iterations.strip().split('\n'):
@@ -320,8 +319,7 @@ class fake_data:
 				'id': int(d['id']),
 				'addr': d['addr'],
 				'subver': d['subver'],
-				'inflight': [int(n)+830000 for n in blocks[iter_no]],
-			}
+				'inflight': [int(n)+830000 for n in blocks[iter_no]]}
 
 		def gen_data():
 			for iter_no in iterations_data:

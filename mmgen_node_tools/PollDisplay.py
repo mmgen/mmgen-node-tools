@@ -12,7 +12,7 @@
 mmgen_node_tools.PollDisplay: update and display RPC data; get input from user
 """
 
-import sys,threading
+import sys, threading
 from mmgen.util import msg
 from mmgen.term import get_char
 
@@ -22,18 +22,18 @@ class PollDisplay:
 	input = None
 	poll_secs = 1
 
-	def __init__(self,cfg):
+	def __init__(self, cfg):
 		self.cfg = cfg
 		self.info_lock = threading.Lock() # self.info accessed by 2 threads
 		self.display_kill_flag = threading.Event()
 
 	def get_input(self):
-		return get_char(immed_chars='q',prehold_protect=False,num_bytes=1)
+		return get_char(immed_chars='q', prehold_protect=False, num_bytes=1)
 
-	async def process_input(self,rpc):
+	async def process_input(self, rpc):
 		return True
 
-	async def run(self,rpc):
+	async def run(self, rpc):
 
 		async def do_display():
 			with self.info_lock:
@@ -68,7 +68,7 @@ class PollDisplay:
 			self.display_kill_flag.set()
 
 		while True:
-			threading.Thread(target=get_input,daemon=True).start()
+			threading.Thread(target=get_input, daemon=True).start()
 			await do_display()
 			if await process_input():
 				break

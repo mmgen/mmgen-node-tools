@@ -21,10 +21,10 @@ mmnode-feeview: Visualize the fee structure of a node’s mempool
 """
 
 from mmgen.cfg import Config
-from mmgen.util import async_run,die,fmt,make_timestr,check_int_between
-from mmgen.util2 import int2bytespec,parse_bytespec
+from mmgen.util import async_run, die, fmt, make_timestr, check_int_between
+from mmgen.util2 import int2bytespec, parse_bytespec
 
-min_prec,max_prec,dfl_prec = (0,6,4)
+min_prec, max_prec, dfl_prec = (0, 6, 4)
 fee_brackets = [
 	1, 2, 3, 4, 5, 6,
 	8, 10, 12, 14, 16, 18,
@@ -42,9 +42,9 @@ fee_brackets = [
 
 opts_data = {
 	'sets': [
-		('detail',True,'ranges',True),
-		('detail',True,'show_mb_col',True),
-		('detail',True,'precision',6),
+		('detail', True, 'ranges', True),
+		('detail', True, 'show_mb_col', True),
+		('detail', True, 'precision', 6),
 	],
 	'text': {
 		'desc': 'Visualize the fee structure of a node’s mempool',
@@ -83,37 +83,37 @@ cfg = Config(opts_data=opts_data)
 
 if cfg.ignore_below:
 	if cfg.show_empty:
-		die(1,'Conflicting options: --ignore-below, --show-empty')
+		die(1, 'Conflicting options: --ignore-below, --show-empty')
 	ignore_below = parse_bytespec(cfg.ignore_below)
 
 precision = (
 	check_int_between(cfg.precision, min_prec, max_prec, desc='--precision arg')
-	if cfg.precision else dfl_prec )
+	if cfg.precision else dfl_prec)
 
 from mmgen.term import get_terminal_size
 width = cfg.columns or get_terminal_size().width
 
 class fee_bracket:
-	def __init__(self,top,bottom):
+	def __init__(self, top, bottom):
 		self.top = top
 		self.bottom = bottom
 		self.tx_bytes = 0
 		self.tx_bytes_cum = 0
 		self.skip = False
 
-def log(data,fn):
+def log(data, fn):
 	import json
 	from mmgen.rpc.util import json_encoder
 	from mmgen.fileutil import write_data_to_file
 	write_data_to_file(
 		cfg     = cfg,
 		outfile = fn,
-		data = json.dumps(data,cls=json_encoder,sort_keys=True,indent=4),
+		data = json.dumps(data, cls=json_encoder, sort_keys=True, indent=4),
 		desc = 'mempool',
-		ask_overwrite = False )
+		ask_overwrite = False)
 
-def create_data(coin_amt,mempool):
-	out = [fee_bracket(fee_brackets[i],fee_brackets[i-1] if i else 0) for i in range(len(fee_brackets))]
+def create_data(coin_amt, mempool):
+	out = [fee_bracket(fee_brackets[i], fee_brackets[i-1] if i else 0) for i in range(len(fee_brackets))]
 
 	# populate fee brackets:
 	size_key = 'size' if proto.coin == 'BCH' else 'vsize'
@@ -143,7 +143,7 @@ def create_data(coin_amt,mempool):
 
 	return out
 
-def gen_header(host,mempool,blockcount):
+def gen_header(host, mempool, blockcount):
 
 	yield fmt(f"""
 		Mempool Fee Structure
@@ -159,27 +159,26 @@ def gen_header(host,mempool,blockcount):
 	elif cfg.ignore_below:
 		yield 'Ignoring fee brackets with less than {:,} bytes ({})'.format(
 				ignore_below,
-				int2bytespec(ignore_below,'MB','0.6',strip=True,add_space=True),
-			)
+				int2bytespec(ignore_below, 'MB', '0.6', strip=True, add_space=True))
 
 	if cfg.include_current:
 		yield 'Including transactions in current fee bracket in Total MB amounts'
 
 def fmt_mb(n):
-	return int2bytespec(n,'MB',f'0.{precision}',print_sym=False)
+	return int2bytespec(n, 'MB', f'0.{precision}', print_sym=False)
 
 def gen_body(data):
-	tx_bytes_max = max((i.tx_bytes for i in data),default=0)
-	top_max = max((i.top for i in data),default=0)
-	bot_max = max((i.bottom for i in data),default=0)
-	col1_w = max(len(f'{bot_max}-{top_max}') if cfg.ranges else len(f'{top_max}'),6)
+	tx_bytes_max = max((i.tx_bytes for i in data), default=0)
+	top_max = max((i.top for i in data), default=0)
+	bot_max = max((i.bottom for i in data), default=0)
+	col1_w = max(len(f'{bot_max}-{top_max}') if cfg.ranges else len(f'{top_max}'), 6)
 	col2_w = len(fmt_mb(tx_bytes_max)) if cfg.show_mb_col else 0
 	col3_w = len(fmt_mb(data[-1].tx_bytes_cum)) if data else 0
 	col4_w = width - col1_w - col2_w - col3_w - (4 if col2_w else 3)
 	if cfg.show_mb_col:
-		fs = '{a:<%i} {b:>%i} {c:>%i} {d}' % (col1_w,col2_w,col3_w)
+		fs = '{a:<%i} {b:>%i} {c:>%i} {d}' % (col1_w, col2_w, col3_w)
 	else:
-		fs = '{a:<%i} {c:>%i} {d}' % (col1_w,col3_w)
+		fs = '{a:<%i} {c:>%i} {d}' % (col1_w, col3_w)
 
 	yield fs.format(a='',      b='',                  c=f'{"Total":<{col3_w}}', d='')
 	yield fs.format(a='sat/B', b=f'{"MB":<{col2_w}}', c=f'{"MB":<{col3_w}}',    d='')
@@ -188,16 +187,16 @@ def gen_body(data):
 		if not i.skip:
 			cum_bytes = i.tx_bytes_cum + i.tx_bytes if cfg.include_current else i.tx_bytes_cum
 			yield fs.format(
-				a = '{}-{}'.format(i.bottom,i.top) if cfg.ranges else i.top,
+				a = '{}-{}'.format(i.bottom, i.top) if cfg.ranges else i.top,
 				b = fmt_mb(i.tx_bytes),
 				c = fmt_mb(cum_bytes),
-				d = '-' * int(col4_w * ( i.tx_bytes / tx_bytes_max )) )
+				d = '-' * int(col4_w * (i.tx_bytes / tx_bytes_max)))
 
 	yield fs.format(
 		a = 'TOTAL',
 		b = '',
 		c = fmt_mb(data[-1].tx_bytes_cum + data[-1].tx_bytes if data else 0),
-		d = '' )
+		d = '')
 
 async def main():
 
@@ -205,19 +204,19 @@ async def main():
 	proto = cfg._proto
 
 	from mmgen.rpc import rpc_init
-	c = await rpc_init(cfg,ignore_wallet=True)
+	c = await rpc_init(cfg, ignore_wallet=True)
 
-	mempool = await c.call('getrawmempool',True)
+	mempool = await c.call('getrawmempool', True)
 
 	if cfg.log:
-		log(mempool,'mempool.json')
+		log(mempool, 'mempool.json')
 
-	data = create_data(proto.coin_amt,mempool)
+	data = create_data(proto.coin_amt, mempool)
 	cfg._util.stdout_or_pager(
 		'\n'.join(gen_header(
 			c.host,
 			mempool,
-			await c.call('getblockcount') )) + '\n\n' +
-		'\n'.join(gen_body(data)) + '\n' )
+			await c.call('getblockcount'))) + '\n\n' +
+		'\n'.join(gen_body(data)) + '\n')
 
 async_run(cfg, main)

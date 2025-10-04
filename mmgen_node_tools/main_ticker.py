@@ -208,29 +208,26 @@ Customize output by editing the file
 
 To add a portfolio, edit the file
     ~/{pf_cfg}
-"""
-	},
+"""},
 	'code': {
 		'options': lambda s: s.format(
-			dfl_cachedir = os.path.relpath(dfl_cachedir,start=homedir),
-			ds           = fmt_dict(DataSource.get_sources(),fmt='equal_compact'),
+			dfl_cachedir = os.path.relpath(dfl_cachedir, start=homedir),
+			ds           = fmt_dict(DataSource.get_sources(), fmt='equal_compact'),
 			al           = DataSource.coinpaprika.dfl_asset_limit,
-			pc           = fmt_list(Ticker.percent_cols,fmt='bare'),
-		),
+			pc           = fmt_list(Ticker.percent_cols, fmt='bare')),
 		'notes': lambda s: s.format(
-			assets = fmt_list(assets_list_gen(cfg_in),fmt='col',indent='  '),
-			cfg    = os.path.relpath(cfg_in.cfg_file,start=homedir),
-			pf_cfg = os.path.relpath(cfg_in.portfolio_file,start=homedir),
+			assets = fmt_list(assets_list_gen(cfg_in), fmt='col', indent='  '),
+			cfg    = os.path.relpath(cfg_in.cfg_file, start=homedir),
+			pf_cfg = os.path.relpath(cfg_in.portfolio_file, start=homedir),
 			al     = DataSource.coinpaprika.dfl_asset_limit,
 			cc     = src_cls['cc'](),
-			fi     = src_cls['fi'](),
-		)
+			fi     = src_cls['fi']())
 	}
 }
 
 import os
 
-from mmgen.util import fmt_list,fmt_dict
+from mmgen.util import fmt_list, fmt_dict
 from mmgen.cfg import Config
 from . import Ticker
 
@@ -238,7 +235,7 @@ gcfg = Config(opts_data=opts_data, caller_post_init=True)
 
 Ticker.make_cfg(gcfg)
 
-from .Ticker import dfl_cachedir,homedir,DataSource,assets_list_gen,cfg_in,src_cls
+from .Ticker import dfl_cachedir, homedir, DataSource, assets_list_gen, cfg_in, src_cls
 
 gcfg._post_init()
 

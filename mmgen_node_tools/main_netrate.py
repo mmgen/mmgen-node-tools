@@ -20,7 +20,7 @@
 mmnode-netrate: Bitcoin daemon network rate monitor
 """
 
-import sys,time
+import sys, time
 
 from mmgen.cfg import Config
 from mmgen.util import async_run
@@ -32,39 +32,38 @@ opts_data = {
 		'options': """
 -h, --help      Print this help message
 --, --longhelp  Print help message for long options (common options)
-"""
-	}
+"""}
 }
 
 cfg = Config(opts_data=opts_data)
 
-ERASE_LINE,CUR_UP = '\033[K','\033[1A'
+ERASE_LINE, CUR_UP = '\033[K', '\033[1A'
 
 async def main():
 
 	from mmgen.rpc import rpc_init
-	c = await rpc_init(cfg,ignore_wallet=True)
+	c = await rpc_init(cfg, ignore_wallet=True)
 
 	async def get_data():
 		d = await c.call('getnettotals')
-		return [float(e) for e in (d['totalbytesrecv'],d['totalbytessent'],d['timemillis'])]
+		return [float(e) for e in (d['totalbytesrecv'], d['totalbytessent'], d['timemillis'])]
 
-	rs,ss,ts = (None,None,None)
+	rs, ss, ts = (None, None, None)
 	while True:
-		r,s,t = await get_data()
+		r, s, t = await get_data()
 
 		if rs is not None:
 			sys.stderr.write(
 				'\rrcvd: {:9.2f} kB/s\nsent: {:9.2f} kB/s '.format(
 					(r-rs)/(t-ts),
-					(s-ss)/(t-ts) ))
+					(s-ss)/(t-ts)))
 
 		time.sleep(2)
 
 		if rs is not None:
-			sys.stderr.write('{}{}{}'.format(ERASE_LINE,CUR_UP,ERASE_LINE))
+			sys.stderr.write('{}{}{}'.format(ERASE_LINE, CUR_UP, ERASE_LINE))
 
-		rs,ss,ts = (r,s,t)
+		rs, ss, ts = (r, s, t)
 
 try:
 	async_run(cfg, main)

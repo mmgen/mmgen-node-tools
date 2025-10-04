@@ -29,10 +29,10 @@ from mmgen.util import msg, msg_r, Msg, Msg_r, die, fmt, fmt_list, fmt_dict, lis
 from mmgen.ui import do_pager
 
 homedir = os.getenv('HOME')
-dfl_cachedir = os.path.join(homedir,'.cache','mmgen-node-tools')
+dfl_cachedir = os.path.join(homedir, '.cache', 'mmgen-node-tools')
 cfg_fn = 'ticker-cfg.yaml'
 portfolio_fn = 'ticker-portfolio.yaml'
-asset_tuple = namedtuple('asset_tuple',['symbol','id','source'])
+asset_tuple = namedtuple('asset_tuple', ['symbol', 'id', 'source'])
 last_api_host = None
 
 percent_cols = {
@@ -50,20 +50,19 @@ class DataSource:
 		}, {
 			'fi': 'yahoospot',
 			'hi': 'yahoohist',
-		}
-	]
+		}]
 
 	@classmethod
-	def get_sources(cls,randomize=False):
-		g = random.sample(cls.source_groups,k=len(cls.source_groups)) if randomize else cls.source_groups
-		return {k:v for a in g for k,v in a.items()}
+	def get_sources(cls, randomize=False):
+		g = random.sample(cls.source_groups, k=len(cls.source_groups)) if randomize else cls.source_groups
+		return {k: v for a in g for k, v in a.items()}
 
 	class base:
 
 		def fetch_delay(self):
 			global last_api_host
 			if not gcfg.testing and last_api_host and last_api_host != self.api_host:
-				delay = 1 + random.randrange(1,5000) / 1000
+				delay = 1 + random.randrange(1, 5000) / 1000
 				msg_r(f'Waiting {delay:.3f} seconds...')
 				time.sleep(delay)
 				msg('')
@@ -72,19 +71,18 @@ class DataSource:
 		def get_data_from_network(self):
 
 			curl_cmd = list_gen(
-				['curl', '--tr-encoding', '--header', 'Accept: application/json',True],
+				['curl', '--tr-encoding', '--header', 'Accept: application/json', True],
 				['--compressed'], # adds 'Accept-Encoding: gzip'
-				['--proxy', cfg.proxy, isinstance(cfg.proxy,str)],
+				['--proxy', cfg.proxy, isinstance(cfg.proxy, str)],
 				['--silent', not cfg.verbose],
-				[self.api_url]
-			)
+				[self.api_url])
 
 			if gcfg.testing:
-				Msg(fmt_list(curl_cmd,fmt='bare'))
+				Msg(fmt_list(curl_cmd, fmt='bare'))
 				return
 
 			try:
-				return run(curl_cmd,check=True,stdout=PIPE).stdout.decode()
+				return run(curl_cmd, check=True, stdout=PIPE).stdout.decode()
 			except CalledProcessError as e:
 				msg('')
 				from .Misc import curl_exit_codes
@@ -101,7 +99,7 @@ class DataSource:
 				os.makedirs(cfg.cachedir)
 
 			if not os.path.exists(self.json_fn):
-				open(self.json_fn,'w').write('{}')
+				open(self.json_fn, 'w').write('{}')
 
 			use_cached_data = cfg.cached_data and not gcfg.download
 
@@ -123,7 +121,7 @@ class DataSource:
 					if gcfg.testing:
 						return {}
 				else:
-					die(1,self.rate_limit_errmsg(elapsed))
+					die(1, self.rate_limit_errmsg(elapsed))
 
 			match data_type:
 				case 'json':
@@ -131,7 +129,7 @@ class DataSource:
 						data = json.loads(data_in)
 					except:
 						self.json_data_error_msg(data_in)
-						die(2,'Retrieved data is not valid JSON, exiting')
+						die(2, 'Retrieved data is not valid JSON, exiting')
 					json_text = data_in
 				case 'python':
 					data = data_in
@@ -143,9 +141,9 @@ class DataSource:
 						f'No cached {self.data_desc}! Run command without the --cached-data option, '
 						'or use --download to retrieve data from remote host')
 				else:
-					die(2,'Remote host returned no data!')
+					die(2, 'Remote host returned no data!')
 			elif 'error' in data:
-				die(1,data['error'])
+				die(1, data['error'])
 
 			if use_cached_data:
 				if not cfg.quiet:
@@ -162,15 +160,15 @@ class DataSource:
 
 			return self.postprocess_data(data)
 
-		def json_data_error_msg(self,json_text):
+		def json_data_error_msg(self, json_text):
 			pass
 
-		def postprocess_data(self,data):
+		def postprocess_data(self, data):
 			return data
 
 		@property
 		def json_fn_rel(self):
-			return os.path.relpath(self.json_fn,start=homedir)
+			return os.path.relpath(self.json_fn, start=homedir)
 
 	class coinpaprika(base):
 		desc = 'CoinPaprika'
@@ -185,30 +183,29 @@ class DataSource:
 		def __init__(self):
 			self.asset_limit = int(cfg.asset_limit or self.dfl_asset_limit)
 
-		def rate_limit_errmsg(self,elapsed):
+		def rate_limit_errmsg(self, elapsed):
 			return (
 				f'Rate limit exceeded!  Retry in {self.timeout-elapsed} seconds' +
-				('' if cfg.btc_only else ', or use --cached-data or --btc')
-			)
+				('' if cfg.btc_only else ', or use --cached-data or --btc'))
 
 		@property
 		def api_url(self):
 			return (
 				f'https://{self.api_host}/v1/tickers/btc-bitcoin' if cfg.btc_only else
 				f'https://{self.api_host}/v1/tickers?limit={self.asset_limit}' if self.asset_limit else
-				f'https://{self.api_host}/v1/tickers' )
+				f'https://{self.api_host}/v1/tickers')
 
 		@property
 		def json_fn(self):
 			return os.path.join(
 				cfg.cachedir,
-				'ticker-btc.json' if cfg.btc_only else 'ticker.json' )
+				'ticker-btc.json' if cfg.btc_only else 'ticker.json')
 
 		@property
 		def timeout(self):
 			return 0 if gcfg.test_suite else self.btc_ratelimit if cfg.btc_only else self.ratelimit
 
-		def json_data_error_msg(self,json_text):
+		def json_data_error_msg(self, json_text):
 			tor_captcha_msg = f"""
 				If you’re using Tor, the API request may have failed due to Captcha protection.
 				A workaround for this issue is to retrieve the JSON data with a browser from
@@ -223,20 +220,20 @@ class DataSource:
 				Then invoke the program with --cached-data and without --btc
 			"""
 			msg(json_text[:1024] + '...')
-			msg(orange(fmt(tor_captcha_msg,strip_char='\t')))
+			msg(orange(fmt(tor_captcha_msg, strip_char='\t')))
 
-		def postprocess_data(self,data):
+		def postprocess_data(self, data):
 			return [data] if cfg.btc_only else data
 
 		@staticmethod
-		def parse_asset_id(s,require_label):
-			sym,label = (*s.split('-',1),None)[:2]
+		def parse_asset_id(s, require_label):
+			sym, label = (*s.split('-', 1), None)[:2]
 			if require_label and not label:
-				die(1,f'{s!r}: asset label is missing')
+				die(1, f'{s!r}: asset label is missing')
 			return asset_tuple(
 				symbol = sym.upper(),
 				id     = (s.lower() if label else None),
-				source = 'cc' )
+				source = 'cc')
 
 	class yahoospot(base):
 
@@ -250,12 +247,12 @@ class DataSource:
 		json_fn_basename = 'ticker-finance.json'
 
 		@staticmethod
-		def get_id(sym,data):
+		def get_id(sym, data):
 			return sym.lower()
 
 		@staticmethod
-		def conv_data(sym,data,btcusd):
-			price_usd = Decimal( data['regularMarketPrice']['raw'] )
+		def conv_data(sym, data, btcusd):
+			price_usd = Decimal(data['regularMarketPrice']['raw'])
 			return {
 				'id': sym,
 				'name': data['shortName'],
@@ -266,15 +263,14 @@ class DataSource:
 				'percent_change_30d': data['pct_chg_4wks'],
 				'percent_change_7d': data['pct_chg_1wk'],
 				'percent_change_24h': data['regularMarketChangePercent']['raw'] * 100,
-				'last_updated': data['regularMarketTime'],
-			}
+				'last_updated': data['regularMarketTime']}
 
-		def rate_limit_errmsg(self,elapsed):
+		def rate_limit_errmsg(self, elapsed):
 			return f'Rate limit exceeded!  Retry in {self.timeout-elapsed} seconds, or use --cached-data'
 
 		@property
 		def json_fn(self):
-			return os.path.join( cfg.cachedir, self.json_fn_basename )
+			return os.path.join(cfg.cachedir, self.json_fn_basename)
 
 		@property
 		def timeout(self):
@@ -282,37 +278,36 @@ class DataSource:
 
 		@property
 		def symbols(self):
-			return [r.symbol for r in cfg.rows if isinstance(r,tuple) and r.source == 'fi']
+			return [r.symbol for r in cfg.rows if isinstance(r, tuple) and r.source == 'fi']
 
 		def get_data_from_network(self):
 
 			kwargs = {
 				'formatted': True,
 				'asynchronous': True,
-				'proxies': { 'https': cfg.proxy2 },
-			}
+				'proxies': {'https': cfg.proxy2}}
 
 			if gcfg.test_suite:
-				kwargs.update({ 'timeout': 1, 'retry': 0 })
+				kwargs.update({'timeout': 1, 'retry': 0})
 
 			if gcfg.testing:
 				Msg('\nyahooquery.Ticker(\n  {},\n  {}\n)'.format(
 					self.symbols,
-					fmt_dict(kwargs,fmt='kwargs') ))
+					fmt_dict(kwargs, fmt='kwargs')))
 				return
 
 			from yahooquery import Ticker
-			return self.process_network_data( Ticker(self.symbols,**kwargs) )
+			return self.process_network_data(Ticker(self.symbols,**kwargs))
 
-		def process_network_data(self,ticker):
+		def process_network_data(self, ticker):
 			return ticker.price
 
 		@staticmethod
-		def parse_asset_id(s,require_label):
+		def parse_asset_id(s, require_label):
 			return asset_tuple(
 				symbol = s.upper(),
 				id     = s.lower(),
-				source = 'fi' )
+				source = 'fi')
 
 	class yahoohist(yahoospot):
 
@@ -322,17 +317,17 @@ class DataSource:
 		period = '1y'
 		interval = '1wk'
 
-		def process_network_data(self,ticker):
+		def process_network_data(self, ticker):
 			return ticker.history(
 				period   = self.period,
 				interval = self.interval).to_json(orient='index')
 
-		def postprocess_data(self,data):
+		def postprocess_data(self, data):
 			def gen():
 				keys = set()
 				d = {}
 				for key, val in data.items():
-					if m := re.match(r"\('(.*?)', datetime\.date\((.*)\)\)$",key):
+					if m := re.match(r"\('(.*?)', datetime\.date\((.*)\)\)$", key):
 						date = '{}-{:>02}-{:>02}'.format(*m[2].split(', '))
 						if (sym := m[1]) in keys:
 							d[date] = val
@@ -343,12 +338,12 @@ class DataSource:
 			return dict(gen())
 
 def assets_list_gen(cfg_in):
-	for k,v in cfg_in.cfg['assets'].items():
+	for k, v in cfg_in.cfg['assets'].items():
 		yield ''
 		yield k.upper()
 		for e in v:
-			out = e.split('-',1)
-			yield '  {:5s} {}'.format(out[0],out[1] if len(out) == 2 else '')
+			out = e.split('-', 1)
+			yield '  {:5s} {}'.format(out[0], out[1] if len(out) == 2 else '')
 
 def gen_data(data):
 	"""
@@ -367,10 +362,9 @@ def gen_data(data):
 			f'The symbol {dup_sym!r} is shared by the following assets:\n' +
 			'\n  ' + '\n  '.join(d['id'] for d in data['cc'] if d['symbol'] == dup_sym) +
 			'\n\nPlease specify the asset by one of the full IDs listed above\n' +
-			f'instead of {dup_sym!r}'
-		)
+			f'instead of {dup_sym!r}')
 
-	def check_assets_found(wants,found,keys=['symbol','id']):
+	def check_assets_found(wants, found, keys=['symbol', 'id']):
 		error = False
 		for k in keys:
 			missing = wants[k] - found[k]
@@ -378,36 +372,32 @@ def gen_data(data):
 				msg(
 					('The following IDs were not found in source data:\n{}' if k == 'id' else
 					'The following symbols could not be resolved:\n{}').format(
-						fmt_list(missing,fmt='col',indent='  ')
-				))
+						fmt_list(missing, fmt='col', indent='  ')))
 				error = True
 		if error:
-			die(1,'Missing data, exiting')
+			die(1, 'Missing data, exiting')
 
 	rows_want = {
-		'id': {r.id for r in cfg.rows if isinstance(r,tuple) and r.id} - {'usd-us-dollar'},
-		'symbol': {r.symbol for r in cfg.rows if isinstance(r,tuple) and r.id is None} - {'USD'},
-	}
+		'id': {r.id for r in cfg.rows if isinstance(r, tuple) and r.id} - {'usd-us-dollar'},
+		'symbol': {r.symbol for r in cfg.rows if isinstance(r, tuple) and r.id is None} - {'USD'}}
 	usr_rate_assets = tuple(u.rate_asset for u in cfg.usr_rows + cfg.usr_columns if u.rate_asset)
 	usr_rate_assets_want = {
 		'id':     {a.id for a in usr_rate_assets if a.id},
-		'symbol': {a.symbol for a in usr_rate_assets if not a.id}
-	}
+		'symbol': {a.symbol for a in usr_rate_assets if not a.id}}
 	usr_assets = cfg.usr_rows + cfg.usr_columns + tuple(c for c in (cfg.query or ()) if c)
 	usr_wants = {
 		'id': (
 			{a.id for a in usr_assets + usr_rate_assets if a.id} -
-			{a.id for a in usr_assets if a.rate and a.id} - {'usd-us-dollar'} )
+			{a.id for a in usr_assets if a.rate and a.id} - {'usd-us-dollar'})
 		,
 		'symbol': (
 			{a.symbol for a in usr_assets + usr_rate_assets if not a.id} -
-			{a.symbol for a in usr_assets if a.rate} - {'USD'} ),
-	}
+			{a.symbol for a in usr_assets if a.rate} - {'USD'})}
 
-	found = { 'id': set(), 'symbol': set() }
+	found = {'id': set(), 'symbol': set()}
 	rate_assets = {}
 
-	wants = {k:rows_want[k] | usr_wants[k] for k in ('id','symbol')}
+	wants = {k: rows_want[k] | usr_wants[k] for k in ('id', 'symbol')}
 
 	for d in data['cc']:
 		if d['id'] == 'btc-bitcoin':
@@ -417,38 +407,37 @@ def gen_data(data):
 	get_id = src_cls['fi'].get_id
 	conv_func = src_cls['fi'].conv_data
 
-	for k,v in data['fi'].items():
-		id = get_id(k,v)
+	for k, v in data['fi'].items():
+		id = get_id(k, v)
 		if wants['id']:
 			if id in wants['id']:
-				if not isinstance(v,dict):
+				if not isinstance(v, dict):
 					die(2, str(v))
 				if id in found['id']:
-					die(1,dup_sym_errmsg(id))
+					die(1, dup_sym_errmsg(id))
 				if m := data['hi'].get(k):
 					spot = v['regularMarketPrice']['raw']
 					hist = tuple(m.values())
 					v['pct_chg_1wk'], v['pct_chg_4wks'], v['pct_chg_1y'] = (
 						(spot / hist[-2]['close'] - 1) * 100,
 						(spot / hist[-5]['close'] - 1) * 100, # 4 weeks ≈ 1 month
-						(spot / hist[0]['close'] - 1) * 100,
-					)
+						(spot / hist[0]['close'] - 1) * 100)
 				else:
 					v['pct_chg_1wk'] = v['pct_chg_4wks'] = v['pct_chg_1y'] = None
-				yield ( id, conv_func(id,v,btcusd) )
+				yield (id, conv_func(id, v, btcusd))
 				found['id'].add(id)
 				wants['id'].remove(id)
 				if id in usr_rate_assets_want['id']:
-					rate_assets[k] = conv_func(id,v,btcusd) # NB: using symbol instead of ID for key
+					rate_assets[k] = conv_func(id, v, btcusd) # NB: using symbol instead of ID for key
 		else:
 			break
 
-	for k in ('id','symbol'):
+	for k in ('id', 'symbol'):
 		for d in data['cc']:
 			if wants[k]:
 				if d[k] in wants[k]:
 					if d[k] in found[k]:
-						die(1,dup_sym_errmsg(d[k]))
+						die(1, dup_sym_errmsg(d[k]))
 					if not 'price_usd' in d:
 						d['price_usd'] = Decimal(str(d['quotes']['USD']['price']))
 						d['price_btc'] = Decimal(str(d['quotes']['USD']['price'])) / btcusd
@@ -457,8 +446,9 @@ def gen_data(data):
 						d['percent_change_30d'] = d['quotes']['USD']['percent_change_30d']
 						d['percent_change_1y']  = d['quotes']['USD']['percent_change_1y']
 						# .replace('Z','+00:00') -- Python 3.9 backport
-						d['last_updated'] = int(datetime.datetime.fromisoformat(d['last_updated'].replace('Z','+00:00')).timestamp())
-					yield (d['id'],d)
+						d['last_updated'] = int(datetime.datetime.fromisoformat(
+							d['last_updated'].replace('Z', '+00:00')).timestamp())
+					yield (d['id'], d)
 					found[k].add(d[k])
 					wants[k].remove(d[k])
 					if d[k] in usr_rate_assets_want[k]:
@@ -466,7 +456,7 @@ def gen_data(data):
 			else:
 				break
 
-	check_assets_found(usr_wants,found)
+	check_assets_found(usr_wants, found)
 
 	for asset in (cfg.usr_rows + cfg.usr_columns):
 		if asset.rate:
@@ -475,14 +465,13 @@ def gen_data(data):
 			"""
 			_id = asset.id or f'{asset.symbol}-user-asset-{asset.symbol}'.lower()
 			ra_rate = rate_assets[asset.rate_asset.symbol]['price_usd'] if asset.rate_asset else 1
-			yield ( _id, {
+			yield (_id, {
 				'symbol': asset.symbol,
 				'id': _id,
 				'name': ' '.join(_id.split('-')[1:]),
 				'price_usd': ra_rate / asset.rate,
 				'price_btc': ra_rate / asset.rate / btcusd,
-				'last_updated': None,
-			})
+				'last_updated': None})
 
 	yield ('usd-us-dollar', {
 		'symbol': 'USD',
@@ -490,21 +479,20 @@ def gen_data(data):
 		'name': 'US Dollar',
 		'price_usd': Decimal(1),
 		'price_btc': Decimal(1) / btcusd,
-		'last_updated': None,
-	})
+		'last_updated': None})
 
 def main():
 
 	def update_sample_file(usr_cfg_file):
-		usr_data = files('mmgen_node_tools').joinpath('data',os.path.basename(usr_cfg_file)).read_text()
+		usr_data = files('mmgen_node_tools').joinpath('data', os.path.basename(usr_cfg_file)).read_text()
 		sample_file = usr_cfg_file + '.sample'
 		sample_data = open(sample_file).read() if os.path.exists(sample_file) else None
 		if usr_data != sample_data:
-			os.makedirs(os.path.dirname(sample_file),exist_ok=True)
+			os.makedirs(os.path.dirname(sample_file), exist_ok=True)
 			msg('{} {}'.format(
-				('Updating','Creating')[sample_data is None],
-				sample_file ))
-			open(sample_file,'w').write(usr_data)
+				('Updating', 'Creating')[sample_data is None],
+				sample_file))
+			open(sample_file, 'w').write(usr_data)
 
 	try:
 		from importlib.resources import files # Python 3.9
@@ -515,19 +503,19 @@ def main():
 	update_sample_file(cfg_in.portfolio_file)
 
 	if gcfg.portfolio and not cfg_in.portfolio:
-		die(1,'No portfolio configured!\nTo configure a portfolio, edit the file ~/{}'.format(
-			os.path.relpath(cfg_in.portfolio_file,start=homedir)))
+		die(1, 'No portfolio configured!\nTo configure a portfolio, edit the file ~/{}'.format(
+			os.path.relpath(cfg_in.portfolio_file, start=homedir)))
 
 	if gcfg.list_ids:
 		src_ids = ['cc']
 	elif gcfg.download:
 		if not gcfg.download in DataSource.get_sources():
-			die(1,f'{gcfg.download!r}: invalid data source')
+			die(1, f'{gcfg.download!r}: invalid data source')
 		src_ids = [gcfg.download]
 	else:
 		src_ids = DataSource.get_sources(randomize=True)
 
-	src_data = { k: src_cls[k]().get_data() for k in src_ids }
+	src_data = {k: src_cls[k]().get_data() for k in src_ids}
 
 	if gcfg.testing:
 		return
@@ -542,24 +530,24 @@ def main():
 	data = dict(gen_data(src_data))
 
 	(do_pager if cfg.pager else Msg_r)(
-		'\n'.join(getattr(Ticker,cfg.clsname)(data).gen_output()) + '\n')
+		'\n'.join(getattr(Ticker, cfg.clsname)(data).gen_output()) + '\n')
 
 def make_cfg(gcfg_arg):
 
-	query_tuple = namedtuple('query',['asset','to_asset'])
-	asset_data  = namedtuple('asset_data',['symbol','id','amount','rate','rate_asset','source'])
+	query_tuple = namedtuple('query', ['asset', 'to_asset'])
+	asset_data  = namedtuple('asset_data', ['symbol', 'id', 'amount', 'rate', 'rate_asset', 'source'])
 
-	def parse_asset_id(s,require_label=False):
-		return src_cls['fi' if re.match(fi_pat,s) else 'cc'].parse_asset_id(s,require_label)
+	def parse_asset_id(s, require_label=False):
+		return src_cls['fi' if re.match(fi_pat, s) else 'cc'].parse_asset_id(s, require_label)
 
 	def get_rows_from_cfg(add_data=None):
 		def gen():
-			for n,(k,v) in enumerate(cfg_in.cfg['assets'].items()):
+			for n, (k, v) in enumerate(cfg_in.cfg['assets'].items()):
 				yield k
 				if add_data and k in add_data:
 					v += tuple(add_data[k])
 				for e in v:
-					yield parse_asset_id(e,require_label=True)
+					yield parse_asset_id(e, require_label=True)
 		return tuple(gen())
 
 	def parse_percent_cols(arg):
@@ -568,17 +556,19 @@ def make_cfg(gcfg_arg):
 		res = arg.lower().split(',')
 		for s in res:
 			if s not in percent_cols:
-				die(1,f'{arg!r}: invalid --percent-cols parameter (valid letters: {fmt_list(percent_cols)})')
+				die(1, '{!r}: invalid --percent-cols parameter (valid letters: {})'.format(
+					arg,
+					fmt_list(percent_cols)))
 		return res
 
-	def parse_usr_asset_arg(key,use_cf_file=False):
+	def parse_usr_asset_arg(key, use_cf_file=False):
 		"""
 		asset_id[:rate[:rate_asset]]
 		"""
 		def parse_parm(s):
 			ss = s.split(':')
-			assert len(ss) in (1,2,3), f'{s}: malformed argument'
-			asset_id,rate,rate_asset = (*ss,None,None)[:3]
+			assert len(ss) in (1, 2, 3), f'{s}: malformed argument'
+			asset_id, rate, rate_asset = (*ss, None, None)[:3]
 			parsed_id = parse_asset_id(asset_id)
 
 			return asset_data(
@@ -588,19 +578,19 @@ def make_cfg(gcfg_arg):
 				rate   = (
 					None if rate is None else
 					1 / Decimal(rate[:-1]) if rate.lower().endswith('r') else
-					Decimal(rate) ),
+					Decimal(rate)),
 				rate_asset = parse_asset_id(rate_asset) if rate_asset else None,
-				source  = parsed_id.source )
+				source  = parsed_id.source)
 
-		cl_opt = getattr(gcfg,key)
+		cl_opt = getattr(gcfg, key)
 		cf_opt = cfg_in.cfg.get(key,[]) if use_cf_file else []
-		return tuple( parse_parm(s) for s in (cl_opt.split(',') if cl_opt else cf_opt) )
+		return tuple(parse_parm(s) for s in (cl_opt.split(',') if cl_opt else cf_opt))
 
 	def parse_query_arg(s):
 		"""
 		asset_id:amount[:to_asset_id[:to_amount]]
 		"""
-		def parse_query_asset(asset_id,amount):
+		def parse_query_asset(asset_id, amount):
 			parsed_id = parse_asset_id(asset_id)
 			return asset_data(
 				symbol = parsed_id.symbol,
@@ -608,21 +598,20 @@ def make_cfg(gcfg_arg):
 				amount = None if amount is None else Decimal(amount),
 				rate   = None,
 				rate_asset = None,
-				source = parsed_id.source )
+				source = parsed_id.source)
 
 		ss = s.split(':')
-		assert len(ss) in (2,3,4), f'{s}: malformed argument'
-		asset_id,amount,to_asset_id,to_amount = (*ss,None,None)[:4]
+		assert len(ss) in (2, 3, 4), f'{s}: malformed argument'
+		asset_id, amount, to_asset_id, to_amount = (*ss, None, None)[:4]
 
 		return query_tuple(
-			asset = parse_query_asset(asset_id,amount),
-			to_asset = parse_query_asset(to_asset_id,to_amount) if to_asset_id else None
-		)
+			asset = parse_query_asset(asset_id, amount),
+			to_asset = parse_query_asset(to_asset_id, to_amount) if to_asset_id else None)
 
-	def gen_uniq(obj_list,key,preload=None):
-		found = set([getattr(obj,key) for obj in preload if hasattr(obj,key)] if preload else ())
+	def gen_uniq(obj_list, key, preload=None):
+		found = set([getattr(obj, key) for obj in preload if hasattr(obj, key)] if preload else ())
 		for obj in obj_list:
-			id = getattr(obj,key)
+			id = getattr(obj, key)
 			if id not in found:
 				yield obj
 			found.add(id)
@@ -632,39 +621,38 @@ def make_cfg(gcfg_arg):
 			'user_added',
 			usr_rows +
 			(tuple(asset for asset in query if asset) if query else ()) +
-			usr_columns )
+			usr_columns)
 
 	def get_portfolio_assets(ret=()):
 		if cfg_in.portfolio and gcfg.portfolio:
-			ret = (parse_asset_id(e,require_label=True) for e in cfg_in.portfolio)
-		return ( 'portfolio', tuple(e for e in ret if (not gcfg.btc) or e.symbol == 'BTC') )
+			ret = (parse_asset_id(e, require_label=True) for e in cfg_in.portfolio)
+		return ('portfolio', tuple(e for e in ret if (not gcfg.btc) or e.symbol == 'BTC'))
 
 	def get_portfolio():
-		return {k:Decimal(v) for k,v in cfg_in.portfolio.items() if (not gcfg.btc) or k == 'btc-bitcoin'}
+		return {k: Decimal(v) for k, v in cfg_in.portfolio.items()
+			if (not gcfg.btc) or k == 'btc-bitcoin'}
 
 	def parse_add_precision(arg):
 		if not arg:
 			return 0
 		s = str(arg)
 		if not (s.isdigit() and s.isascii()):
-			die(1,f'{s}: invalid parameter for --add-precision (not an integer)')
+			die(1, f'{s}: invalid parameter for --add-precision (not an integer)')
 		if int(s) > 30:
-			die(1,f'{s}: invalid parameter for --add-precision (value >30)')
+			die(1, f'{s}: invalid parameter for --add-precision (value >30)')
 		return int(s)
 
 	def create_rows():
 		rows = (
 			('trade_pair',) + query if (query and query.to_asset) else
-			('bitcoin',parse_asset_id('btc-bitcoin')) if gcfg.btc else
-			get_rows_from_cfg( add_data={'fiat':['usd-us-dollar']} if gcfg.add_columns else None )
-		)
+			('bitcoin', parse_asset_id('btc-bitcoin')) if gcfg.btc else
+			get_rows_from_cfg(add_data={'fiat':['usd-us-dollar']} if gcfg.add_columns else None))
 
-		for hdr,data in (
-			(get_usr_assets(),) if query else
-			(get_usr_assets(), get_portfolio_assets())
-		):
+		for hdr, data in (
+				(get_usr_assets(),) if query else
+				(get_usr_assets(), get_portfolio_assets())):
 			if data:
-				uniq_data = tuple(gen_uniq(data,'symbol',preload=rows))
+				uniq_data = tuple(gen_uniq(data, 'symbol', preload=rows))
 				if uniq_data:
 					rows += (hdr,) + uniq_data
 		return rows
@@ -693,26 +681,25 @@ def make_cfg(gcfg_arg):
 		'quiet',
 		'verbose'])
 
-	global gcfg,cfg_in,src_cls,cfg
+	global gcfg, cfg_in, src_cls, cfg
 
 	gcfg = gcfg_arg
 
-	src_cls = { k: getattr(DataSource,v) for k,v in DataSource.get_sources().items() }
+	src_cls = {k: getattr(DataSource, v) for k, v in DataSource.get_sources().items()}
 	fi_pat = src_cls['fi'].asset_id_pat
 
 	cmd_args = gcfg._args
 	cfg_in = get_cfg_in()
 
 	usr_rows    = parse_usr_asset_arg('add_rows')
-	usr_columns = parse_usr_asset_arg('add_columns',use_cf_file=True)
+	usr_columns = parse_usr_asset_arg('add_columns', use_cf_file=True)
 	query       = parse_query_arg(cmd_args[0]) if cmd_args else None
 
 	def get_proxy(name):
-		proxy = getattr(gcfg,name)
+		proxy = getattr(gcfg, name)
 		return (
 			'' if proxy == '' else 'none' if (proxy and proxy.lower() == 'none')
-			else (proxy or cfg_in.cfg.get(name))
-		)
+			else (proxy or cfg_in.cfg.get(name)))
 
 	proxy = get_proxy('proxy')
 	proxy = None if proxy == 'none' else proxy
@@ -723,7 +710,7 @@ def make_cfg(gcfg_arg):
 		usr_rows    = usr_rows,
 		usr_columns = usr_columns,
 		query       = query,
-		adjust      = ( lambda x: (100 + x) / 100 if x else 1 )( Decimal(gcfg.adjust or 0) ),
+		adjust      = (lambda x: (100 + x) / 100 if x else 1)(Decimal(gcfg.adjust or 0)),
 		clsname     = 'trading' if query else 'overview',
 		btc_only    = gcfg.btc or cfg_in.cfg.get('btc'),
 		add_prec    = parse_add_precision(gcfg.add_precision or cfg_in.cfg.get('add_precision')),
@@ -745,17 +732,16 @@ def make_cfg(gcfg_arg):
 		thousands_comma = gcfg.thousands_comma or cfg_in.cfg.get('thousands_comma'),
 		update_time     = gcfg.update_time     or cfg_in.cfg.get('update_time'),
 		quiet           = gcfg.quiet           or cfg_in.cfg.get('quiet'),
-		verbose         = gcfg.verbose         or cfg_in.cfg.get('verbose'),
-	)
+		verbose         = gcfg.verbose         or cfg_in.cfg.get('verbose'))
 
 def get_cfg_in():
-	ret = namedtuple('cfg_in_data',['cfg','portfolio','cfg_file','portfolio_file'])
-	cfg_file,portfolio_file = (
-		[os.path.join(gcfg.data_dir_root,'node_tools',fn) for fn in (cfg_fn,portfolio_fn)]
-	)
-	cfg_data,portfolio_data = (
-		[yaml.safe_load(open(fn).read()) if os.path.exists(fn) else None for fn in (cfg_file,portfolio_file)]
-	)
+	ret = namedtuple('cfg_in_data', ['cfg', 'portfolio', 'cfg_file', 'portfolio_file'])
+	cfg_file, portfolio_file = (
+		[os.path.join(gcfg.data_dir_root, 'node_tools', fn)
+			for fn in (cfg_fn, portfolio_fn)])
+	cfg_data, portfolio_data = (
+		[yaml.safe_load(open(fn).read()) if os.path.exists(fn) else None
+			for fn in (cfg_file, portfolio_file)])
 	return ret(
 		cfg = cfg_data or {
 			'assets': {
@@ -765,14 +751,11 @@ def get_cfg_in():
 				             # Pound Sterling, Euro, Swiss Franc
 				'fiat':      [ 'gbpusd=x', 'eurusd=x', 'chfusd=x' ],
 				             # Dow Jones Industrials, Nasdaq 100, S&P 500
-				'index':     [ '^dji', '^ixic', '^gspc' ],
-			},
-			'proxy': 'http://vpn-gw:8118'
-		},
-		portfolio = portfolio_data,
-		cfg_file = cfg_file,
-		portfolio_file = portfolio_file,
-	)
+				'index':     [ '^dji', '^ixic', '^gspc' ]},
+			'proxy': 'http://vpn-gw:8118'},
+		portfolio      = portfolio_data,
+		cfg_file       = cfg_file,
+		portfolio_file = portfolio_file)
 
 class Ticker:
 
@@ -781,43 +764,43 @@ class Ticker:
 		offer = None
 		to_asset = None
 
-		def __init__(self,data):
+		def __init__(self, data):
 
 			self.comma = ',' if cfg.thousands_comma else ''
 
-			self.col1_wid = max(len('TOTAL'),(
+			self.col1_wid = max(len('TOTAL'), (
 				max(len(self.create_label(d['id'])) for d in data.values()) if cfg.name_labels else
-				max(len(d['symbol']) for d in data.values())
-			)) + 1
+				max(len(d['symbol']) for d in data.values()))) + 1
 
-			self.rows = [row._replace(id=self.get_id(row)) if isinstance(row,tuple) else row for row in cfg.rows]
-			self.col_usd_prices = {k:self.data[k]['price_usd'] for k in self.col_ids}
+			self.rows = [row._replace(id=self.get_id(row)) if isinstance(row, tuple) else row
+				for row in cfg.rows]
+			self.col_usd_prices = {k: self.data[k]['price_usd'] for k in self.col_ids}
 
-			self.prices = {row.id:self.get_row_prices(row.id)
-				for row in self.rows if isinstance(row,tuple) and row.id in data}
+			self.prices = {row.id: self.get_row_prices(row.id)
+				for row in self.rows if isinstance(row, tuple) and row.id in data}
 			self.prices['usd-us-dollar'] = self.get_row_prices('usd-us-dollar')
 
-		def format_last_update_col(self,cross_assets=()):
+		def format_last_update_col(self, cross_assets=()):
 
 			if cfg.elapsed:
 				from mmgen.util2 import format_elapsed_hr
 				fmt_func = format_elapsed_hr
 			else:
-				fmt_func = lambda t,now: time.strftime('%F %X', time.gmtime(t))
+				fmt_func = lambda t, now: time.strftime('%F %X', time.gmtime(t))
 
 			d = self.data
 			max_w = 0
 
 			if cross_assets:
 				last_updated_x = [d[a.id]['last_updated'] for a in cross_assets]
-				min_t = min( (int(n) for n in last_updated_x if isinstance(n,int) ), default=None )
+				min_t = min((int(n) for n in last_updated_x if isinstance(n, int)), default=None)
 			else:
 				min_t = None
 
 			for row in self.rows:
-				if isinstance(row,tuple):
+				if isinstance(row, tuple):
 					try:
-						t = int( d[row.id]['last_updated'] )
+						t = int(d[row.id]['last_updated'])
 					except TypeError as e:
 						d[row.id]['last_updated_fmt'] = gray('--' if 'NoneType' in str(e) else str(e))
 					except KeyError as e:
@@ -825,7 +808,7 @@ class Ticker:
 						pass
 					else:
 						t_fmt = d[row.id]['last_updated_fmt'] = fmt_func(
-							(min(t,min_t) if min_t else t),
+							(min(t, min_t) if min_t else t),
 							now = now)
 						max_w = max(len(t_fmt), max_w)
 
@@ -836,7 +819,7 @@ class Ticker:
 			self.uprec = {k: max(0, v+4) + cfg.add_prec for k, v in exp}
 			self.uwid  = {k: 12 + max(0, abs(v)-6) + cfg.add_prec for k, v in exp}
 
-		def get_id(self,asset):
+		def get_id(self, asset):
 			if asset.id:
 				return asset.id
 			else:
@@ -844,11 +827,11 @@ class Ticker:
 					if d['symbol'] == asset.symbol:
 						return d['id']
 
-		def create_label(self,id):
+		def create_label(self, id):
 			return self.data[id]['name'].upper()
 
 		def gen_output(self):
-			yield 'Current time: {} UTC'.format(time.strftime('%F %X',time.gmtime(now)))
+			yield 'Current time: {} UTC'.format(time.strftime('%F %X', time.gmtime(now)))
 
 			for asset in self.usr_col_assets:
 				if asset.symbol != 'USD':
@@ -858,17 +841,16 @@ class Ticker:
 						self.create_label(asset.id),
 						usdprice,
 						self.comma,
-						max(2, 4-usdprice.adjusted()) )
+						max(2, 4-usdprice.adjusted()))
 
-			if hasattr(self,'subhdr'):
+			if hasattr(self, 'subhdr'):
 				yield self.subhdr
 
 			if self.show_adj:
 				yield (
 					('Offered price differs from spot' if self.offer else 'Adjusting prices')
 					+ ' by '
-					+ yellow('{:+.2f}%'.format( (self.adjust-1) * 100 ))
-				)
+					+ yellow('{:+.2f}%'.format((self.adjust-1) * 100)))
 
 			yield ''
 
@@ -879,7 +861,7 @@ class Ticker:
 				yield self.table_hdr
 
 			for row in self.rows:
-				if isinstance(row,str):
+				if isinstance(row, str):
 					yield ('-' * self.hl_wid)
 				else:
 					try:
@@ -896,21 +878,20 @@ class Ticker:
 				yield blue('PORTFOLIO')
 				yield self.table_hdr
 				yield '-' * self.hl_wid
-				for sym,amt in cfg.portfolio.items():
+				for sym, amt in cfg.portfolio.items():
 					try:
-						yield self.fmt_row(self.data[sym],amt=amt)
+						yield self.fmt_row(self.data[sym], amt=amt)
 					except KeyError:
 						yield gray(f'(no data for {sym})')
 				yield '-' * self.hl_wid
 				if not cfg.btc_only:
 					yield self.fs_num.format(
 						lbl = 'TOTAL', pc3='', pc4='', pc1='', pc2='', upd='', amt='',
-						**{ k.replace('-','_'): v for k,v in self.prices['total'].items() }
-					)
+						**{k.replace('-', '_'): v for k, v in self.prices['total'].items()})
 
 	class overview(base):
 
-		def __init__(self,data):
+		def __init__(self, data):
 			self.data = data
 			self.adjust = cfg.adjust
 			self.show_adj = self.adjust != 1
@@ -922,25 +903,26 @@ class Ticker:
 			self.format_last_update_col()
 
 			if cfg.portfolio:
-				self.prices['total'] = { col_id: sum(self.prices[row.id][col_id] * cfg.portfolio[row.id]
-					for row in self.rows if isinstance(row,tuple) and row.id in cfg.portfolio and row.id in data)
-						for col_id in self.col_ids }
+				self.prices['total'] = {col_id: sum(self.prices[row.id][col_id] * cfg.portfolio[row.id]
+					for row in self.rows
+						if isinstance(row, tuple) and row.id in cfg.portfolio and row.id in data)
+							for col_id in self.col_ids}
 
 			self.init_prec()
 			self.init_fs()
 
-		def get_row_prices(self,id):
+		def get_row_prices(self, id):
 			if id in self.data:
 				d = self.data[id]
-				return { k: (
+				return {k: (
 						d['price_btc'] if k == 'btc-bitcoin' else
 						d['price_usd'] / self.col_usd_prices[k]
-					) * self.adjust for k in self.col_ids }
+					) * self.adjust for k in self.col_ids}
 
-		def fmt_row(self,d,amt=None,amt_fmt=None):
+		def fmt_row(self, d, amt=None, amt_fmt=None):
 
 			def fmt_pct(n):
-				return gray('     --') if n is None else (red,green)[n>=0](f'{n:+7.2f}')
+				return gray('     --') if n is None else (red, green)[n>=0](f'{n:+7.2f}')
 
 			p = self.prices[d['id']]
 
@@ -957,53 +939,45 @@ class Ticker:
 				pc4 = fmt_pct(d.get('percent_change_30d')),
 				upd = d.get('last_updated_fmt'),
 				amt = amt_fmt,
-				**{ k.replace('-','_'): v * (1 if amt is None else amt) for k,v in p.items() }
-			)
+				**{k.replace('-', '_'): v * (1 if amt is None else amt) for k, v in p.items()})
 
 		def init_fs(self):
 
-			col_prec = {'usd-us-dollar':2+cfg.add_prec,'btc-bitcoin':8+cfg.add_prec }  # | self.uprec # Python 3.9
-			col_prec.update(self.uprec)
-			col_wid  = {'usd-us-dollar':8+cfg.add_prec,'btc-bitcoin':12+cfg.add_prec } # """
-			col_wid.update(self.uwid)
+			col_prec = {'usd-us-dollar': 2+cfg.add_prec, 'btc-bitcoin': 8+cfg.add_prec} | self.uprec
 			max_row = max(
-				( (k,v['btc-bitcoin']) for k,v in self.prices.items() ),
-				key = lambda a: a[1]
-			)
-			widths = { k: len('{:{}.{}f}'.format( self.prices[max_row[0]][k], self.comma, col_prec[k] ))
-						for k in self.col_ids }
+				((k, v['btc-bitcoin']) for k, v in self.prices.items()),
+				key = lambda a: a[1])
+			widths = {k: len('{:{}.{}f}'.format(self.prices[max_row[0]][k], self.comma, col_prec[k]))
+						for k in self.col_ids}
 
-			fd = namedtuple('format_str_data',['fs_str','fs_num','wid'])
+			fd = namedtuple('format_str_data', ['fs_str', 'fs_num', 'wid'])
 
 			col_fs_data = {
-				'label':       fd(f'{{lbl:{self.col1_wid}}}',f'{{lbl:{self.col1_wid}}}',self.col1_wid),
+				'label':       fd(f'{{lbl:{self.col1_wid}}}', f'{{lbl:{self.col1_wid}}}', self.col1_wid),
 				'pct1y':       fd(' {pc3:7}', ' {pc3:7}', 8),
 				'pct1m':       fd(' {pc4:7}', ' {pc4:7}', 8),
 				'pct1w':       fd(' {pc1:7}', ' {pc1:7}', 8),
 				'pct1d':       fd(' {pc2:7}', ' {pc2:7}', 8),
-				'update_time': fd('  {upd}',  '  {upd}',  max((19 if cfg.portfolio else 0),self.upd_w) + 2),
-				'amt':         fd('  {amt}',  '  {amt}',  21),
-			}
-#			} | { k: fd( # Python 3.9
-			col_fs_data.update({ k: fd(
-						'  {{{}:>{}}}'.format( k.replace('-','_'), widths[k] ),
-						'  {{{}:{}{}.{}f}}'.format( k.replace('-','_'), widths[k], self.comma, col_prec[k] ),
-						widths[k]+2
-					) for k in self.col_ids
-			})
+				'update_time': fd('  {upd}',  '  {upd}',
+					max((19 if cfg.portfolio else 0), self.upd_w) + 2),
+				'amt':         fd('  {amt}',  '  {amt}',  21)
+			} | {k: fd(
+				'  {{{}:>{}}}'.format(k.replace('-', '_'), widths[k]),
+				'  {{{}:{}{}.{}f}}'.format(k.replace('-', '_'), widths[k], self.comma, col_prec[k]),
+				widths[k] + 2
+			) for k in self.col_ids}
 
 			cols = (
-				['label','usd-us-dollar'] +
+				['label', 'usd-us-dollar'] +
 				[asset.id for asset in self.usr_col_assets] +
-				[a for a,b in (
-					( 'btc-bitcoin',  not cfg.btc_only ),
-					( 'pct1y', 'y' in cfg.percent_cols ),
-					( 'pct1m', 'm' in cfg.percent_cols ),
-					( 'pct1w', 'w' in cfg.percent_cols ),
-					( 'pct1d', 'd' in cfg.percent_cols ),
-					( 'update_time', cfg.update_time ),
-				) if b]
-			)
+				[a for a, b in (
+					('btc-bitcoin',  not cfg.btc_only),
+					('pct1y',       'y' in cfg.percent_cols),
+					('pct1m',       'm' in cfg.percent_cols),
+					('pct1w',       'w' in cfg.percent_cols),
+					('pct1d',       'd' in cfg.percent_cols),
+					('update_time', cfg.update_time))
+						if b])
 			cols2 = list(cols)
 			if cfg.update_time:
 				cols2.pop()
@@ -1029,17 +1003,16 @@ class Ticker:
 				amt = '         AMOUNT',
 				usd_us_dollar = 'USD',
 				btc_bitcoin = '  BTC',
-				**{ a.id.replace('-','_'): a.symbol for a in self.usr_col_assets }
-			)
+				**{a.id.replace('-', '_'): a.symbol for a in self.usr_col_assets})
 
 	class trading(base):
 
-		def __init__(self,data):
+		def __init__(self, data):
 			self.data = data
 			self.asset = cfg.query.asset._replace(id=self.get_id(cfg.query.asset))
 			self.to_asset = (
 				cfg.query.to_asset._replace(id=self.get_id(cfg.query.to_asset))
-				if cfg.query.to_asset else None )
+				if cfg.query.to_asset else None)
 			self.col_ids = [self.asset.id]
 			self.adjust = cfg.adjust
 			if self.to_asset:
@@ -1048,12 +1021,13 @@ class Ticker:
 					real_price = (
 						self.asset.amount
 						* data[self.asset.id]['price_usd']
-						/ data[self.to_asset.id]['price_usd']
-					)
+						/ data[self.to_asset.id]['price_usd'])
 					if self.adjust != 1:
-						die(1,'the --adjust option may not be combined with TO_AMOUNT in the trade specifier')
+						die(1,
+							'the --adjust option may not be combined with TO_AMOUNT '
+							'in the trade specifier')
 					self.adjust = self.offer / real_price
-				self.hl_ids = [self.asset.id,self.to_asset.id]
+				self.hl_ids = [self.asset.id, self.to_asset.id]
 			else:
 				self.hl_ids = [self.asset.id]
 
@@ -1070,10 +1044,10 @@ class Ticker:
 			self.init_prec()
 			self.init_fs()
 
-		def get_row_prices(self,id):
+		def get_row_prices(self, id):
 			if id in self.data:
 				d = self.data[id]
-				return { k: self.col_usd_prices[self.asset.id] / d['price_usd'] for k in self.col_ids }
+				return {k: self.col_usd_prices[self.asset.id] / d['price_usd'] for k in self.col_ids}
 
 		def init_fs(self):
 			self.max_wid = max(
@@ -1081,10 +1055,8 @@ class Ticker:
 						v[self.asset.id] * self.asset.amount,
 						16 + cfg.add_prec,
 						self.comma,
-						8 + cfg.add_prec
-					))
-					for v in self.prices.values()
-			)
+						8 + cfg.add_prec))
+					for v in self.prices.values())
 			self.fs_str = '{lbl:%s} {p_spot}' % self.col1_wid
 			self.hl_wid = self.col1_wid + self.max_wid + 1
 			if self.show_adj:
@@ -1094,20 +1066,19 @@ class Ticker:
 				self.fs_str += '  {upd}'
 				self.hl_wid += self.upd_w + 2
 
-		def fmt_row(self,d):
+		def fmt_row(self, d):
 			id = d['id']
 			p = self.prices[id][self.asset.id] * self.asset.amount
-			p_spot = '{:{}{}.{}f}'.format( p, self.max_wid, self.comma, 8+cfg.add_prec )
+			p_spot = '{:{}{}.{}f}'.format(p, self.max_wid, self.comma, 8+cfg.add_prec)
 			p_adj = (
-				'{:{}{}.{}f}'.format( p*self.adjust, self.max_wid, self.comma, 8+cfg.add_prec )
-				if self.show_adj else '' )
+				'{:{}{}.{}f}'.format(p*self.adjust, self.max_wid, self.comma, 8+cfg.add_prec)
+				if self.show_adj else '')
 
 			return self.fs_str.format(
 				lbl = self.create_label(id) if cfg.name_labels else d['symbol'],
 				p_spot = green(p_spot) if id in self.hl_ids else p_spot,
 				p_adj  = yellow(p_adj) if id in self.hl_ids else p_adj,
-				upd = d.get('last_updated_fmt'),
-			)
+				upd = d.get('last_updated_fmt'))
 
 		@property
 		def table_hdr(self):
@@ -1115,12 +1086,11 @@ class Ticker:
 				lbl = '',
 				p_spot = '{t:>{w}}'.format(
 					t = 'SPOT PRICE',
-					w = self.max_wid ),
+					w = self.max_wid),
 				p_adj = '{t:>{w}}'.format(
 					t = ('OFFERED' if self.offer else 'ADJUSTED') + ' PRICE',
-					w = self.max_wid ),
-				upd = 'UPDATED'
-			)
+					w = self.max_wid),
+				upd = 'UPDATED')
 
 		@property
 		def subhdr(self):
@@ -1133,9 +1103,8 @@ class Ticker:
 				) + (
 				(
 					' =>' +
-					(' {:{}}'.format(self.offer,self.comma) if self.offer else '') +
+					(' {:{}}'.format(self.offer, self.comma) if self.offer else '') +
 					' {} ({})'.format(
 						self.to_asset.symbol,
-						self.create_label(self.to_asset.id) )
-				) if self.to_asset else '' )
-			)
+						self.create_label(self.to_asset.id))
+				) if self.to_asset else ''))

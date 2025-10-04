@@ -27,8 +27,7 @@ opts_data = {
 		'options': """
 -h, --help      Print this help message
 --, --longhelp  Print help message for long options (common options)
-"""
-	}
+"""}
 }
 
 from mmgen.cfg import Config
@@ -37,9 +36,9 @@ cfg = Config(opts_data=opts_data)
 async def main():
 
 	from mmgen.rpc import rpc_init
-	rpc = await rpc_init(cfg,ignore_wallet=True)
+	rpc = await rpc_init(cfg, ignore_wallet=True)
 
-	from .PeerBlocks import BlocksDisplay,PeersDisplay
+	from .PeerBlocks import BlocksDisplay, PeersDisplay
 	blocks = BlocksDisplay(cfg)
 	peers = PeersDisplay(cfg)
 

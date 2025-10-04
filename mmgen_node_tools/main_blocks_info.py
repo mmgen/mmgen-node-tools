@@ -20,9 +20,9 @@
 mmnode-blocks-info: Display information about a block or range of blocks
 """
 
-from mmgen.cfg import gc,Config
-from mmgen.util import async_run,fmt_list
-from .BlocksInfo import BlocksInfo,JSONBlocksInfo
+from mmgen.cfg import gc, Config
+from mmgen.util import async_run, fmt_list
+from .BlocksInfo import BlocksInfo, JSONBlocksInfo
 
 opts_data = {
 	'sets': [
@@ -145,14 +145,13 @@ EXAMPLES:
     $ {p} --rpc-backend=aio -H +1000
 
 This program requires a txindex-enabled daemon for correct operation.
-""" },
+"""},
 	'code': {
-		'notes': lambda cfg,proto,s: s.format(
+		'notes': lambda cfg, proto, s: s.format(
 			I = proto.diff_adjust_interval,
-			F = fmt_list(BlocksInfo.fields,fmt='bare'),
-			S = fmt_list(BlocksInfo.all_stats,fmt='bare'),
-			p = gc.prog_name,
-		)
+			F = fmt_list(BlocksInfo.fields, fmt='bare'),
+			S = fmt_list(BlocksInfo.all_stats, fmt='bare'),
+			p = gc.prog_name)
 	}
 }
 
@@ -172,7 +171,7 @@ async def main():
 	await m.process_blocks()
 
 	if m.last:
-		for i,sname in enumerate(m.stats):
+		for i, sname in enumerate(m.stats):
 			m.process_stats_pre(i)
 			await m.process_stats(sname)
 

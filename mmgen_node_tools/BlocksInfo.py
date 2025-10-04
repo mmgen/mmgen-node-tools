@@ -20,58 +20,57 @@
 mmgen_node_tools.BlocksInfo: Display information about a block or range of blocks
 """
 
-import re,json
+import re, json
 from collections import namedtuple
-from time import strftime,gmtime
+from time import strftime, gmtime
 from decimal import Decimal
 
-from mmgen.util import msg,Msg,Msg_r,die,suf,secs_to_ms,secs_to_dhms,is_int
+from mmgen.util import msg, Msg, Msg_r, die, suf, secs_to_ms, secs_to_dhms, is_int
 from mmgen.rpc.util import json_encoder
 
 class RangeParser:
 
 	debug = False
 
-	def __init__(self,caller,arg):
+	def __init__(self, caller, arg):
 		self.caller = caller
 		self.arg = self.orig_arg = arg
 
-	def parse(self,target):
-		ret = getattr(self,'parse_'+target)()
+	def parse(self, target):
+		ret = getattr(self, 'parse_'+target)()
 		if self.debug:
 			msg(f'arg after parse({target}): {self.arg}')
 		return ret
 
 	def finalize(self):
 		if self.arg:
-			die(1,f'{self.orig_arg!r}: invalid range specifier')
+			die(1, f'{self.orig_arg!r}: invalid range specifier')
 
 	def parse_from_tip(self):
-		m = re.match(r'-([0-9]+)(.*)',self.arg)
+		m = re.match(r'-([0-9]+)(.*)', self.arg)
 		if m:
-			res,self.arg = (m[1],m[2])
+			res, self.arg = (m[1], m[2])
 			return self.caller.check_nblocks(int(res))
 
 	def parse_abs_range(self):
-		m = re.match(r'([^+-]+)(-([^+-]+)){0,1}(.*)',self.arg)
+		m = re.match(r'([^+-]+)(-([^+-]+)){0,1}(.*)', self.arg)
 		if m:
 			if self.debug:
 				msg(f'abs_range parse: first={m[1]}, last={m[3]}')
 			self.arg = m[4]
 			return (
 				self.caller.conv_blkspec(m[1]),
-				self.caller.conv_blkspec(m[3]) if m[3] else None
-			)
-		return (None,None)
+				self.caller.conv_blkspec(m[3]) if m[3] else None)
+		return (None, None)
 
 	def parse_add(self):
-		m = re.match(r'\+([0-9*]+)(.*)',self.arg)
+		m = re.match(r'\+([0-9*]+)(.*)', self.arg)
 		if m:
-			res,self.arg = (m[1],m[2])
+			res, self.arg = (m[1], m[2])
 			if res.strip('*') != res:
-				die(1,f"'+{res}': malformed nBlocks specifier")
+				die(1, f"'+{res}': malformed nBlocks specifier")
 			if len(res) > 30:
-				die(1,f"'+{res}': overly long nBlocks specifier")
+				die(1, f"'+{res}': overly long nBlocks specifier")
 			return self.caller.check_nblocks(eval(res)) # res is only digits plus '*', so eval safe
 
 class BlocksInfo:
@@ -81,33 +80,33 @@ class BlocksInfo:
 	total_solve_time = 0
 	header_printed = False
 
-	bf = namedtuple('block_info_fields',['fmt_func','src','fs','hdr1','hdr2','key1','key2'])
+	bf = namedtuple('block_info_fields', ['fmt_func', 'src', 'fs', 'hdr1', 'hdr2', 'key1', 'key2'])
 	# bh=getblockheader, bs=getblockstats, lo=local
 	fields = {
-		'block':      bf( None, 'bh', '{:<6}',  '',      'Block',     'height',              None ),
-		'hash':       bf( None, 'bh', '{:<64}', '',      'Hash',      'hash',                None ),
-		'date':       bf( 'da', 'bh', '{:<19}', '',      'Date',      'time',                None ),
-		'interval':   bf( 'td', 'lo', '{:>8}',  'Solve', 'Time ',     'interval',            None ),
-		'subsidy':    bf( 'su', 'bs', '{:<5}',  'Sub-',  'sidy',      'subsidy',             None ),
-		'totalfee':   bf( 'tf', 'bs', '{:>10}', '',      'Total Fee', 'totalfee',            None ),
-		'size':       bf( None, 'bs', '{:>7}',  '',      'Size',      'total_size',          None ),
-		'weight':     bf( None, 'bs', '{:>7}',  '',      'Weight',    'total_weight',        None ),
-		'fee90':      bf( 'fe', 'bs', '{:>3}',  '90%',   'Fee',       'feerate_percentiles', 4 ),
-		'fee75':      bf( 'fe', 'bs', '{:>3}',  '75%',   'Fee',       'feerate_percentiles', 3 ),
-		'fee50':      bf( 'fe', 'bs', '{:>3}',  '50%',   'Fee',       'feerate_percentiles', 2 ),
-		'fee25':      bf( 'fe', 'bs', '{:>3}',  '25%',   'Fee',       'feerate_percentiles', 1 ),
-		'fee10':      bf( 'fe', 'bs', '{:>3}',  '10%',   'Fee',       'feerate_percentiles', 0 ),
-		'fee_max':    bf( 'fe', 'bs', '{:>5}',  'Max',   'Fee',       'maxfeerate',          None ),
-		'fee_avg':    bf( 'fe', 'bs', '{:>3}',  'Avg',   'Fee',       'avgfeerate',          None ),
-		'fee_min':    bf( 'fe', 'bs', '{:>3}',  'Min',   'Fee',       'minfeerate',          None ),
-		'nTx':        bf( None, 'bh', '{:>5}',  '',      ' nTx ',     'nTx',                 None ),
-		'inputs':     bf( None, 'bs', '{:>5}',  'In- ',  'puts',      'ins',                 None ),
-		'outputs':    bf( None, 'bs', '{:>5}',  'Out-',  'puts',      'outs',                None ),
-		'utxo_inc':   bf( None, 'bs', '{:>6}',  ' UTXO', ' Incr',     'utxo_increase',       None ),
-		'version':    bf( None, 'bh', '{:<8}',  '',      'Version',   'versionHex',          None ),
-		'difficulty': bf( 'di', 'bh', '{:<8}',  'Diffi-','culty',     'difficulty',          None ),
-		'miner':      bf( None, 'lo', '{:<5}',  '',      'Miner',     'miner',               None ),
-	}
+		'block':      bf(None, 'bh', '{:<6}',  '',      'Block',     'height',              None),
+		'hash':       bf(None, 'bh', '{:<64}', '',      'Hash',      'hash',                None),
+		'date':       bf('da', 'bh', '{:<19}', '',      'Date',      'time',                None),
+		'interval':   bf('td', 'lo', '{:>8}',  'Solve', 'Time ',     'interval',            None),
+		'subsidy':    bf('su', 'bs', '{:<5}',  'Sub-',  'sidy',      'subsidy',             None),
+		'totalfee':   bf('tf', 'bs', '{:>10}', '',      'Total Fee', 'totalfee',            None),
+		'size':       bf(None, 'bs', '{:>7}',  '',      'Size',      'total_size',          None),
+		'weight':     bf(None, 'bs', '{:>7}',  '',      'Weight',    'total_weight',        None),
+		'fee90':      bf('fe', 'bs', '{:>3}',  '90%',   'Fee',       'feerate_percentiles', 4),
+		'fee75':      bf('fe', 'bs', '{:>3}',  '75%',   'Fee',       'feerate_percentiles', 3),
+		'fee50':      bf('fe', 'bs', '{:>3}',  '50%',   'Fee',       'feerate_percentiles', 2),
+		'fee25':      bf('fe', 'bs', '{:>3}',  '25%',   'Fee',       'feerate_percentiles', 1),
+		'fee10':      bf('fe', 'bs', '{:>3}',  '10%',   'Fee',       'feerate_percentiles', 0),
+		'fee_max':    bf('fe', 'bs', '{:>5}',  'Max',   'Fee',       'maxfeerate',          None),
+		'fee_avg':    bf('fe', 'bs', '{:>3}',  'Avg',   'Fee',       'avgfeerate',          None),
+		'fee_min':    bf('fe', 'bs', '{:>3}',  'Min',   'Fee',       'minfeerate',          None),
+		'nTx':        bf(None, 'bh', '{:>5}',  '',      ' nTx ',     'nTx',                 None),
+		'inputs':     bf(None, 'bs', '{:>5}',  'In- ',  'puts',      'ins',                 None),
+		'outputs':    bf(None, 'bs', '{:>5}',  'Out-',  'puts',      'outs',                None),
+		'utxo_inc':   bf(None, 'bs', '{:>6}',  ' UTXO', ' Incr',     'utxo_increase',       None),
+		'version':    bf(None, 'bh', '{:<8}',  '',      'Version',   'versionHex',          None),
+		'difficulty': bf('di', 'bh', '{:<8}',  'Diffi-','culty',     'difficulty',          None),
+		'miner':      bf(None, 'lo', '{:<5}',  '',      'Miner',     'miner',               None)}
+
 	dfl_fields = (
 		'block',
 		'date',
@@ -121,8 +120,8 @@ class BlocksInfo:
 		'fee10',
 		'fee_avg',
 		'fee_min',
-		'version',
-	)
+		'version')
+
 	fixed_fields = (
 		'block',      # until ≈ 09/01/2028 (block 1000000)
 		'hash',
@@ -131,36 +130,34 @@ class BlocksInfo:
 		'weight',     # until ≈ 2.5x block size increase
 		'version',
 		'subsidy',    # until ≈ 01/04/2028 (increases by 1 digit per halving until 9th halving [max 10 digits])
-		'difficulty', # until 1.00e+100 (i.e. never)
-	)
+		'difficulty') # until 1.00e+100 (i.e. never)
 
 	# column width adjustment data:
-	fs_lsqueeze = ('totalfee','inputs','outputs','nTx')
+	fs_lsqueeze = ('totalfee', 'inputs', 'outputs', 'nTx')
 	fs_rsqueeze = ()
 	fs_groups = (
-		('fee10','fee25','fee50','fee75','fee90','fee_avg','fee_min','fee_max'),
-	)
+		('fee10', 'fee25', 'fee50', 'fee75', 'fee90', 'fee_avg', 'fee_min', 'fee_max'))
 	fs_lsqueeze2 = ('interval',)
 
-	all_stats = ['col_avg','range','avg','mini_avg','total','diff']
-	dfl_stats = ['range','mini_avg','diff']
+	all_stats = ['col_avg', 'range', 'avg', 'mini_avg', 'total', 'diff']
+	dfl_stats = ['range', 'mini_avg', 'diff']
 	noindent_stats = ['col_avg']
 
-	avg_stats_skip = {'block', 'hash', 'date', 'version','miner'}
+	avg_stats_skip = {'block', 'hash', 'date', 'version', 'miner'}
 
-	range_data = namedtuple('parsed_range_data',['first','last','from_tip','nblocks','step'])
+	range_data = namedtuple('parsed_range_data', ['first', 'last', 'from_tip', 'nblocks', 'step'])
 
-	t_fmt = lambda self,t: f'{t/86400:.2f} days' if t > 172800 else f'{t/3600:.2f} hrs'
+	t_fmt = lambda self, t: f'{t/86400:.2f} days' if t > 172800 else f'{t/3600:.2f} hrs'
 
 	@classmethod
-	def parse_cslist(cls,uarg,full_set,dfl_set,desc):
+	def parse_cslist(cls, uarg, full_set, dfl_set, desc):
 
-		def make_list(m,func):
+		def make_list(m, func):
 			groups_lc = [set(e.lower() for e in gi.split(',')) for gi in m.groups()]
 			for group in groups_lc:
 				for e in group:
 					if e not in full_set_lc:
-						die(1,f'{e!r}: unrecognized {desc}')
+						die(1, f'{e!r}: unrecognized {desc}')
 			# display elements in order:
 			return [e for e in full_set if e.lower() in func(groups_lc)]
 
@@ -168,33 +165,31 @@ class BlocksInfo:
 		dfl_set_lc  = set(e.lower() for e in dfl_set)
 		cspat = r'(\w+(?:,\w+)*)'
 
-		for pat,func in (
-				( rf'{cspat}$',            lambda g: g[0] ),
-				( rf'\+{cspat}$',          lambda g: dfl_set_lc | g[0] ),
-				( rf'\-{cspat}$',          lambda g: dfl_set_lc - g[0] ),
-				( rf'\+{cspat}\-{cspat}$', lambda g: ( dfl_set_lc | g[0] ) - g[1] ),
-				( rf'\-{cspat}\+{cspat}$', lambda g: ( dfl_set_lc - g[0] ) | g[1] ),
-				( rf'all\-{cspat}$',       lambda g: full_set_lc - g[0] )
-			):
-			m = re.match(pat,uarg,re.ASCII|re.IGNORECASE)
+		for pat, func in (
+				(rf'{cspat}$',            lambda g: g[0]),
+				(rf'\+{cspat}$',          lambda g: dfl_set_lc | g[0]),
+				(rf'\-{cspat}$',          lambda g: dfl_set_lc - g[0]),
+				(rf'\+{cspat}\-{cspat}$', lambda g: (dfl_set_lc | g[0]) - g[1]),
+				(rf'\-{cspat}\+{cspat}$', lambda g: (dfl_set_lc - g[0]) | g[1]),
+				(rf'all\-{cspat}$',       lambda g: full_set_lc - g[0])):
+			m = re.match(pat, uarg, re.ASCII|re.IGNORECASE)
 			if m:
-				return make_list(m,func)
+				return make_list(m, func)
 		else:
-			die(1,f'{uarg}: invalid parameter')
+			die(1, f'{uarg}: invalid parameter')
 
-	def __init__(self,cfg,cmd_args,rpc):
+	def __init__(self, cfg, cmd_args, rpc):
 
-		def parse_cs_uarg(uarg,full_set,dfl_set,desc):
+		def parse_cs_uarg(uarg, full_set, dfl_set, desc):
 			return (
 				full_set if uarg == 'all' else [] if uarg == 'none' else
-				self.parse_cslist(uarg,full_set,dfl_set,desc)
-			)
+				self.parse_cslist(uarg, full_set, dfl_set, desc))
 
 		def get_fields():
-			return parse_cs_uarg(self.cfg.fields,list(self.fields),self.dfl_fields,'field')
+			return parse_cs_uarg(self.cfg.fields, list(self.fields), self.dfl_fields, 'field')
 
 		def get_stats():
-			return parse_cs_uarg(self.cfg.stats.lower(),self.all_stats,self.dfl_stats,'stat')
+			return parse_cs_uarg(self.cfg.stats.lower(), self.all_stats, self.dfl_stats, 'stat')
 
 		def parse_cmd_args(): # => (block_list, first, last, step)
 			match cmd_args:
@@ -217,7 +212,7 @@ class BlocksInfo:
 		from_satoshi = self.rpc.proto.coin_amt.satoshi
 		to_satoshi = 1 / from_satoshi
 
-		self.block_list,self.first,self.last,self.step = parse_cmd_args()
+		self.block_list, self.first, self.last, self.step = parse_cmd_args()
 
 		have_segwit = self.rpc.info('segwit_is_active')
 
@@ -228,35 +223,33 @@ class BlocksInfo:
 		self.stats_deps = {
 			'avg':      set(self.fields) - self.avg_stats_skip,
 			'col_avg':  set(self.fields) - self.avg_stats_skip,
-			'mini_avg': {'interval','size'} | ({'weight'} if have_segwit else set()),
-			'total':    {'interval','subsidy','totalfee','nTx','inputs','outputs','utxo_inc'},
+			'mini_avg': {'interval', 'size'} | ({'weight'} if have_segwit else set()),
+			'total':    {'interval', 'subsidy', 'totalfee', 'nTx', 'inputs', 'outputs', 'utxo_inc'},
 			'range':    {},
-			'diff':     {},
-		}
+			'diff':     {}}
 
 		self.fmt_funcs = {
-			'da': lambda arg: strftime('%Y-%m-%d %X',gmtime(arg)),
+			'da': lambda arg: strftime('%Y-%m-%d %X', gmtime(arg)),
 			'td': lambda arg: (
-				'-{:02}:{:02}'.format(abs(arg)//60,abs(arg)%60) if arg < 0 else
-				' {:02}:{:02}'.format(arg//60,arg%60) ),
+				'-{:02}:{:02}'.format(abs(arg)//60, abs(arg)%60) if arg < 0 else
+				' {:02}:{:02}'.format(arg//60, arg%60)),
 			'tf': lambda arg: '{:.8f}'.format(arg * from_satoshi),
 			'su': lambda arg: str(arg * from_satoshi).rstrip('0').rstrip('.'),
 			'fe': lambda arg: str(arg),
-			'di': lambda arg: '{:.2e}'.format(Decimal(arg)),
-		}
+			'di': lambda arg: '{:.2e}'.format(Decimal(arg))}
 
 		if self.cfg.coin == 'BCH':
 			self.fmt_funcs.update({
 				'su': lambda arg: str(arg).rstrip('0').rstrip('.'),
 				'fe': lambda arg: str(int(Decimal(arg) * to_satoshi)),
-				'tf': lambda arg: '{:.8f}'.format(Decimal(arg)),
-			})
+				'tf': lambda arg: '{:.8f}'.format(Decimal(arg))})
 
 		self.fnames = tuple(
-			[f for f in self.fields if self.fields[f].src == 'bh' or f == 'interval'] if self.cfg.header_info else
-			get_fields() if self.cfg.fields else
-			self.dfl_fields
-		)
+			[f for f in self.fields if self.fields[f].src == 'bh' or f == 'interval']
+				if self.cfg.header_info
+			else get_fields() if self.cfg.fields
+			else self.dfl_fields)
+
 		if self.cfg.miner_info and 'miner' not in self.fnames:
 			self.fnames += ('miner',)
 
@@ -266,15 +259,15 @@ class BlocksInfo:
 		if 'diff' in self.stats and not self.cfg.stats and self.last != self.tip:
 			self.stats.remove('diff')
 
-		if {'avg','col_avg'} <= set(self.stats) and self.cfg.stats_only:
+		if {'avg', 'col_avg'} <= set(self.stats) and self.cfg.stats_only:
 			self.stats.remove('col_avg')
 
-		if {'avg','mini_avg'} <= set(self.stats):
+		if {'avg', 'mini_avg'} <= set(self.stats):
 			self.stats.remove('mini_avg')
 
 		if self.cfg.full_stats:
 			add_fnames = {fname for sname in self.stats for fname in self.stats_deps[sname]}
-			self.fnames = tuple(f for f in self.fields if f in {'block'} | set(self.fnames) | add_fnames )
+			self.fnames = tuple(f for f in self.fields if f in {'block'} | set(self.fnames) | add_fnames)
 		else:
 			if 'col_avg' in self.stats and not self.fnames:
 				self.stats.remove('col_avg')
@@ -287,8 +280,7 @@ class BlocksInfo:
 		self.bs_keys = set(
 			[v.key1 for v in self.fvals if v.src == 'bs'] +
 			['total_size'] +
-			(['total_weight'] if have_segwit else [])
-		)
+			(['total_weight'] if have_segwit else []))
 
 		if 'miner' in self.fnames:
 			# capturing parens must contain only ASCII chars!
@@ -302,17 +294,16 @@ class BlocksInfo:
 				rb'([\x20-\x7e]{9,})',
 				rb'[/^]([a-zA-Z0-9&. #/-]{5,})',
 				rb'[/^]([_a-zA-Z0-9&. #/-]+)/',
-				rb'^\x03...\W{0,5}([\\_a-zA-Z0-9&. #/-]+)[/\\]',
-			)]
+				rb'^\x03...\W{0,5}([\\_a-zA-Z0-9&. #/-]+)[/\\]')]
 
-		self.block_data = namedtuple('block_data',self.fnames)
-		self.deps = { v.src for v in self.fvals }
+		self.block_data = namedtuple('block_data', self.fnames)
+		self.deps = {v.src for v in self.fvals}
 
-	def gen_fs(self,fnames,fill=[],fill_char='-',add_name=False):
+	def gen_fs(self, fnames, fill=[], fill_char='-', add_name=False):
 		for i in range(len(fnames)):
 			name = fnames[i]
-			ls = (' ','')[name in self.fs_lsqueeze + self.fs_lsqueeze2]
-			rs = (' ','')[name in self.fs_rsqueeze]
+			ls = (' ', '')[name in self.fs_lsqueeze + self.fs_lsqueeze2]
+			rs = (' ', '')[name in self.fs_rsqueeze]
 			if i < len(fnames) - 1 and fnames[i+1] in self.fs_lsqueeze2:
 				rs = ''
 			if i:
@@ -321,7 +312,7 @@ class BlocksInfo:
 						ls = ''
 						break
 			repl = (name if add_name else '') + ':' + (fill_char if name in fill else '')
-			yield (ls + self.fields[name].fs.replace(':',repl) + rs)
+			yield (ls + self.fields[name].fs.replace(':', repl) + rs)
 
 	def conv_blkspec(self, arg):
 		match arg:
@@ -347,22 +338,22 @@ class BlocksInfo:
 			case _:
 				return arg
 
-	def parse_rangespec(self,arg):
+	def parse_rangespec(self, arg):
 
-		p = RangeParser(self,arg)
+		p = RangeParser(self, arg)
 
-		from_tip   = p.parse('from_tip')
-		first,last = (self.tip-from_tip,None) if from_tip else p.parse('abs_range')
-		add1       = p.parse('add')
-		add2       = p.parse('add')
+		from_tip    = p.parse('from_tip')
+		first, last = (self.tip-from_tip, None) if from_tip else p.parse('abs_range')
+		add1        = p.parse('add')
+		add2        = p.parse('add')
 		p.finalize()
 
 		if add2 and last is not None:
-			die(1,f'{arg!r}: invalid range specifier')
+			die(1, f'{arg!r}: invalid range specifier')
 
-		nblocks,step = (add1,add2) if last is None else (None,add1)
+		nblocks, step = (add1, add2) if last is None else (None, add1)
 
-		if p.debug: msg(repr(self.range_data(first,last,from_tip,nblocks,step)))
+		if p.debug: msg(repr(self.range_data(first, last, from_tip, nblocks, step)))
 
 		if nblocks:
 			if first is None:
@@ -373,12 +364,12 @@ class BlocksInfo:
 		last  = self.conv_blkspec(last or first)
 
 		if p.debug:
-			msg(repr(self.range_data(first,last,from_tip,nblocks,step)))
+			msg(repr(self.range_data(first, last, from_tip, nblocks, step)))
 
 		if first > last:
-			die(1,f'{first}-{last}: invalid block range')
+			die(1, f'{first}-{last}: invalid block range')
 
-		return self.range_data(first,last,from_tip,nblocks,step)
+		return self.range_data(first, last, from_tip, nblocks, step)
 
 	async def process_blocks(self):
 
@@ -388,7 +379,7 @@ class BlocksInfo:
 
 		c = self.rpc
 
-		heights = self.block_list or range(self.first,self.last+1)
+		heights = self.block_list or range(self.first, self.last+1)
 		self.hdrs = await get_hdrs(heights)
 
 		if self.block_list:
@@ -397,8 +388,7 @@ class BlocksInfo:
 		else:
 			self.first_prev_hdr = (
 				self.hdrs[0] if heights[0] == 0 else
-				await c.call('getblockheader',await c.call('getblockhash',heights[0]-1))
-			)
+				await c.call('getblockheader', await c.call('getblockhash', heights[0]-1)))
 
 		self.t_cur = self.first_prev_hdr['time']
 		self.res = []
@@ -409,16 +399,16 @@ class BlocksInfo:
 			ret = await self.process_block(self.hdrs[n])
 			self.res.append(ret)
 			if self.fnames and not self.cfg.stats_only:
-				self.output_block(ret,n)
+				self.output_block(ret, n)
 
-	def output_block(self,data,n):
+	def output_block(self, data, n):
 		def gen():
-			for k,v in data._asdict().items():
+			for k, v in data._asdict().items():
 				func = self.fields[k].fmt_func
 				yield self.fmt_funcs[func](v) if func else v
 		Msg(self.fs.format(*gen()))
 
-	async def process_block(self,hdr):
+	async def process_block(self, hdr):
 
 		self.t_diff = hdr['time'] - self.t_cur
 		self.t_cur  = hdr['time']
@@ -426,14 +416,12 @@ class BlocksInfo:
 
 		blk_data = {
 			'bh': hdr,
-			'lo': { 'interval': self.t_diff }
-		}
+			'lo': {'interval': self.t_diff}}
 
 		if 'bs' in self.deps:
 			bs = (
 				self.genesis_stats if hdr['height'] == 0 else
-				await self.rpc.call('getblockstats',hdr['hash'],list(self.bs_keys))
-			)
+				await self.rpc.call('getblockstats', hdr['hash'], list(self.bs_keys)))
 			self.total_bytes += bs['total_size']
 			if 'total_weight' in bs:
 				self.total_weight += bs['total_weight']
@@ -446,14 +434,13 @@ class BlocksInfo:
 			for v in self.fvals:
 				yield (
 					blk_data[v.src][v.key1] if v.key2 is None else
-					blk_data[v.src][v.key1][v.key2]
-				)
+					blk_data[v.src][v.key1][v.key2])
 
 		return self.block_data(*gen())
 
-	async def get_miner_string(self,H):
-		tx0 = (await self.rpc.call('getblock',H))['tx'][0]
-		bd = await self.rpc.call('getrawtransaction',tx0,1)
+	async def get_miner_string(self, H):
+		tx0 = (await self.rpc.call('getblock', H))['tx'][0]
+		bd = await self.rpc.call('getrawtransaction', tx0, 1)
 		if type(bd) == tuple:
 			return '---'
 		else:
@@ -464,13 +451,12 @@ class BlocksInfo:
 				trmap_in = {
 					'\\': ' ',
 					'/': ' ',
-					',': ' ',
-				}
-				trmap = { ord(a):b for a,b in trmap_in.items() }
+					',': ' '}
+				trmap = {ord(a): b for a, b in trmap_in.items()}
 				for pat in self.miner_pats:
 					m = pat.search(cb)
 					if m:
-						return re.sub( r'\s+', ' ', m[1].decode().strip('^').translate(trmap).strip() )
+						return re.sub(r'\s+', ' ', m[1].decode().strip('^').translate(trmap).strip())
 			return ''
 
 	def print_header(self):
@@ -484,11 +470,11 @@ class BlocksInfo:
 			yield self.fs.format(*hdr1)
 		yield self.fs.format(*hdr2)
 
-	def process_stats(self,sname):
-		method = getattr(self,f'create_{sname}_stats',None)
-		return self.output_stats(method() if method else self.create_stats(sname),sname)
+	def process_stats(self, sname):
+		method = getattr(self, f'create_{sname}_stats', None)
+		return self.output_stats(method() if method else self.create_stats(sname), sname)
 
-	def fmt_stat_item(self,fs,s):
+	def fmt_stat_item(self, fs, s):
 		return fs.format(s) if type(fs) == str else fs(s)
 
 	async def output_stats(self, res, sname):
@@ -497,7 +483,7 @@ class BlocksInfo:
 			for d in data:
 				match d:
 					case [a, b]:
-						yield (indent + a).format(**{k:self.fmt_stat_item(*v) for k, v in b.items()})
+						yield (indent + a).format(**{k: self.fmt_stat_item(*v) for k, v in b.items()})
 					case [a, _, b, c]:
 						yield (indent + a).format(self.fmt_stat_item(b, c))
 					case str():
@@ -524,15 +510,14 @@ class BlocksInfo:
 					'range':   ('{}', self.hdrs[-1]['height'] - self.hdrs[0]['height'] + 1),
 					'elapsed': (self.t_fmt, elapsed),
 					'nBlocks': ('{}', total_blks),
-					'step':    ('{}', self.step),
-				}
-			)
-			if elapsed:
-				yield ( 'Start:      {}',       'start_date',  self.fmt_funcs['da'], self.hdrs[0]['time']  )
-				yield ( 'End:        {}',       'end_date',    self.fmt_funcs['da'], self.hdrs[-1]['time']  )
-				yield ( 'Avg BDI:    {} min',   'avg_bdi',     '{:.2f}',  elapsed / nblocks / 60 )
+					'step':    ('{}', self.step)})
 
-		return ( 'range', gen() )
+			if elapsed:
+				yield ('Start:      {}',       'start_date',  self.fmt_funcs['da'], self.hdrs[0]['time'])
+				yield ('End:        {}',       'end_date',    self.fmt_funcs['da'], self.hdrs[-1]['time'])
+				yield ('Avg BDI:    {} min',   'avg_bdi',     '{:.2f}',  elapsed / nblocks / 60)
+
+		return ('range', gen())
 
 	async def create_diff_stats(self):
 
@@ -541,18 +526,17 @@ class BlocksInfo:
 
 		tip_hdr = (
 			self.hdrs[-1] if self.hdrs[-1]['height'] == self.tip else
-			await c.call('getblockheader',await c.call('getblockhash',self.tip))
-		)
+			await c.call('getblockheader', await c.call('getblockhash', self.tip)))
 
 		min_sample_blks = 432 # ≈3 days
-		rel_hdr = await c.call('getblockheader',await c.call('getblockhash',self.tip-rel))
+		rel_hdr = await c.call('getblockheader', await c.call('getblockhash', self.tip-rel))
 
 		if rel >= min_sample_blks:
 			sample_blks = rel
-			bdi = ( tip_hdr['time'] - rel_hdr['time'] ) / rel
+			bdi = (tip_hdr['time'] - rel_hdr['time']) / rel
 		else:
-			sample_blks = min(min_sample_blks,self.tip)
-			start_hdr = await c.call('getblockheader',await c.call('getblockhash',self.tip-sample_blks))
+			sample_blks = min(min_sample_blks, self.tip)
+			start_hdr = await c.call('getblockheader', await c.call('getblockhash', self.tip-sample_blks))
 			diff_adj = Decimal(tip_hdr['difficulty']) / Decimal(start_hdr['difficulty'])
 			time1 = rel_hdr['time'] - start_hdr['time']
 			time2 = tip_hdr['time'] - rel_hdr['time']
@@ -560,7 +544,7 @@ class BlocksInfo:
 
 		rem = self.rpc.proto.diff_adjust_interval - rel
 
-		return ( 'difficulty', (
+		return ('difficulty', (
 			'Difficulty Statistics:',
 			('Current height:    {}', 'chain_tip', '{}', self.tip),
 			('Next diff adjust:  {next_diff_adjust} (in {blks_remaining} block%s [{time_remaining}])' % suf(rem),
@@ -593,105 +577,98 @@ class BlocksInfo:
 		def gen():
 			for field in self.fnames:
 				if field in self.avg_stats_skip:
-					yield ( field, ('{}','') )
+					yield (field, ('{}', ''))
 				else:
 					ret = self.sum_field_avg(field)
 					func = self.fields[field].fmt_func
-					yield ( field, ( (self.fmt_funcs[func] if func else '{}'), ret ))
+					yield (field, ((self.fmt_funcs[func] if func else '{}'), ret))
 		if not self.header_printed:
 			self.print_header()
-		fs = ''.join(self.gen_fs(self.fnames,fill=self.avg_stats_skip,add_name=True)).strip()
-		return ('column_averages', ('Column averages:', (fs, dict(gen())) ))
+		fs = ''.join(self.gen_fs(self.fnames, fill=self.avg_stats_skip, add_name=True)).strip()
+		return ('column_averages', ('Column averages:', (fs, dict(gen()))))
 
-	def avg_stats_data(self,data,spec_conv,spec_val):
+	def avg_stats_data(self, data, spec_conv, spec_val):
 		coin = self.rpc.proto.coin
 
 		return data(
 			hdr = 'Averages for processed blocks:',
 			func = self.sum_field_avg,
-			spec_sufs = { 'subsidy': f' {coin}', 'totalfee': f' {coin}' },
+			spec_sufs = {'subsidy': f' {coin}', 'totalfee': f' {coin}'},
 			spec_convs = {
-				'interval':    spec_conv(0,  lambda arg: secs_to_ms(arg)),
+				'interval':    spec_conv(0, lambda arg: secs_to_ms(arg)),
 				'utxo_inc':    spec_conv(-1, '{:<+}'),
-				'mb_per_hour': spec_conv(0,  '{}'),
-			},
+				'mb_per_hour': spec_conv(0, '{}')},
 			spec_vals = (
 				spec_val(
 					'mb_per_hour', 'MB/hr', 'interval',
 					lambda values: 'bs' in self.deps,
 					lambda values: (
 						'{:.4f}'.format((self.total_bytes / 10000) / (self.total_solve_time / 36))
-						if self.total_solve_time else 'N/A' ),
-				),
-			)
-		)
+						if self.total_solve_time else 'N/A')),
+				))
 
 	mini_avg_stats_data = avg_stats_data
 
-	def total_stats_data(self,data,spec_conv,spec_val):
+	def total_stats_data(self, data, spec_conv, spec_val):
 		coin = self.rpc.proto.coin
 		return data(
 			hdr = 'Totals for processed blocks:',
 			func = self.sum_field_total,
-			spec_sufs = { 'subsidy': f' {coin}', 'totalfee': f' {coin}', 'reward': f' {coin}' },
+			spec_sufs = {'subsidy': f' {coin}', 'totalfee': f' {coin}', 'reward': f' {coin}'},
 			spec_convs = {
-				'interval': spec_conv(0,  lambda arg: secs_to_dhms(arg)),
+				'interval': spec_conv(0, lambda arg: secs_to_dhms(arg)),
 				'utxo_inc': spec_conv(-1, '{:<+}'),
-				'reward':   spec_conv(0,  self.fmt_funcs['tf']),
-			},
+				'reward':   spec_conv(0, self.fmt_funcs['tf'])},
 			spec_vals = (
 				spec_val(
 					'reward', 'Reward', 'totalfee',
-					lambda values: {'subsidy','totalfee'} <= set(values),
-					lambda values: values['subsidy'] + values['totalfee']
-				),
-			)
-		)
+					lambda values: {'subsidy', 'totalfee'} <= set(values),
+					lambda values: values['subsidy'] + values['totalfee']),
+				))
 
-	async def create_stats(self,sname):
+	async def create_stats(self, sname):
 
 		def convert_stats_hdr(field):
 			v = self.fields[field]
-			return '{} {}'.format(v.hdr1.strip(), v.hdr2.strip()).replace('- ','') if v.hdr1 else v.hdr2.strip()
+			return '{} {}'.format(
+				v.hdr1.strip(), v.hdr2.strip()).replace('- ', '') if v.hdr1 else v.hdr2.strip()
 
-		d = getattr(self,f'{sname}_stats_data')(
-			namedtuple('stats_data',['hdr','func','spec_sufs','spec_convs','spec_vals']),
-			namedtuple('spec_conv',['width_adj','conv']),
-			namedtuple('spec_val',['name','lbl','insert_after','condition','code'])
-		)
+		d = getattr(self, f'{sname}_stats_data')(
+			namedtuple('stats_data', ['hdr', 'func', 'spec_sufs', 'spec_convs', 'spec_vals']),
+			namedtuple('spec_conv', ['width_adj', 'conv']),
+			namedtuple('spec_val', ['name', 'lbl', 'insert_after', 'condition', 'code']))
 
 		fnames = [n for n in self.fnames if n in self.stats_deps[sname]]
-		lbls   = {n:convert_stats_hdr(n) for n in fnames}
-		values = {n:d.func(n) for n in fnames}
-		col1_w = max((len(l) for l in lbls.values()),default=0) + 2
+		lbls   = {n: convert_stats_hdr(n) for n in fnames}
+		values = {n: d.func(n) for n in fnames}
+		col1_w = max((len(l) for l in lbls.values()), default=0) + 2
 
+		print(d.spec_vals)
 		for v in d.spec_vals:
+			print(v)
 			if v.condition(values):
 				try:    idx = fnames.index(v.insert_after) + 1
 				except: idx = 0
-				fnames.insert(idx,v.name)
+				fnames.insert(idx, v.name)
 				lbls[v.name] = v.lbl
 				values[v.name] = v.code(values)
 
 		def gen():
-			for n,fname in enumerate(fnames):
+			for n, fname in enumerate(fnames):
 				spec_conv = d.spec_convs.get(fname)
 				yield (
 					'{lbl:{wid}} {{}}{suf}'.format(
 						lbl = lbls[fname] + ':',
 						wid = col1_w + (spec_conv.width_adj if spec_conv else 0),
-						suf = d.spec_sufs.get(fname) or ''
-					),
+						suf = d.spec_sufs.get(fname) or ''),
 					fname,
 					spec_conv.conv if spec_conv else (
-						(lambda x: self.fmt_funcs[x] if x else '{}')(self.fields[fname].fmt_func)
-					),
-					values[fname]
-				)
+						(lambda x: self.fmt_funcs[x] if x else '{}')(self.fields[fname].fmt_func)),
+					values[fname])
 
-		return ( sname, (d.hdr,) + tuple(gen()) )
+		return (sname, (d.hdr,) + tuple(gen()))
 
-	def process_stats_pre(self,i):
+	def process_stats_pre(self, i):
 		if (self.fnames and not self.cfg.stats_only) or i != 0:
 			Msg('')
 
@@ -724,13 +701,12 @@ class BlocksInfo:
 		'totalfee': 0,
 		'txs': 1,
 		'utxo_increase': 1,
-		'utxo_size_inc': 117
-	}
+		'utxo_size_inc': 117}
 
 class JSONBlocksInfo(BlocksInfo):
 
-	def __init__(self,cfg,cmd_args,rpc):
-		super().__init__(cfg,cmd_args,rpc)
+	def __init__(self, cfg, cmd_args, rpc):
+		super().__init__(cfg, cmd_args, rpc)
 		if self.cfg.json_raw:
 			self.output_block = self.output_block_raw
 			self.fmt_stat_item = self.fmt_stat_item_raw
@@ -741,22 +717,22 @@ class JSONBlocksInfo(BlocksInfo):
 		await super().process_blocks()
 		Msg_r(']')
 
-	def output_block_raw(self,data,n):
-		Msg_r( (', ','')[n==0] + json.dumps(data._asdict(),cls=json_encoder) )
+	def output_block_raw(self, data, n):
+		Msg_r((',  ', '')[n==0] + json.dumps(data._asdict(), cls=json_encoder))
 
-	def output_block(self,data,n):
+	def output_block(self, data, n):
 		def gen():
-			for k,v in data._asdict().items():
+			for k, v in data._asdict().items():
 				func = self.fields[k].fmt_func
-				yield ( k, (self.fmt_funcs[func](v) if func else v) )
-		Msg_r( (', ','')[n==0] + json.dumps(dict(gen()),cls=json_encoder) )
+				yield (k, (self.fmt_funcs[func](v) if func else v))
+		Msg_r((', ', '')[n==0] + json.dumps(dict(gen()), cls=json_encoder))
 
 	def print_header(self): pass
 
-	def fmt_stat_item_raw(self,fs,s):
+	def fmt_stat_item_raw(self, fs, s):
 		return s
 
-	async def output_stats(self,res,sname):
+	async def output_stats(self, res, sname):
 
 		def gen(data):
 			for d in data:
@@ -771,10 +747,10 @@ class JSONBlocksInfo(BlocksInfo):
 					case _:
 						assert False, f'{d}: invalid stats data'
 
-		varname,data = await res
-		Msg_r(', "{}_data": {}'.format( varname, json.dumps(dict(gen(data)),cls=json_encoder) ))
+		varname, data = await res
+		Msg_r(', "{}_data": {}'.format(varname, json.dumps(dict(gen(data)), cls=json_encoder)))
 
-	def process_stats_pre(self,i): pass
+	def process_stats_pre(self, i): pass
 
 	def finalize_output(self):
 		Msg('}')

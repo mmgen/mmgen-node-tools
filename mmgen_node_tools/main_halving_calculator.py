@@ -28,7 +28,7 @@ from mmgen.util import async_run
 bdr_proj = 9.95
 
 opts_data = {
-	'sets': [('mined',True,'list',True)],
+	'sets': [('mined', True, 'list', True)],
 	'text': {
 		'desc': 'Estimate date(s) of future block subsidy halving(s)',
 		'usage':'[opts]',
@@ -41,7 +41,7 @@ opts_data = {
                     {bdr_proj:.5f} min)
 -s, --sample-size=N Block range to calculate block discovery interval for next
                     halving estimate (default: dynamically calculated)
-""" }
+"""}
 }
 
 cfg = Config(opts_data=opts_data)
@@ -53,14 +53,14 @@ def date(t):
 	return '{}-{:02}-{:02} {:02}:{:02}:{:02}'.format(*time.gmtime(t)[:6])
 
 def dhms(t):
-	t,neg = (-t,'-') if t < 0 else (t,' ')
+	t, neg = (-t, '-') if t < 0 else (t, ' ')
 	return f'{neg}{t//60//60//24} days, {t//60//60%24:02}:{t//60%60:02}:{t%60:02} h/m/s'
 
 def time_diff_warning(t_diff):
 	if abs(t_diff) > 60*60:
 		print('Warning: block tip time is {} {} clock time!'.format(
 			dhms(abs(t_diff)),
-			('behind','ahead of')[t_diff<0]))
+			('behind', 'ahead of')[t_diff<0]))
 
 async def main():
 
@@ -72,9 +72,9 @@ async def main():
 	tip = await c.call('getblockcount')
 	assert tip > 1, 'block tip must be > 1'
 	remaining = proto.halving_interval - tip % proto.halving_interval
-	sample_size = int(cfg.sample_size) if cfg.sample_size else min(tip-1,max(remaining,144))
+	sample_size = int(cfg.sample_size) if cfg.sample_size else min(tip-1, max(remaining, 144))
 
-	cur,old = await c.gathered_call('getblockstats',((tip,),(tip - sample_size,)))
+	cur, old = await c.gathered_call('getblockstats', ((tip,), (tip - sample_size,)))
 
 	clock_time = int(time.time())
 	time_diff_warning(clock_time - cur['time'])
@@ -98,8 +98,7 @@ async def main():
 			f'Current block discovery interval (over last {sample_size} blocks): {bdr/60:0.2f} min\n\n'
 			f'Current clock time (UTC):  {date(clock_time)}\n'
 			f'Est. halving date (UTC):   {date(t_next)}\n'
-			f'Est. time until halving:  {dhms(cur["time"] + t_rem - clock_time)}'
-		)
+			f'Est. time until halving:   {dhms(cur["time"] + t_rem - clock_time)}')
 
 	async def print_halvings():
 		halving_blocknums = [i*proto.halving_interval for i in range(proto.max_halvings+1)][1:]
@@ -108,13 +107,13 @@ async def main():
 		nhist = len(hist_halvings)
 		nSubsidy = int(proto.start_subsidy / proto.coin_amt.satoshi)
 
-		block0_hash = await c.call('getblockhash',0)
-		block0_date = (await c.call('getblock',block0_hash))['time']
+		block0_hash = await c.call('getblockhash', 0)
+		block0_date = (await c.call('getblock', block0_hash))['time']
 
 		def gen_data():
 			total_mined = 0
 			date = block0_date
-			for n,blk in enumerate(halving_blocknums):
+			for n, blk in enumerate(halving_blocknums):
 				mined = (nSubsidy >> n) * proto.halving_interval
 				if n == 0:
 					mined -= nSubsidy # subtract unspendable genesis block subsidy
@@ -123,13 +122,11 @@ async def main():
 				bdi = (
 					(hist_halvings[n]['time'] - date) / (proto.halving_interval * 60) if n < nhist
 					else bdr/60 if n == nhist
-					else bdr_proj
-				)
+					else bdr_proj)
 				date = (
 					hist_halvings[n]['time'] if n < nhist
-					else t_next + int((n - nhist) * halving_secs)
-				)
-				yield ( n, sub, blk, mined, total_mined, bdi, date )
+					else t_next + int((n - nhist) * halving_secs))
+				yield (n, sub, blk, mined, total_mined, bdi, date)
 				if sub == 0:
 					break
 
@@ -150,8 +147,7 @@ async def main():
 				e = 'BDI (mins)',
 				f = 'SUBSIDY ({proto.coin})',
 				g = f'MINED ({proto.coin})',
-				h = f'TOTAL MINED ({proto.coin})'
-			)
+				h = f'TOTAL MINED ({proto.coin})')
 			+ '\n'
 			+ fs.format(
 				a = '-' * 7,
@@ -159,22 +155,20 @@ async def main():
 				c = '-' * 19,
 				d = '-' * 2,
 				e = '-' * 10,
-				f = '-' * 13,
+				f = '-' * 17,
 				g = '-' * 17,
-				h = '-' * 17
-			)
+				h = '-' * 17)
 			+ '\n'
 			+ '\n'.join(fs.format(
-							a = n + 1,
-							b = blk,
-							c = date(t),
-							d = ' P' if n > nhist else '' if n < nhist else ' E',
-							e = f'{bdr:8.5f}',
-							f = proto.coin_amt(sub, from_unit='satoshi').fmt(2, prec=8),
-							g = proto.coin_amt(mined, from_unit='satoshi').fmt(8, prec=8),
-							h = proto.coin_amt(total_mined, from_unit='satoshi').fmt(8, prec=8)
-						) for n, sub, blk, mined, total_mined, bdr, t in gen_data())
-		)
+				a = n + 1,
+				b = blk,
+				c = date(t),
+				d = ' P' if n > nhist else '' if n < nhist else ' E',
+				e = f'{bdr:8.5f}',
+				f = proto.coin_amt(sub, from_unit='satoshi').fmt(2, prec=8),
+				g = proto.coin_amt(mined, from_unit='satoshi').fmt(8, prec=8),
+				h = proto.coin_amt(total_mined, from_unit='satoshi').fmt(8, prec=8)
+			) for n, sub, blk, mined, total_mined, bdr, t in gen_data()))
 
 	if cfg.list:
 		await print_halvings()

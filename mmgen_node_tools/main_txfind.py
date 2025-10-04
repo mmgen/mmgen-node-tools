@@ -23,7 +23,7 @@ mmnode-txfind: Find a transaction in the blockchain or mempool
 import sys
 
 from mmgen.cfg import Config
-from mmgen.util import msg,Msg,die,is_hex_str,async_run
+from mmgen.util import msg, Msg, die, is_hex_str, async_run
 
 opts_data = {
 	'text': {
@@ -48,29 +48,26 @@ msg_data = {
 	'normal': {
 		'none':  'Transaction not found in blockchain or mempool',
 		'block': 'Transaction is in block {b} ({c} confirmations)',
-		'mem':   'Transaction is in mempool',
-	},
+		'mem':   'Transaction is in mempool'},
 	'quiet': {
 		'none':  'None',
 		'block': '{b} {c}',
-		'mem':   'mempool',
-	}
-}
+		'mem':   'mempool'}}
 
 async def main(txid):
 	if len(txid) != 64 or not is_hex_str(txid):
-		die(2,f'{txid}: invalid transaction ID')
+		die(2, f'{txid}: invalid transaction ID')
 
 	if cfg.verbose:
 		msg(f'TxID: {txid}')
 
 	from mmgen.rpc import rpc_init
-	c = await rpc_init(cfg,ignore_wallet=True)
+	c = await rpc_init(cfg, ignore_wallet=True)
 
 	exitval = 0
 	try:
 		tip1 = await c.call('getblockcount')
-		ret = await c.call('getrawtransaction',txid,True)
+		ret = await c.call('getrawtransaction', txid, True)
 		tip2 = await c.call('getblockcount')
 	except:
 		Msg('\r' + msgs['none'])
@@ -90,6 +87,6 @@ cfg = Config(opts_data=opts_data)
 msgs = msg_data['quiet' if cfg.quiet else 'normal']
 
 if len(cfg._args) != 1:
-	die(1,'One transaction ID must be specified')
+	die(1, 'One transaction ID must be specified')
 
 sys.exit(async_run(cfg, main, args=[cfg._args[0]]))

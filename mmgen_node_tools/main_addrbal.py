@@ -16,7 +16,7 @@ import sys
 
 from mmgen.obj import CoinTxID
 from mmgen.cfg import Config
-from mmgen.util import msg,Msg,die,suf,make_timestr,async_run
+from mmgen.util import msg, Msg, die, suf, make_timestr, async_run
 from mmgen.color import red
 
 opts_data = {
@@ -32,16 +32,16 @@ opts_data = {
 	}
 }
 
-def do_output(proto,addr_data,blk_hdrs):
+def do_output(proto, addr_data, blk_hdrs):
 
 	col1w = len(str(len(addr_data)))
 	indent = ' ' * (col1w + 2)
 
-	for n,(addr,unspents) in enumerate(addr_data.items(),1):
+	for n, (addr, unspents) in enumerate(addr_data.items(), 1):
 		Msg(f'\n{n:{col1w}}) Address: {addr.hl(addr.view_pref)}')
 
 		if unspents:
-			heights = { u['height'] for u in unspents }
+			heights = {u['height'] for u in unspents}
 			Msg('{}Balance: {}'.format(
 				indent,
 				sum(proto.coin_amt(u['amount']) for u in unspents).hl2(unit=True, fs='{:,}'))),
@@ -50,22 +50,21 @@ def do_output(proto,addr_data,blk_hdrs):
 				red(str(len(unspents))),
 				suf(unspents),
 				red(str(len(heights))),
-				suf(heights) ))
+				suf(heights)))
 			blk_w = len(str(unspents[-1]['height']))
-			fs = '%s{:%s} {:19} {:64} {:4} {}' % (indent,max(5,blk_w))
-			Msg(fs.format('Block','Date','TxID','Vout','   Amount'))
+			fs = '%s{:%s} {:19} {:64} {:4} {}' % (indent, max(5, blk_w))
+			Msg(fs.format('Block', 'Date', 'TxID', 'Vout', '   Amount'))
 			for u in unspents:
 				Msg(fs.format(
 					u['height'],
-					make_timestr( blk_hdrs[u['height']]['time'] ),
+					make_timestr(blk_hdrs[u['height']]['time']),
 					CoinTxID(u['txid']).hl(),
 					red(str(u['vout']).rjust(4)),
-					proto.coin_amt(u['amount']).fmt(6, color=True, prec=8)
-				))
+					proto.coin_amt(u['amount']).fmt(6, color=True, prec=8)))
 		else:
 			Msg(f'{indent}No balance')
 
-def do_output_tabular(proto,addr_data,blk_hdrs):
+def do_output_tabular(proto, addr_data, blk_hdrs):
 
 	col1w = len(str(len(addr_data))) + 1
 	max_addrw = max(len(addr) for addr in addr_data)
@@ -75,9 +74,9 @@ def do_output_tabular(proto,addr_data,blk_hdrs):
 	lb_w = max(len(h) for h in lb_heights)
 
 	fs = (
-		' {n:>%s} {a} {u} {b:>%s} {t:19}  {B:>%s} {T:19} {A}' % (col1w,max(5,fb_w),max(4,lb_w))
+		' {n:>%s} {a} {u} {b:>%s} {t:19}  {B:>%s} {T:19} {A}' % (col1w, max(5, fb_w), max(4, lb_w))
 			if cfg.first_block else
-		' {n:>%s} {a} {u} {B:>%s} {T:19} {A}' % (col1w,max(4,lb_w)) )
+		' {n:>%s} {a} {u} {B:>%s} {T:19} {A}' % (col1w, max(4, lb_w)))
 
 	Msg('\n' + fs.format(
 		n = '',
@@ -87,20 +86,19 @@ def do_output_tabular(proto,addr_data,blk_hdrs):
 		t = 'Block',
 		B = 'Last',
 		T = 'Block',
-		A = '     Amount' ))
+		A = '     Amount'))
 
-	for n,(addr,unspents) in enumerate(addr_data.items(),1):
+	for n, (addr, unspents) in enumerate(addr_data.items(), 1):
 		if unspents:
 			Msg(fs.format(
 				n = str(n) + ')',
 				a = addr.fmt(addr.view_pref, max_addrw, color=True),
 				u = red(str(len(unspents)).rjust(5)),
 				b = unspents[0]['height'],
-				t = make_timestr( blk_hdrs[unspents[0]['height']]['time'] ),
+				t = make_timestr(blk_hdrs[unspents[0]['height']]['time']),
 				B = unspents[-1]['height'],
-				T = make_timestr( blk_hdrs[unspents[-1]['height']]['time'] ),
-				A = sum(proto.coin_amt(u['amount']) for u in unspents).fmt(7, color=True, prec=8)
-			))
+				T = make_timestr(blk_hdrs[unspents[-1]['height']]['time']),
+				A = sum(proto.coin_amt(u['amount']) for u in unspents).fmt(7, color=True, prec=8)))
 		else:
 			Msg(fs.format(
 				n = str(n) + ')',
@@ -110,61 +108,61 @@ def do_output_tabular(proto,addr_data,blk_hdrs):
 				t = '',
 				B = '-',
 				T = '',
-				A = '     -' ))
+				A = '     -'))
 
 async def main(req_addrs):
 
 	proto = cfg._proto
 
 	from mmgen.addr import CoinAddr
-	addrs = [CoinAddr(proto,addr) for addr in req_addrs]
+	addrs = [CoinAddr(proto, addr) for addr in req_addrs]
 
 	from mmgen.rpc import rpc_init
-	rpc = await rpc_init(cfg,ignore_wallet=True)
+	rpc = await rpc_init(cfg, ignore_wallet=True)
 
 	height = await rpc.call('getblockcount')
 	Msg(f'{proto.coin} {proto.network.upper()} [height {height}]')
 
 	from mmgen.proto.btc.misc import scantxoutset
-	res = await scantxoutset( cfg, rpc, [f'addr({addr})' for addr in addrs] )
+	res = await scantxoutset(cfg, rpc, [f'addr({addr})' for addr in addrs])
 
 	if not res['success']:
-		die(1,'UTXO scanning failed or was interrupted')
+		die(1, 'UTXO scanning failed or was interrupted')
 	elif not res['unspents']:
 		msg('Address has no balance' if len(addrs) == 1 else
-			'Addresses have no balances' )
+			'Addresses have no balances')
 	else:
 		addr_data = {k:[] for k in addrs}
 
 		if 'desc' in res['unspents'][0]:
 			import re
-			for unspent in sorted(res['unspents'],key=lambda x: x['height']):
-				addr = re.match('addr\((.*?)\)',unspent['desc'])[1]
+			for unspent in sorted(res['unspents'], key=lambda x: x['height']):
+				addr = re.match('addr\((.*?)\)', unspent['desc'])[1]
 				addr_data[addr].append(unspent)
 		else:
 			from mmgen.proto.btc.tx.base import decodeScriptPubKey
-			for unspent in sorted(res['unspents'],key=lambda x: x['height']):
+			for unspent in sorted(res['unspents'], key=lambda x: x['height']):
 				ds = decodeScriptPubKey(proto, unspent['scriptPubKey'])
 				addr_data[ds.addr].append(unspent)
 
 		good_addrs = len([v for v in addr_data.values() if v])
 
 		Msg('Total: {} in {} address{}'.format(
-			proto.coin_amt(res['total_amount']).hl2(unit=True,fs='{:,}'),
+			proto.coin_amt(res['total_amount']).hl2(unit=True, fs='{:,}'),
 			red(str(good_addrs)),
-			suf(good_addrs,'es')
-		))
+			suf(good_addrs, 'es')))
 
 		blk_heights = {i['height'] for i in res['unspents']}
 		blk_hashes = await rpc.batch_call('getblockhash', [(h,) for h in blk_heights])
 		blk_hdrs = await rpc.batch_call('getblockheader', [(H,) for H in blk_hashes])
 
-		(do_output_tabular if cfg.tabular else do_output)( proto, addr_data, dict(zip(blk_heights,blk_hdrs)) )
+		(do_output_tabular if cfg.tabular else do_output)(
+			proto, addr_data, dict(zip(blk_heights, blk_hdrs)))
 
-cfg = Config( opts_data=opts_data, init_opts={'rpc_backend':'aiohttp'} )
+cfg = Config(opts_data=opts_data, init_opts={'rpc_backend': 'aiohttp'})
 
 if len(cfg._args) < 1:
-	die(1,'This command requires at least one coin address argument')
+	die(1, 'This command requires at least one coin address argument')
 
 try:
 	async_run(cfg, main, args=[cfg._args])
