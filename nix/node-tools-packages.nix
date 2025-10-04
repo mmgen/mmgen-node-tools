@@ -6,7 +6,7 @@
     };
 
     python-packages = with python.pkgs; {
-        yahooquery = (pkgs.callPackage ./yahooquery.nix {}); # ticker
-        pyyaml = pyyaml;                                     # ticker
+        yahooquery = (callPackage ./yahooquery.nix {}); # ticker
+        pyyaml = pyyaml;                                # ticker
     };
 }

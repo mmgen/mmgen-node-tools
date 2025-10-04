@@ -1,37 +1,30 @@
 {
     lib,
-    pkgs,
-    fetchFromGitHub,
+    buildPythonPackage,
+    fetchPypi,
+    python,
 }:
-
-with pkgs.python312.pkgs;
 
 buildPythonPackage rec {
     pname = "yahooquery";
-    version = "2.3.7";
+    version = "2.4.1";
     pyproject = true;
 
-    disabled = pythonOlder "3.8.1";
-
-    src = fetchFromGitHub {
-        owner = "dpguthrie";
-        repo = "yahooquery";
-        rev = "refs/tags/v${version}";
-        hash = "sha256-Iyuni1SoTB6f7nNFhN5A8Gnv9kV78frjpqvvW8qd+/M=";
+    src = fetchPypi {
+        pname = "yahooquery";
+        version = version;
+        hash = "sha256-GQPGXq5qEtlelFAGNHkhbAeEbwE7riojkXkTUxt/rls=";
     };
 
-    patches = [ ./yahooquery-noversioning.patch ];
+    build-system = with python.pkgs; [ hatchling ];
 
-    build-system = [ poetry-core ];
-
-    dependencies = [
-       requests         # ^2.31.0
-       pandas           # ^2.0.3
-       requests-futures # ^1.0.1
-       tqdm             # ^4.65.0
-       lxml             # ^4.9.3
-       selenium         # {version = ^4.10.0, optional = true}
-       beautifulsoup4   # ^4.12.2
+    propagatedBuildInputs = with python.pkgs; [
+        (callPackage ./curl-cffi.nix {}) # >=0.10.0
+        pandas
+        requests-futures
+        tqdm
+        lxml
+        beautifulsoup4
     ];
 
     doCheck = false; # skip tests
