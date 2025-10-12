@@ -19,7 +19,7 @@ mmgen_node_tools.Ticker: Display price information for cryptocurrency and other 
 # Possible alternatives:
 # - https://min-api.cryptocompare.com/data/pricemultifull?fsyms=BTC,LTC&tsyms=USD,EUR
 
-import sys, os, re, time, datetime, json, yaml, random
+import os, re, time, datetime, json, yaml, random
 from subprocess import run, PIPE, CalledProcessError
 from decimal import Decimal
 from collections import namedtuple
@@ -149,20 +149,18 @@ class DataSource:
 			elif 'error' in data:
 				die(1, data['error'])
 
+			self.data = self.postprocess_data(data)
+
 			if use_cached_data:
+				self.json_text = None
 				if not cfg.quiet:
 					msg(f'Using cached data from {self.json_fn_disp}')
 			else:
-				if os.path.exists(self.json_fn):
-					os.rename(self.json_fn, self.json_fn + '.bak')
-				with open(self.json_fn, 'w') as fh:
-					fh.write(json_text)
-				if not cfg.quiet:
-					msg(f'JSON data cached to {self.json_fn_disp}')
-				if gcfg.download:
-					sys.exit(0)
+				self.json_text = json_text
+				if cache_data(self, no_overwrite=True):
+					self.json_text = None
 
-			return self.postprocess_data(data)
+			return self
 
 		def json_data_error_msg(self, json_text):
 			pass
@@ -393,14 +391,14 @@ def gen_data(data):
 
 		def cc():
 			nonlocal btcusd
-			for d in data['cc']:
+			for d in data['cc'].data:
 				if d['id'] == 'btc-bitcoin':
 					btcusd = Decimal(str(d['quotes']['USD']['price']))
 					break
 			else:
 				raise ValueError('malformed cryptocurrency data')
 			for k in ('id', 'symbol'):
-				for d in data['cc']:
+				for d in data['cc'].data:
 					if wants[k]:
 						if d[k] in wants[k]:
 							if d[k] in found[k]:
@@ -425,7 +423,7 @@ def gen_data(data):
 		def fi():
 			get_id = src_cls['fi'].get_id
 			conv_func = src_cls['fi'].conv_data
-			for k, v in data['fi'].items():
+			for k, v in data['fi'].data.items():
 				id = get_id(k, v)
 				if wants['id']:
 					if id in wants['id']:
@@ -451,7 +449,7 @@ def gen_data(data):
 		def hi():
 			ret = namedtuple('historical_closing_prices', ['close_1wk', 'close_4wks', 'close_1y'])
 			nonlocal hist_close
-			for k, v in data['hi'].items():
+			for k, v in data['hi'].data.items():
 				hist = tuple(v.values())
 				hist_close[k] = ret(hist[-2]['close'], hist[-5]['close'], hist[0]['close'])
 			return ()
@@ -489,9 +487,14 @@ def gen_data(data):
 			except Exception as e:
 				rmsg(f'Error in source data {data_type!r}: {e}')
 				parse_fail = True
+			else:
+				cache_data(data[data_type])
 
 	if parse_fail:
 		die(2, 'Invalid data encountered, exiting')
+
+	if gcfg.download:
+		return
 
 	check_assets_found(usr_wants, found)
 
@@ -517,6 +520,18 @@ def gen_data(data):
 		'price_usd': Decimal(1),
 		'price_btc': Decimal(1) / btcusd,
 		'last_updated': None})
+
+def cache_data(data_src, no_overwrite=False):
+	if data_src.json_text:
+		if os.path.exists(data_src.json_fn):
+			if no_overwrite:
+				return False
+			os.rename(data_src.json_fn, data_src.json_fn + '.bak')
+		with open(data_src.json_fn, 'w') as fh:
+			fh.write(data_src.json_text)
+		if not cfg.quiet:
+			msg(f'JSON data cached to {data_src.json_fn_disp}')
+		return True
 
 def main():
 
@@ -558,13 +573,16 @@ def main():
 		return
 
 	if gcfg.list_ids:
-		do_pager('\n'.join(e['id'] for e in src_data['cc']))
+		do_pager('\n'.join(e.data['id'] for e in src_data['cc']))
 		return
 
 	global now
 	now = 1659465400 if gcfg.test_suite else time.time() # 1659524400 1659445900
 
 	data = dict(gen_data(src_data))
+
+	if gcfg.download:
+		return
 
 	(do_pager if cfg.pager else Msg_r)(
 		'\n'.join(getattr(Ticker, cfg.clsname)(data).gen_output()) + '\n')
