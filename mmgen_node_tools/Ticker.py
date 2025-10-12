@@ -25,7 +25,7 @@ from decimal import Decimal
 from collections import namedtuple
 
 from mmgen.color import red, yellow, green, blue, orange, gray
-from mmgen.util import msg, msg_r, Msg, Msg_r, die, fmt, fmt_list, fmt_dict, list_gen, suf
+from mmgen.util import msg, msg_r, rmsg, Msg, Msg_r, die, fmt, fmt_list, fmt_dict, list_gen, suf
 from mmgen.ui import do_pager
 
 homedir = os.getenv('HOME')
@@ -389,6 +389,73 @@ def gen_data(data):
 		if error:
 			die(1, 'Missing data, exiting')
 
+	class process_data:
+
+		def cc():
+			nonlocal btcusd
+			for d in data['cc']:
+				if d['id'] == 'btc-bitcoin':
+					btcusd = Decimal(str(d['quotes']['USD']['price']))
+					break
+			else:
+				raise ValueError('malformed cryptocurrency data')
+			for k in ('id', 'symbol'):
+				for d in data['cc']:
+					if wants[k]:
+						if d[k] in wants[k]:
+							if d[k] in found[k]:
+								die(1, dup_sym_errmsg('cc', d[k]))
+							if not 'price_usd' in d:
+								d['price_usd'] = Decimal(str(d['quotes']['USD']['price']))
+								d['price_btc'] = Decimal(str(d['quotes']['USD']['price'])) / btcusd
+								d['percent_change_24h'] = d['quotes']['USD']['percent_change_24h']
+								d['percent_change_7d']  = d['quotes']['USD']['percent_change_7d']
+								d['percent_change_30d'] = d['quotes']['USD']['percent_change_30d']
+								d['percent_change_1y']  = d['quotes']['USD']['percent_change_1y']
+								d['last_updated'] = int(datetime.datetime.fromisoformat(
+									d['last_updated']).timestamp())
+							yield (d['id'], d)
+							found[k].add(d[k])
+							wants[k].remove(d[k])
+							if d[k] in usr_rate_assets_want[k]:
+								rate_assets[d['symbol']] = d # NB: using symbol instead of ID for key
+					else:
+						break
+
+		def fi():
+			get_id = src_cls['fi'].get_id
+			conv_func = src_cls['fi'].conv_data
+			for k, v in data['fi'].items():
+				id = get_id(k, v)
+				if wants['id']:
+					if id in wants['id']:
+						if not isinstance(v, dict):
+							die(2, str(v))
+						if id in found['id']:
+							die(1, dup_sym_errmsg('fi', id))
+						if hist := hist_close.get(k):
+							spot = v['regularMarketPrice']['raw']
+							v['pct_chg_1wk']  = (spot / hist.close_1wk  - 1) * 100
+							v['pct_chg_4wks'] = (spot / hist.close_4wks - 1) * 100 # 4 weeks ≈ 1 month
+							v['pct_chg_1y']   = (spot / hist.close_1y   - 1) * 100
+						else:
+							v['pct_chg_1wk'] = v['pct_chg_4wks'] = v['pct_chg_1y'] = None
+						yield (id, conv_func(id, v, btcusd))
+						found['id'].add(id)
+						wants['id'].remove(id)
+						if id in usr_rate_assets_want['id']: # NB: using symbol instead of ID for key:
+							rate_assets[k] = conv_func(id, v, btcusd)
+				else:
+					break
+
+		def hi():
+			ret = namedtuple('historical_closing_prices', ['close_1wk', 'close_4wks', 'close_1y'])
+			nonlocal hist_close
+			for k, v in data['hi'].items():
+				hist = tuple(v.values())
+				hist_close[k] = ret(hist[-2]['close'], hist[-5]['close'], hist[0]['close'])
+			return ()
+
 	rows_want = {
 		'id': {r.id for r in cfg.rows if isinstance(r, tuple) and r.id} - {'usd-us-dollar'},
 		'symbol': {r.symbol for r in cfg.rows if isinstance(r, tuple) and r.id is None} - {'USD'}}
@@ -411,62 +478,20 @@ def gen_data(data):
 
 	wants = {k: rows_want[k] | usr_wants[k] for k in ('id', 'symbol')}
 
-	for d in data['cc']:
-		if d['id'] == 'btc-bitcoin':
-			btcusd = Decimal(str(d['quotes']['USD']['price']))
-			break
+	btcusd = Decimal('1') # dummy
+	hist_close = {}
 
-	get_id = src_cls['fi'].get_id
-	conv_func = src_cls['fi'].conv_data
+	parse_fail = False
+	for data_type in ('cc', 'hi', 'fi'): # 'fi' depends on 'cc' and 'hi' so must go last
+		if data_type in data:
+			try:
+				yield from getattr(process_data, data_type)()
+			except Exception as e:
+				rmsg(f'Error in source data {data_type!r}: {e}')
+				parse_fail = True
 
-	for k, v in data['fi'].items():
-		id = get_id(k, v)
-		if wants['id']:
-			if id in wants['id']:
-				if not isinstance(v, dict):
-					die(2, str(v))
-				if id in found['id']:
-					die(1, dup_sym_errmsg('fi', id))
-				if m := data['hi'].get(k):
-					spot = v['regularMarketPrice']['raw']
-					hist = tuple(m.values())
-					v['pct_chg_1wk'], v['pct_chg_4wks'], v['pct_chg_1y'] = (
-						(spot / hist[-2]['close'] - 1) * 100,
-						(spot / hist[-5]['close'] - 1) * 100, # 4 weeks ≈ 1 month
-						(spot / hist[0]['close'] - 1) * 100)
-				else:
-					v['pct_chg_1wk'] = v['pct_chg_4wks'] = v['pct_chg_1y'] = None
-				yield (id, conv_func(id, v, btcusd))
-				found['id'].add(id)
-				wants['id'].remove(id)
-				if id in usr_rate_assets_want['id']:
-					rate_assets[k] = conv_func(id, v, btcusd) # NB: using symbol instead of ID for key
-		else:
-			break
-
-	for k in ('id', 'symbol'):
-		for d in data['cc']:
-			if wants[k]:
-				if d[k] in wants[k]:
-					if d[k] in found[k]:
-						die(1, dup_sym_errmsg('cc', d[k]))
-					if not 'price_usd' in d:
-						d['price_usd'] = Decimal(str(d['quotes']['USD']['price']))
-						d['price_btc'] = Decimal(str(d['quotes']['USD']['price'])) / btcusd
-						d['percent_change_24h'] = d['quotes']['USD']['percent_change_24h']
-						d['percent_change_7d']  = d['quotes']['USD']['percent_change_7d']
-						d['percent_change_30d'] = d['quotes']['USD']['percent_change_30d']
-						d['percent_change_1y']  = d['quotes']['USD']['percent_change_1y']
-						# .replace('Z','+00:00') -- Python 3.9 backport
-						d['last_updated'] = int(datetime.datetime.fromisoformat(
-							d['last_updated'].replace('Z', '+00:00')).timestamp())
-					yield (d['id'], d)
-					found[k].add(d[k])
-					wants[k].remove(d[k])
-					if d[k] in usr_rate_assets_want[k]:
-						rate_assets[d['symbol']] = d # NB: using symbol instead of ID for key
-			else:
-				break
+	if parse_fail:
+		die(2, 'Invalid data encountered, exiting')
 
 	check_assets_found(usr_wants, found)
 
