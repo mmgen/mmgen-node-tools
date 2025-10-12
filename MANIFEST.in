@@ -7,5 +7,6 @@ include test/test-release.d/*.sh
 include test/modtest_d/*.py
 include test/cmdtest_d/*.py
 include test/cmdtest_d/include/cfg.py
+include test/cmdtest_d/httpd/ticker.py
 include test/overlay/fakemods/mmgen_node_tools/*.py
 include test/ref/*/*

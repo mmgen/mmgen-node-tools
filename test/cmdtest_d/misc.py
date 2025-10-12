@@ -16,6 +16,7 @@ import os, shutil
 
 from ..include.common import cfg
 from .base import CmdTestBase
+from .httpd.ticker import TickerServer
 
 refdir = os.path.join('test','ref','ticker')
 
@@ -70,8 +71,9 @@ class CmdTestScripts(CmdTestBase):
 	),
 	'ticker': (
 		"'mmnode-ticker' script",
-		('ticker1',  'ticker [--help)'),
+		('ticker1',  'ticker [--help]'),
 		('ticker2',  'ticker (bad proxy)'),
+		('ticker2a', 'ticker [--download=cc]'),
 		('ticker3',  'ticker [--cached-data]'),
 		('ticker4',  'ticker [--cached-data --wide]'),
 		('ticker5',  'ticker [--cached-data --wide --adjust=-0.766] (usr cfg file)'),
@@ -90,9 +92,12 @@ class CmdTestScripts(CmdTestBase):
 	)
 	}
 
-	@property
-	def ticker_args(self):
-		return [ f'--cachedir={self.tmpdir}', '--proxy=http://asdfzxcv:32459' ]
+	def __init__(self, cfg, trunner, cfgs, spawn):
+		if not trunner:
+			return
+		self.ticker_server = TickerServer(cfg)
+		self.ticker_server.start()
+		return super().__init__(cfg, trunner, cfgs, spawn)
 
 	@property
 	def nt_datadir(self):
@@ -100,7 +105,6 @@ class CmdTestScripts(CmdTestBase):
 
 	def ticker_setup(self):
 		self.spawn('',msg_only=True)
-		shutil.copy2(os.path.join(refdir,'ticker.json'),self.tmpdir)
 		shutil.copy2(os.path.join(refdir,'ticker-finance.json'),self.tmpdir)
 		shutil.copy2(os.path.join(refdir,'ticker-finance-history.json'),self.tmpdir)
 		shutil.copy2(os.path.join(refdir,'ticker-btc.json'),self.tmpdir)
@@ -111,11 +115,15 @@ class CmdTestScripts(CmdTestBase):
 			args        = [],
 			expect_list = None,
 			cached_data = True,
+			add_opts    = [],
+			use_proxy   = True,
 			exit_val    = None):
 		t = self.spawn(
 			'mmnode-ticker',
 			(['--cached-data'] if cached_data else [])
-			+ self.ticker_args
+			+ [f'--cachedir={self.tmpdir}']
+			+ (['--proxy=http://asdfzxcv:32459'] if use_proxy else [])
+			+ add_opts
 			+ args,
 			exit_val = exit_val)
 		if expect_list:
@@ -134,6 +142,13 @@ class CmdTestScripts(CmdTestBase):
 			t.expect('Creating')
 		ret = t.expect(['proxy host could not be resolved', 'unexpected keyword'])
 		t.exit_val = 1 if ret else 3
+		return t
+
+	def ticker2a(self):
+		t = self.ticker(
+			add_opts = ['--proxy', '', '--download=cc'],
+			cached_data = False,
+			use_proxy = False)
 		return t
 
 	def ticker3(self):

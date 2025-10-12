@@ -175,6 +175,7 @@ class DataSource:
 		desc = 'CoinPaprika'
 		data_desc = 'cryptocurrency data'
 		api_host = 'api.coinpaprika.com'
+		api_proto = 'https'
 		ratelimit = 240
 		btc_ratelimit = 10
 		net_data_type = 'json'
@@ -192,11 +193,11 @@ class DataSource:
 		@property
 		def api_url(self):
 			return (
-				f'https://{self.api_host}/v1/tickers/btc-bitcoin'
+				f'{self.api_proto}://{self.api_host}/v1/tickers/btc-bitcoin'
 					if cfg.btc_only else
-				f'https://{self.api_host}/v1/tickers?limit={self.asset_limit}'
+				f'{self.api_proto}://{self.api_host}/v1/tickers?limit={self.asset_limit}'
 					if self.asset_limit else
-				f'https://{self.api_host}/v1/tickers')
+				f'{self.api_proto}://{self.api_host}/v1/tickers')
 
 		@property
 		def json_fn(self):
@@ -696,6 +697,11 @@ def make_cfg(gcfg_arg):
 
 	cmd_args = gcfg._args
 	cfg_in = get_cfg_in()
+
+	if gcfg.test_suite: # required for testing with overlay
+		from . import Ticker as this_mod
+		this_mod.src_cls = src_cls
+		this_mod.cfg_in = cfg_in
 
 	usr_rows    = parse_usr_asset_arg('add_rows')
 	usr_columns = parse_usr_asset_arg('add_columns', use_cf_file=True)

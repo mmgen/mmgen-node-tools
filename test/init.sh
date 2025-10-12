@@ -98,6 +98,7 @@ create_test_links() {
 		test/modtest.py                     hard
 		test/test-release.sh                symbolic
 		test/cmdtest_d/base.py              symbolic
+		test/cmdtest_d/httpd/__init__.py    symbolic
 		test/cmdtest_d/include/common.py    symbolic
 		test/cmdtest_d/include/runner.py    symbolic
 		test/cmdtest_d/include/group_mgr.py symbolic
