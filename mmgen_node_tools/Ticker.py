@@ -192,8 +192,10 @@ class DataSource:
 		@property
 		def api_url(self):
 			return (
-				f'https://{self.api_host}/v1/tickers/btc-bitcoin' if cfg.btc_only else
-				f'https://{self.api_host}/v1/tickers?limit={self.asset_limit}' if self.asset_limit else
+				f'https://{self.api_host}/v1/tickers/btc-bitcoin'
+					if cfg.btc_only else
+				f'https://{self.api_host}/v1/tickers?limit={self.asset_limit}'
+					if self.asset_limit else
 				f'https://{self.api_host}/v1/tickers')
 
 		@property

@@ -106,10 +106,17 @@ class CmdTestScripts(CmdTestBase):
 		shutil.copy2(os.path.join(refdir,'ticker-btc.json'),self.tmpdir)
 		return 'ok'
 
-	def ticker(self, args=[], expect_list=None, cached=True, exit_val=None):
+	def ticker(
+			self,
+			args        = [],
+			expect_list = None,
+			cached_data = True,
+			exit_val    = None):
 		t = self.spawn(
 			'mmnode-ticker',
-			(['--cached-data'] if cached else []) + self.ticker_args + args,
+			(['--cached-data'] if cached_data else [])
+			+ self.ticker_args
+			+ args,
 			exit_val = exit_val)
 		if expect_list:
 			t.match_expect_list(expect_list)
@@ -121,7 +128,7 @@ class CmdTestScripts(CmdTestBase):
 		return t
 
 	def ticker2(self):
-		t = self.ticker(cached=False)
+		t = self.ticker(cached_data=False)
 		if not cfg.skipping_deps:
 			t.expect('Creating')
 			t.expect('Creating')
@@ -136,7 +143,6 @@ class CmdTestScripts(CmdTestBase):
 				'USD BTC',
 				'BTC 23250.77 1.00000000 ETH 1659.66 0.07138094'
 			])
-
 
 	def ticker4(self):
 		return self.ticker(
