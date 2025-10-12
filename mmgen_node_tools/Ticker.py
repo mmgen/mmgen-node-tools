@@ -25,7 +25,7 @@ from decimal import Decimal
 from collections import namedtuple
 
 from mmgen.color import red, yellow, green, blue, orange, gray
-from mmgen.util import msg, msg_r, Msg, Msg_r, die, fmt, fmt_list, fmt_dict, list_gen
+from mmgen.util import msg, msg_r, Msg, Msg_r, die, fmt, fmt_list, fmt_dict, list_gen, suf
 from mmgen.ui import do_pager
 
 homedir = os.getenv('HOME')
@@ -99,18 +99,21 @@ class DataSource:
 			if not os.path.exists(cfg.cachedir):
 				os.makedirs(cfg.cachedir)
 
-			if not os.path.exists(self.json_fn):
-				open(self.json_fn, 'w').write('{}')
-
 			use_cached_data = cfg.cached_data and not gcfg.download
 
 			if use_cached_data:
 				data_type = 'json'
-				data_in = open(self.json_fn).read()
+				try:
+					data_in = open(self.json_fn).read()
+				except FileNotFoundError:
+					die(1, f'Cannot use cached data, because {self.json_fn_disp} does not exist')
 			else:
 				data_type = self.net_data_type
-				elapsed = int(time.time() - os.stat(self.json_fn).st_mtime)
-				if elapsed >= self.timeout or gcfg.testing:
+				try:
+					mtime = os.stat(self.json_fn).st_mtime
+				except FileNotFoundError:
+					mtime = 0
+				if (elapsed := int(time.time() - mtime)) >= self.timeout or gcfg.testing:
 					if gcfg.testing:
 						msg('')
 					self.fetch_delay()
@@ -148,14 +151,14 @@ class DataSource:
 
 			if use_cached_data:
 				if not cfg.quiet:
-					msg(f'Using cached data from ~/{self.json_fn_rel}')
+					msg(f'Using cached data from {self.json_fn_disp}')
 			else:
 				if os.path.exists(self.json_fn):
 					os.rename(self.json_fn, self.json_fn + '.bak')
 				with open(self.json_fn, 'w') as fh:
 					fh.write(json_text)
 				if not cfg.quiet:
-					msg(f'JSON data cached to ~/{self.json_fn_rel}')
+					msg(f'JSON data cached to {self.json_fn_disp}')
 				if gcfg.download:
 					sys.exit(0)
 
@@ -168,8 +171,8 @@ class DataSource:
 			return data
 
 		@property
-		def json_fn_rel(self):
-			return os.path.relpath(self.json_fn, start=homedir)
+		def json_fn_disp(self):
+			return '~/' + os.path.relpath(self.json_fn, start=homedir)
 
 	class coinpaprika(base):
 		desc = 'CoinPaprika'
@@ -186,8 +189,9 @@ class DataSource:
 			self.asset_limit = int(cfg.asset_limit or self.dfl_asset_limit)
 
 		def rate_limit_errmsg(self, elapsed):
+			rem = self.timeout - elapsed
 			return (
-				f'Rate limit exceeded!  Retry in {self.timeout-elapsed} seconds' +
+				f'Rate limit exceeded!  Retry in {rem} second{suf(rem)}' +
 				('' if cfg.btc_only else ', or use --cached-data or --btc'))
 
 		@property
@@ -270,7 +274,8 @@ class DataSource:
 				'last_updated': data['regularMarketTime']}
 
 		def rate_limit_errmsg(self, elapsed):
-			return f'Rate limit exceeded!  Retry in {self.timeout-elapsed} seconds, or use --cached-data'
+			rem = self.timeout - elapsed
+			return f'Rate limit exceeded!  Retry in {rem} second{suf(rem)}, or use --cached-data'
 
 		@property
 		def json_fn(self):
@@ -364,10 +369,10 @@ def gen_data(data):
 	checking for duplicates.
 	"""
 
-	def dup_sym_errmsg(dup_sym):
+	def dup_sym_errmsg(data_type, dup_sym):
 		return (
 			f'The symbol {dup_sym!r} is shared by the following assets:\n' +
-			'\n  ' + '\n  '.join(d['id'] for d in data['cc'] if d['symbol'] == dup_sym) +
+			'\n  ' + '\n  '.join(d['id'] for d in data[data_type].data if d['symbol'] == dup_sym) +
 			'\n\nPlease specify the asset by one of the full IDs listed above\n' +
 			f'instead of {dup_sym!r}')
 
@@ -421,7 +426,7 @@ def gen_data(data):
 				if not isinstance(v, dict):
 					die(2, str(v))
 				if id in found['id']:
-					die(1, dup_sym_errmsg(id))
+					die(1, dup_sym_errmsg('fi', id))
 				if m := data['hi'].get(k):
 					spot = v['regularMarketPrice']['raw']
 					hist = tuple(m.values())
@@ -444,7 +449,7 @@ def gen_data(data):
 			if wants[k]:
 				if d[k] in wants[k]:
 					if d[k] in found[k]:
-						die(1, dup_sym_errmsg(d[k]))
+						die(1, dup_sym_errmsg('cc', d[k]))
 					if not 'price_usd' in d:
 						d['price_usd'] = Decimal(str(d['quotes']['USD']['price']))
 						d['price_btc'] = Decimal(str(d['quotes']['USD']['price'])) / btcusd

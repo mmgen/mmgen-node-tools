@@ -21,7 +21,7 @@ class TickerServer(HTTPD):
 
 	def make_response_body(self, method, environ):
 
-		with open(f'test/ref/ticker/ticker.json') as fh:
+		with open('test/ref/ticker/ticker.json') as fh:
 			text = fh.read()
 
 		return text.encode()

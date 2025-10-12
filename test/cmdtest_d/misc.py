@@ -61,19 +61,16 @@ class CmdTestScripts(CmdTestBase):
 	color = True
 
 	cmd_group_in = (
-		('subgroup.ticker_setup', []),
-		('subgroup.ticker',       ['ticker_setup']),
+		('subgroup.ticker',       []),
 	)
 	cmd_subgroups = {
-	'ticker_setup': (
-		"setup for 'ticker' subgroup",
-		('ticker_setup', 'ticker setup'),
-	),
 	'ticker': (
 		"'mmnode-ticker' script",
 		('ticker1',  'ticker [--help]'),
+		('copy_files', 'copying JSON files to cache'),
+		('ticker1a', 'ticker [--download=cc] (early caching)'),
+		('ticker1b', 'ticker [--download=cc] (late caching)'),
 		('ticker2',  'ticker (bad proxy)'),
-		('ticker2a', 'ticker [--download=cc]'),
 		('ticker3',  'ticker [--cached-data]'),
 		('ticker4',  'ticker [--cached-data --wide]'),
 		('ticker5',  'ticker [--cached-data --wide --adjust=-0.766] (usr cfg file)'),
@@ -103,7 +100,7 @@ class CmdTestScripts(CmdTestBase):
 	def nt_datadir(self):
 		return os.path.join( cfg.data_dir_root, 'node_tools' )
 
-	def ticker_setup(self):
+	def copy_files(self):
 		self.spawn('',msg_only=True)
 		shutil.copy2(os.path.join(refdir,'ticker-finance.json'),self.tmpdir)
 		shutil.copy2(os.path.join(refdir,'ticker-finance-history.json'),self.tmpdir)
@@ -135,20 +132,23 @@ class CmdTestScripts(CmdTestBase):
 		t.expect('USAGE:')
 		return t
 
-	def ticker2(self):
-		t = self.ticker(cached_data=False)
-		if not cfg.skipping_deps:
-			t.expect('Creating')
-			t.expect('Creating')
-		ret = t.expect(['proxy host could not be resolved', 'unexpected keyword'])
-		t.exit_val = 1 if ret else 3
-		return t
-
-	def ticker2a(self):
+	def ticker1a(self, first_run=True):
 		t = self.ticker(
 			add_opts = ['--proxy', '', '--download=cc'],
 			cached_data = False,
 			use_proxy = False)
+		if first_run and not cfg.skipping_deps:
+			t.expect('Creating')
+			t.expect('Creating')
+		return t
+
+	def ticker1b(self):
+		return self.ticker1a(first_run=False)
+
+	def ticker2(self):
+		t = self.ticker(cached_data=False)
+		ret = t.expect(['proxy host could not be resolved', 'unexpected keyword'])
+		t.exit_val = 1 if ret else 3
 		return t
 
 	def ticker3(self):
