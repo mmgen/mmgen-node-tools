@@ -712,6 +712,12 @@ def make_cfg(gcfg_arg):
 					rows += (hdr,) + uniq_data
 		return rows
 
+	def get_cfg_var(name):
+		if name in gcfg._uopts:
+			return getattr(gcfg, name)
+		else:
+			return getattr(gcfg, name) or cfg_in.cfg.get(name)
+
 	cfg_tuple = namedtuple('global_cfg',[
 		'rows',
 		'usr_rows',
@@ -772,27 +778,24 @@ def make_cfg(gcfg_arg):
 		query       = query,
 		adjust      = (lambda x: (100 + x) / 100 if x else 1)(Decimal(gcfg.adjust or 0)),
 		clsname     = 'trading' if query else 'overview',
-		btc_only    = gcfg.btc or cfg_in.cfg.get('btc'),
-		add_prec    = parse_add_precision(gcfg.add_precision or cfg_in.cfg.get('add_precision')),
-		cachedir    = gcfg.cachedir or cfg_in.cfg.get('cachedir') or dfl_cachedir,
+		btc_only    = get_cfg_var('btc'),
+		add_prec    = parse_add_precision(get_cfg_var('add_precision')),
+		cachedir    = get_cfg_var('cachedir') or dfl_cachedir,
 		proxy       = proxy,
 		proxy2      = None if proxy2 == 'none' else '' if proxy2 == '' else (proxy2 or proxy),
 		portfolio   =
-			get_portfolio()
-				if cfg_in.portfolio
-				and (gcfg.portfolio or cfg_in.cfg.get('portfolio'))
-				and not query
+			get_portfolio() if cfg_in.portfolio and get_cfg_var('portfolio') and not query
 			else None,
-		percent_cols    = parse_percent_cols(gcfg.percent_cols or cfg_in.cfg.get('percent_cols')),
-		asset_limit     = gcfg.asset_limit     or cfg_in.cfg.get('asset_limit'),
-		cached_data     = gcfg.cached_data     or cfg_in.cfg.get('cached_data'),
-		elapsed         = gcfg.elapsed         or cfg_in.cfg.get('elapsed'),
-		name_labels     = gcfg.name_labels     or cfg_in.cfg.get('name_labels'),
-		pager           = gcfg.pager           or cfg_in.cfg.get('pager'),
-		thousands_comma = gcfg.thousands_comma or cfg_in.cfg.get('thousands_comma'),
-		update_time     = gcfg.update_time     or cfg_in.cfg.get('update_time'),
-		quiet           = gcfg.quiet           or cfg_in.cfg.get('quiet'),
-		verbose         = gcfg.verbose         or cfg_in.cfg.get('verbose'))
+		percent_cols    = parse_percent_cols(get_cfg_var('percent_cols')),
+		asset_limit     = get_cfg_var('asset_limit'),
+		cached_data     = get_cfg_var('cached_data'),
+		elapsed         = get_cfg_var('elapsed'),
+		name_labels     = get_cfg_var('name_labels'),
+		pager           = get_cfg_var('pager'),
+		thousands_comma = get_cfg_var('thousands_comma'),
+		update_time     = get_cfg_var('update_time'),
+		quiet           = get_cfg_var('quiet'),
+		verbose         = get_cfg_var('verbose'))
 
 def get_cfg_in():
 	ret = namedtuple('cfg_in_data', ['cfg', 'portfolio', 'cfg_file', 'portfolio_file'])
