@@ -25,7 +25,7 @@ opts_data = {
 	],
 	'text': {
 		'desc':  'Display prices for cryptocurrency and other assets',
-		'usage': '[opts] [TRADE_SPECIFIER]',
+		'usage': '[opts] [TRADE_SPECIFIER | ASSET_RANGE]',
 		'options': """
 -h, --help            Print this help message
 --, --longhelp        Print help message for long options (common options)
@@ -71,14 +71,19 @@ opts_data = {
 """,
 	'notes': """
 
-The script has two display modes: ‘overview’, the default, and ‘trading’, the
-latter being enabled when a TRADE_SPECIFIER argument (see below) is supplied
-on the command line.
+The script has three display modes: ‘overview’, enabled when no arguments are
+given on the command line; ‘trading’, when a TRADE_SPECIFIER argument (see
+below) is given; and ‘market cap’, when an ASSET_RANGE (see below) is given.
 
 Overview mode displays prices of all configured assets, and optionally the
-user’s portfolio, while trading mode displays the price of a given quantity
-of an asset in relation to other assets, optionally comparing an offered
-price to the spot price.
+user’s portfolio; trading mode displays the price of a given quantity of an
+asset in relation to other assets, optionally comparing an offered price to
+the spot price; and market cap mode lists a range of crypto assets selected
+by current market cap.
+
+The ASSET_RANGE argument can be either an integer N, in which case the top
+N assets by market cap will be displayed, or a hyphen-separated range N-M,
+in which case assets from N to M by market cap will be displayed.
 
 ASSETS consist of either a symbol (e.g. ‘xmr’) or full ID (see --list-ids)
 consisting of symbol plus label (e.g. ‘xmr-monero’).  In cases where the
@@ -198,6 +203,12 @@ $ mmnode-ticker usd:2700:btc:0.123
 # Calculate commission on an offer of 200000 INR for 0.1 BTC, compared to
 # current spot price, at specified USDINR rate:
 $ mmnode-ticker -n -c inr-indian-rupee:79.5 inr:200000:btc:0.1
+
+# Display top 20 crypto assets by market cap, adding a Euro column:
+$ mmnode-ticker -c eurusd=x 20
+
+# Same as above, specifying assets using a range:
+$ mmnode-ticker -c eurusd=x 1-20
 
 
 CONFIGURED ASSETS:

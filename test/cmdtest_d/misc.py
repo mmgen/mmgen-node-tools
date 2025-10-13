@@ -86,6 +86,10 @@ class CmdTestScripts(CmdTestBase):
 		('ticker15', 'ticker [--cached-data --wide --btc btc:2:usd:45000]'),
 		('ticker16', 'ticker [--cached-data --wide --elapsed -c eur,omr-omani-rial:2.59r'),
 		('ticker17', 'ticker [--cached-data --wide --elapsed -c bgn-bulgarian-lev:0.5113r:eur'),
+		('ticker18', 'ticker [--cached-data --widest --add-columns eurusd=x 10]'),
+		('ticker19', 'ticker [--cached-data 1-5]'),
+		('ticker20', 'ticker [--cached-data 2-5]'),
+		('ticker21', 'ticker [--cached-data 5-5]'),
 	)
 	}
 
@@ -319,3 +323,41 @@ class CmdTestScripts(CmdTestBase):
 				'BITCOIN 23,250.77 42,731.767 1.00000000',
 				'BULGARIAN LEV 0.54 1.000 0.00002340',
 			])
+
+	def ticker18(self):
+		return self.ticker(
+			['10'],
+			[
+				r'1\) BITCOIN 23,250.77 21,848.7527 1.00000000 \+18.96 \+15.61 \+11.15 \+0.89',
+				r'6\) ALGORAND 0.33 0.3120 0.00001428 \+16.47 \+13.57 \+9.69 \-0.82'
+			],
+			add_opts = ['--widest', '--add-columns=eurusd=x'])
+
+	def ticker19(self):
+		return self.ticker(
+			['1-5'],
+			[
+				'USD EURUSD=X BTC '
+				r'1\) BTC 23250.77 21848.7527 1.00000000',
+				r'5\) ADA 0.51 0.4764 0.00002180',
+			],
+			add_opts = ['--add-columns=eurusd=x'])
+
+	def ticker20(self):
+		return self.ticker(
+			['2-5'],
+			[
+				'USD EURUSD=X BTC '
+				r'2\) ETH 1659.66 1559.5846 0.07138094',
+				r'5\) ADA 0.51 0.4764 0.00002180',
+			],
+			add_opts = ['--add-columns=eurusd=x'])
+
+	def ticker21(self):
+		return self.ticker(
+			['5-5'],
+			[
+				'USD EURUSD=X BTC '
+				r'5\) ADA 0.51 0.4764 0.00002180',
+			],
+			add_opts = ['--add-columns=eurusd=x'])

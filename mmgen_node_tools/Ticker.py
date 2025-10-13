@@ -182,6 +182,7 @@ class DataSource:
 		net_data_type = 'json'
 		has_verbose = True
 		dfl_asset_limit = 2000
+		max_asset_idx = 1_000_000
 
 		def __init__(self):
 			self.asset_limit = int(cfg.asset_limit) if is_int(cfg.asset_limit) else self.dfl_asset_limit
@@ -576,6 +577,17 @@ def main():
 		do_pager('\n'.join(e['id'] for e in src_data['cc'].data))
 		return
 
+	global cfg
+
+	if cfg.asset_range:
+		func = DataSource.coinpaprika.parse_asset_id
+		n, m = cfg.asset_range
+		cfg = cfg._replace(rows =
+			tuple(func(e['id'], require_label=False) for e in src_data['cc'].data[n-1:m])
+			+ tuple(['-'])
+			+ tuple([func('btc-bitcoin', require_label=True)])
+			+ tuple(r for r in cfg.rows if isinstance(r, tuple) and r.source == 'fi'))
+
 	global now
 	now = 1659465400 if gcfg.test_suite else time.time() # 1659524400 1659445900
 
@@ -642,6 +654,21 @@ def make_cfg(gcfg_arg):
 			return ()
 		cf_opt = cfg_in.cfg.get(key,[]) if use_cf_file else []
 		return tuple(parse_parm(s) for s in (cl_opt.split(',') if cl_opt else cf_opt))
+
+	def parse_asset_range(s):
+		max_idx = DataSource.coinpaprika.max_asset_idx
+		match s.split('-'):
+			case [a, b] if is_int(a) and is_int(b):
+				n, m = (int(a), int(b))
+			case [a] if is_int(a):
+				n, m = (1, int(a))
+			case _:
+				return None
+		if n < 1 or m < 1 or n > m:
+			raise ValueError(f'‘{s}’: invalid asset range specifier')
+		if m > max_idx:
+			raise ValueError(f'‘{s}’: end of range must be <= {max_idx}')
+		return (n, m)
 
 	def parse_query_arg(s):
 		"""
@@ -731,6 +758,7 @@ def make_cfg(gcfg_arg):
 		'usr_rows',
 		'usr_columns',
 		'query',
+		'asset_range',
 		'adjust',
 		'clsname',
 		'btc_only',
@@ -767,8 +795,10 @@ def make_cfg(gcfg_arg):
 	if cmd_args := gcfg._args:
 		if len(cmd_args) > 1:
 			die(1, 'Only one command-line argument is allowed')
-		query = parse_query_arg(cmd_args[0])
+		asset_range = parse_asset_range(cmd_args[0])
+		query = None if asset_range else parse_query_arg(cmd_args[0])
 	else:
+		asset_range = None
 		query = None
 
 	usr_rows    = parse_usr_asset_arg('add_rows')
@@ -783,6 +813,7 @@ def make_cfg(gcfg_arg):
 		usr_rows    = usr_rows,
 		usr_columns = usr_columns,
 		query       = query,
+		asset_range = asset_range,
 		adjust      = (lambda x: (100 + x) / 100 if x else 1)(Decimal(gcfg.adjust or 0)),
 		clsname     = 'trading' if query else 'overview',
 		btc_only    = get_cfg_var('btc'),
@@ -930,12 +961,14 @@ class Ticker:
 			if self.table_hdr:
 				yield self.table_hdr
 
-			for row in self.rows:
+			for n, row in enumerate(self.rows, cfg.asset_range[0] if cfg.asset_range else 1):
 				if isinstance(row, str):
+					if cfg.asset_range:
+						return
 					yield ('-' * self.hl_wid)
 				else:
 					try:
-						yield self.fmt_row(self.data[row.id])
+						yield self.fmt_row(self.data[row.id], idx=n)
 					except KeyError:
 						yield gray(f'(no data for {row.id})')
 
@@ -989,7 +1022,7 @@ class Ticker:
 						d['price_usd'] / self.col_usd_prices[k]
 					) * self.adjust for k in self.col_ids}
 
-		def fmt_row(self, d, amt=None, amt_fmt=None):
+		def fmt_row(self, d, amt=None, amt_fmt=None, idx=None):
 
 			def fmt_pct(n):
 				return gray('     --') if n is None else (red, green)[n>=0](f'{n:+7.2f}')
@@ -1002,6 +1035,7 @@ class Ticker:
 					amt_fmt = amt_fmt.rstrip('0').rstrip('.')
 
 			return self.fs_num.format(
+				idx = idx,
 				lbl = self.create_label(d['id']) if cfg.name_labels else d['symbol'],
 				pc1 = fmt_pct(d.get('percent_change_7d')),
 				pc2 = fmt_pct(d.get('percent_change_24h')),
@@ -1060,6 +1094,15 @@ class Ticker:
 			self.fs_str2 = ''.join(col_fs_data[c].fs_str for c in cols2)
 			self.fs_num2 = ''.join(col_fs_data[c].fs_num for c in cols2)
 			self.hl_wid2 = sum(col_fs_data[c].wid for c in cols2)
+
+			if cfg.asset_range:
+				def get_col1_w():
+					for n, r in enumerate(cfg.rows):
+						if isinstance(r, str):
+							return len(str(n))
+				col1_w = get_col1_w()
+				self.fs_str = ' ' * (col1_w + 2) + self.fs_str
+				self.fs_num = f'{{idx:{col1_w}}}) ' + self.fs_num
 
 		@property
 		def table_hdr(self):
@@ -1136,7 +1179,7 @@ class Ticker:
 				self.fs_str += '  {upd}'
 				self.hl_wid += self.upd_w + 2
 
-		def fmt_row(self, d):
+		def fmt_row(self, d, idx=None):
 			id = d['id']
 			p = self.prices[id][self.asset.id] * self.asset.amount
 			p_spot = '{:{}{}.{}f}'.format(p, self.max_wid, self.comma, 8+cfg.add_prec)
