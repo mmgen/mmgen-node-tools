@@ -25,7 +25,7 @@ from decimal import Decimal
 from collections import namedtuple
 
 from mmgen.color import red, yellow, green, blue, orange, gray
-from mmgen.util import msg, msg_r, rmsg, Msg, Msg_r, die, fmt, fmt_list, fmt_dict, list_gen, suf
+from mmgen.util import msg, msg_r, rmsg, Msg, Msg_r, die, fmt, fmt_list, fmt_dict, list_gen, suf, is_int
 from mmgen.ui import do_pager
 
 homedir = os.getenv('HOME')
@@ -184,7 +184,7 @@ class DataSource:
 		dfl_asset_limit = 2000
 
 		def __init__(self):
-			self.asset_limit = int(cfg.asset_limit or self.dfl_asset_limit)
+			self.asset_limit = int(cfg.asset_limit) if is_int(cfg.asset_limit) else self.dfl_asset_limit
 
 		def rate_limit_errmsg(self, elapsed):
 			rem = self.timeout - elapsed
@@ -573,7 +573,7 @@ def main():
 		return
 
 	if gcfg.list_ids:
-		do_pager('\n'.join(e.data['id'] for e in src_data['cc']))
+		do_pager('\n'.join(e['id'] for e in src_data['cc'].data))
 		return
 
 	global now
@@ -606,7 +606,7 @@ def make_cfg(gcfg_arg):
 		return tuple(gen())
 
 	def parse_percent_cols(arg):
-		if arg is None:
+		if arg is None or arg.lower() in ('none', ''):
 			return []
 		res = arg.lower().split(',')
 		for s in res:
@@ -638,6 +638,8 @@ def make_cfg(gcfg_arg):
 				source  = parsed_id.source)
 
 		cl_opt = getattr(gcfg, key)
+		if (cl_opt or '').lower() in ('', 'none'):
+			return ()
 		cf_opt = cfg_in.cfg.get(key,[]) if use_cf_file else []
 		return tuple(parse_parm(s) for s in (cl_opt.split(',') if cl_opt else cf_opt))
 
@@ -718,6 +720,12 @@ def make_cfg(gcfg_arg):
 		else:
 			return getattr(gcfg, name) or cfg_in.cfg.get(name)
 
+	def get_proxy(name):
+		proxy = getattr(gcfg, name)
+		return (
+			'' if proxy == '' else 'none' if (proxy and proxy.lower() == 'none')
+			else (proxy or cfg_in.cfg.get(name)))
+
 	cfg_tuple = namedtuple('global_cfg',[
 		'rows',
 		'usr_rows',
@@ -749,7 +757,6 @@ def make_cfg(gcfg_arg):
 	src_cls = {k: getattr(DataSource, v) for k, v in DataSource.get_sources().items()}
 	fi_pat = src_cls['fi'].asset_id_pat
 
-	cmd_args = gcfg._args
 	cfg_in = get_cfg_in()
 
 	if gcfg.test_suite: # required for testing with overlay
@@ -757,15 +764,15 @@ def make_cfg(gcfg_arg):
 		this_mod.src_cls = src_cls
 		this_mod.cfg_in = cfg_in
 
+	if cmd_args := gcfg._args:
+		if len(cmd_args) > 1:
+			die(1, 'Only one command-line argument is allowed')
+		query = parse_query_arg(cmd_args[0])
+	else:
+		query = None
+
 	usr_rows    = parse_usr_asset_arg('add_rows')
 	usr_columns = parse_usr_asset_arg('add_columns', use_cf_file=True)
-	query       = parse_query_arg(cmd_args[0]) if cmd_args else None
-
-	def get_proxy(name):
-		proxy = getattr(gcfg, name)
-		return (
-			'' if proxy == '' else 'none' if (proxy and proxy.lower() == 'none')
-			else (proxy or cfg_in.cfg.get(name)))
 
 	proxy = get_proxy('proxy')
 	proxy = None if proxy == 'none' else proxy
