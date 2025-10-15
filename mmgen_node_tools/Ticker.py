@@ -42,6 +42,11 @@ percent_cols = {
 	'y': 'year',
 }
 
+class RowDict(dict):
+
+	def __iter__(self):
+		return (e for v in self.values() for e in v)
+
 class DataSource:
 
 	source_groups = [
@@ -286,7 +291,7 @@ class DataSource:
 
 		@property
 		def symbols(self):
-			return [r.symbol for r in cfg.rows if isinstance(r, tuple) and r.source == 'fi']
+			return [r.symbol for r in cfg.rows if r.source == 'fi']
 
 		def get_data_from_network(self):
 
@@ -456,8 +461,8 @@ def gen_data(data):
 			return ()
 
 	rows_want = {
-		'id': {r.id for r in cfg.rows if isinstance(r, tuple) and r.id} - {'usd-us-dollar'},
-		'symbol': {r.symbol for r in cfg.rows if isinstance(r, tuple) and r.id is None} - {'USD'}}
+		'id': {r.id for r in cfg.rows if r.id} - {'usd-us-dollar'},
+		'symbol': {r.symbol for r in cfg.rows if r.id is None} - {'USD'}}
 	usr_rate_assets = tuple(u.rate_asset for u in cfg.usr_rows + cfg.usr_columns if u.rate_asset)
 	usr_rate_assets_want = {
 		'id':     {a.id for a in usr_rate_assets if a.id},
@@ -580,13 +585,16 @@ def main():
 	global cfg
 
 	if cfg.asset_range:
-		func = DataSource.coinpaprika.parse_asset_id
 		n, m = cfg.asset_range
-		cfg = cfg._replace(rows =
-			tuple(func(e['id'], require_label=False) for e in src_data['cc'].data[n-1:m])
-			+ tuple(['-'])
-			+ tuple([func('btc-bitcoin', require_label=True)])
-			+ tuple(r for r in cfg.rows if isinstance(r, tuple) and r.source == 'fi'))
+		cfg = cfg._replace(rows = RowDict({
+			'asset_list':
+				tuple(
+					asset_tuple(e['symbol'], e['id'], source='cc')
+						for e in src_data['cc'].data[n-1:m]),
+			'extra':
+				tuple(
+					[asset_tuple('BTC', 'btc-bitcoin', source='cc')]
+					+ [r for r in cfg.rows if r.source == 'fi'])}))
 
 	global now
 	now = 1659465400 if gcfg.test_suite else time.time() # 1659524400 1659445900
@@ -606,14 +614,6 @@ def make_cfg(gcfg_arg):
 
 	def parse_asset_id(s, require_label=True):
 		return src_cls['fi' if re.match(fi_pat, s) else 'cc'].parse_asset_id(s, require_label)
-
-	def get_rows_from_cfg():
-		def gen():
-			for k, v in cfg_in.cfg['assets'].items():
-				yield k
-				for e in v:
-					yield parse_asset_id(e, require_label=True)
-		return tuple(gen())
 
 	def parse_percent_cols(arg):
 		if arg is None or arg.lower() in ('none', ''):
@@ -726,16 +726,18 @@ def make_cfg(gcfg_arg):
 		return int(s)
 
 	def create_rows():
-		rows = (
-			('trade_pair',) + query if (query and query.to_asset) else
-			('bitcoin', parse_asset_id('btc-bitcoin')) if gcfg.btc else
-			get_rows_from_cfg())
+		rows = RowDict(
+			{'trade_pair': query} if (query and query.to_asset) else
+			{'bitcoin': [parse_asset_id('btc-bitcoin')]} if gcfg.btc else
+			{k: tuple(parse_asset_id(e) for e in v) for k, v in cfg_in.cfg['assets'].items()})
 		for hdr, data in (
 				('user_uniq', get_usr_assets()),
 				('portfolio_uniq', get_portfolio_assets())):
 			if data:
 				if uniq_data := tuple(gen_uniq(data, 'symbol', preload=rows)):
-					rows += (hdr,) + uniq_data
+					rows[hdr] = uniq_data
+				else:
+					rows[hdr] = ()
 		return rows
 
 	def get_cfg_var(name):
@@ -872,12 +874,10 @@ class Ticker:
 				max(len(self.create_label(d['id'])) for d in data.values()) if cfg.name_labels else
 				max(len(d['symbol']) for d in data.values())))
 
-			self.rows = [row._replace(id=self.get_id(row)) if isinstance(row, tuple) else row
-				for row in cfg.rows]
+			self.rows = RowDict(
+				{k: tuple(row._replace(id=self.get_id(row)) for row in v) for k, v in cfg.rows.items()})
 			self.col_usd_prices = {k: self.data[k]['price_usd'] for k in self.col_ids}
-
-			self.prices = {row.id: self.get_row_prices(row.id)
-				for row in self.rows if isinstance(row, tuple) and row.id in data}
+			self.prices = {row.id: self.get_row_prices(row.id) for row in self.rows if row.id in data}
 			self.prices['usd-us-dollar'] = self.get_row_prices('usd-us-dollar')
 
 		def format_last_updated_col(self, cross_assets=()):
@@ -898,8 +898,6 @@ class Ticker:
 				min_t = None
 
 			for row in self.rows:
-				if not isinstance(row, tuple):
-					continue
 				try:
 					t = int(d[row.id]['last_updated'])
 				except TypeError as e:
@@ -964,24 +962,20 @@ class Ticker:
 
 			if cfg.asset_range:
 				yield '-' * self.hl_wid
-				for n, row in enumerate(self.rows, cfg.asset_range[0]):
-					if isinstance(row, str):
-						break
+				for n, row in enumerate(self.rows['asset_list'], cfg.asset_range[0]):
 					try:
 						yield self.fmt_row(self.data[row.id], idx=n)
 					except KeyError:
 						yield gray(f'(no data for {row.id})')
 			else:
-				for row in self.rows:
-					if isinstance(row, str):
-						if cfg.asset_range:
-							return
-						yield ('-' * self.hl_wid)
-					else:
-						try:
-							yield self.fmt_row(self.data[row.id])
-						except KeyError:
-							yield gray(f'(no data for {row.id})')
+				for rows in self.rows.values():
+					if rows:
+						yield '-' * self.hl_wid
+						for row in rows:
+							try:
+								yield self.fmt_row(self.data[row.id])
+							except KeyError:
+								yield gray(f'(no data for {row.id})')
 
 			yield '-' * self.hl_wid
 
@@ -1019,7 +1013,7 @@ class Ticker:
 			if cfg.portfolio:
 				self.prices['total'] = {col_id: sum(self.prices[row.id][col_id] * cfg.portfolio[row.id]
 					for row in self.rows
-						if isinstance(row, tuple) and row.id in cfg.portfolio and row.id in data)
+						if row.id in cfg.portfolio and row.id in data)
 							for col_id in self.col_ids}
 
 			self.init_prec()
@@ -1095,11 +1089,7 @@ class Ticker:
 						if b])
 
 			if cfg.asset_range:
-				def get_num_w():
-					for n, r in enumerate(cfg.rows):
-						if isinstance(r, str):
-							return len(str(n))
-				num_w = get_num_w()
+				num_w = len(str(len(cfg.rows['asset_list'])))
 				col_fs_data.update({
 					'idx': fd(' ' * (num_w + 2), f'{{idx:{num_w}}}) ', num_w + 2)})
 				cols = ['idx'] + cols
