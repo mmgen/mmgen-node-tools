@@ -233,7 +233,7 @@ class DataSource:
 			return [data] if cfg.btc_only else data
 
 		@staticmethod
-		def parse_asset_id(s, require_label):
+		def parse_asset_id(s, require_label=True):
 			sym, label = (*s.split('-', 1), None)[:2]
 			if require_label and not label:
 				die(1, f'{s!r}: asset label is missing')
@@ -314,7 +314,7 @@ class DataSource:
 			return ticker.price
 
 		@staticmethod
-		def parse_asset_id(s, require_label):
+		def parse_asset_id(s, require_label=True):
 			return asset_tuple(
 				symbol = s.upper(),
 				id     = s.lower(),
@@ -604,7 +604,7 @@ def make_cfg(gcfg_arg):
 	query_tuple = namedtuple('query', ['asset', 'to_asset'])
 	asset_data  = namedtuple('asset_data', ['symbol', 'id', 'amount', 'rate', 'rate_asset', 'source'])
 
-	def parse_asset_id(s, require_label=False):
+	def parse_asset_id(s, require_label=True):
 		return src_cls['fi' if re.match(fi_pat, s) else 'cc'].parse_asset_id(s, require_label)
 
 	def get_rows_from_cfg():
@@ -634,7 +634,7 @@ def make_cfg(gcfg_arg):
 			ss = s.split(':')
 			assert len(ss) in (1, 2, 3), f'{s}: malformed argument'
 			asset_id, rate, rate_asset = (*ss, None, None)[:3]
-			parsed_id = parse_asset_id(asset_id)
+			parsed_id = parse_asset_id(asset_id, require_label=False)
 
 			return asset_data(
 				symbol = parsed_id.symbol,
@@ -644,7 +644,7 @@ def make_cfg(gcfg_arg):
 					None if rate is None else
 					1 / Decimal(rate[:-1]) if rate.lower().endswith('r') else
 					Decimal(rate)),
-				rate_asset = parse_asset_id(rate_asset) if rate_asset else None,
+				rate_asset = parse_asset_id(rate_asset, require_label=False) if rate_asset else None,
 				source  = parsed_id.source)
 
 		cl_opt = getattr(gcfg, key)
@@ -673,7 +673,7 @@ def make_cfg(gcfg_arg):
 		asset_id:amount[:to_asset_id[:to_amount]]
 		"""
 		def parse_query_asset(asset_id, amount):
-			parsed_id = parse_asset_id(asset_id)
+			parsed_id = parse_asset_id(asset_id, require_label=False)
 			return asset_data(
 				symbol = parsed_id.symbol,
 				id     = parsed_id.id,
@@ -706,7 +706,7 @@ def make_cfg(gcfg_arg):
 
 	def get_portfolio_assets():
 		if cfg_in.portfolio and gcfg.portfolio:
-			ret = (parse_asset_id(e, require_label=True) for e in cfg_in.portfolio)
+			ret = (parse_asset_id(e) for e in cfg_in.portfolio)
 			return tuple(e for e in ret if (not gcfg.btc) or e.symbol == 'BTC')
 		else:
 			return ()
