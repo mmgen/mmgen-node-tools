@@ -244,9 +244,9 @@ from . import Ticker
 
 gcfg = Config(opts_data=opts_data, caller_post_init=True)
 
-Ticker.make_cfg(gcfg)
+src_cls, cfg_in = Ticker.make_cfg(gcfg)
 
-from .Ticker import dfl_cachedir, homedir, DataSource, assets_list_gen, cfg_in, src_cls
+from .Ticker import dfl_cachedir, homedir, DataSource, assets_list_gen
 
 gcfg._post_init()
 

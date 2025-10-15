@@ -607,12 +607,10 @@ def make_cfg(gcfg_arg):
 	def parse_asset_id(s, require_label=False):
 		return src_cls['fi' if re.match(fi_pat, s) else 'cc'].parse_asset_id(s, require_label)
 
-	def get_rows_from_cfg(add_data=None):
+	def get_rows_from_cfg():
 		def gen():
-			for n, (k, v) in enumerate(cfg_in.cfg['assets'].items()):
+			for k, v in cfg_in.cfg['assets'].items():
 				yield k
-				if add_data and k in add_data:
-					v += tuple(add_data[k])
 				for e in v:
 					yield parse_asset_id(e, require_label=True)
 		return tuple(gen())
@@ -650,7 +648,7 @@ def make_cfg(gcfg_arg):
 				source  = parsed_id.source)
 
 		cl_opt = getattr(gcfg, key)
-		if (cl_opt or '').lower() in ('', 'none'):
+		if cl_opt is None or cl_opt.lower() in ('none', ''):
 			return ()
 		cf_opt = cfg_in.cfg.get(key,[]) if use_cf_file else []
 		return tuple(parse_parm(s) for s in (cl_opt.split(',') if cl_opt else cf_opt))
@@ -702,15 +700,16 @@ def make_cfg(gcfg_arg):
 
 	def get_usr_assets():
 		return (
-			'user_added',
-			usr_rows +
-			(tuple(asset for asset in query if asset) if query else ()) +
-			usr_columns)
+			usr_rows
+			+ (tuple(asset for asset in query if asset) if query else ())
+			+ usr_columns)
 
-	def get_portfolio_assets(ret=()):
+	def get_portfolio_assets():
 		if cfg_in.portfolio and gcfg.portfolio:
 			ret = (parse_asset_id(e, require_label=True) for e in cfg_in.portfolio)
-		return ('portfolio', tuple(e for e in ret if (not gcfg.btc) or e.symbol == 'BTC'))
+			return tuple(e for e in ret if (not gcfg.btc) or e.symbol == 'BTC')
+		else:
+			return ()
 
 	def get_portfolio():
 		return {k: Decimal(v) for k, v in cfg_in.portfolio.items()
@@ -730,14 +729,12 @@ def make_cfg(gcfg_arg):
 		rows = (
 			('trade_pair',) + query if (query and query.to_asset) else
 			('bitcoin', parse_asset_id('btc-bitcoin')) if gcfg.btc else
-			get_rows_from_cfg(add_data={'fiat':['usd-us-dollar']} if gcfg.add_columns else None))
-
+			get_rows_from_cfg())
 		for hdr, data in (
-				(get_usr_assets(),) if query else
-				(get_usr_assets(), get_portfolio_assets())):
+				('user_uniq', get_usr_assets()),
+				('portfolio_uniq', get_portfolio_assets())):
 			if data:
-				uniq_data = tuple(gen_uniq(data, 'symbol', preload=rows))
-				if uniq_data:
+				if uniq_data := tuple(gen_uniq(data, 'symbol', preload=rows)):
 					rows += (hdr,) + uniq_data
 		return rows
 
@@ -787,11 +784,6 @@ def make_cfg(gcfg_arg):
 
 	cfg_in = get_cfg_in()
 
-	if gcfg.test_suite: # required for testing with overlay
-		from . import Ticker as this_mod
-		this_mod.src_cls = src_cls
-		this_mod.cfg_in = cfg_in
-
 	if cmd_args := gcfg._args:
 		if len(cmd_args) > 1:
 			die(1, 'Only one command-line argument is allowed')
@@ -808,6 +800,13 @@ def make_cfg(gcfg_arg):
 	proxy = None if proxy == 'none' else proxy
 	proxy2 = get_proxy('proxy2')
 
+	portfolio = (
+		get_portfolio() if cfg_in.portfolio and get_cfg_var('portfolio') and not query
+		else None)
+
+	if portfolio and asset_range:
+		die(1, '--portfolio not supported in market cap view')
+
 	cfg = cfg_tuple(
 		rows        = create_rows(),
 		usr_rows    = usr_rows,
@@ -821,9 +820,7 @@ def make_cfg(gcfg_arg):
 		cachedir    = get_cfg_var('cachedir') or dfl_cachedir,
 		proxy       = proxy,
 		proxy2      = None if proxy2 == 'none' else '' if proxy2 == '' else (proxy2 or proxy),
-		portfolio   =
-			get_portfolio() if cfg_in.portfolio and get_cfg_var('portfolio') and not query
-			else None,
+		portfolio   = portfolio,
 		percent_cols    = parse_percent_cols(get_cfg_var('percent_cols')),
 		asset_limit     = get_cfg_var('asset_limit'),
 		cached_data     = get_cfg_var('cached_data'),
@@ -834,6 +831,8 @@ def make_cfg(gcfg_arg):
 		update_time     = get_cfg_var('update_time'),
 		quiet           = get_cfg_var('quiet'),
 		verbose         = get_cfg_var('verbose'))
+
+	return (src_cls, cfg_in)
 
 def get_cfg_in():
 	ret = namedtuple('cfg_in_data', ['cfg', 'portfolio', 'cfg_file', 'portfolio_file'])
@@ -871,7 +870,7 @@ class Ticker:
 
 			self.col1_wid = max(len('TOTAL'), (
 				max(len(self.create_label(d['id'])) for d in data.values()) if cfg.name_labels else
-				max(len(d['symbol']) for d in data.values()))) + 1
+				max(len(d['symbol']) for d in data.values())))
 
 			self.rows = [row._replace(id=self.get_id(row)) if isinstance(row, tuple) else row
 				for row in cfg.rows]
@@ -881,7 +880,7 @@ class Ticker:
 				for row in self.rows if isinstance(row, tuple) and row.id in data}
 			self.prices['usd-us-dollar'] = self.get_row_prices('usd-us-dollar')
 
-		def format_last_update_col(self, cross_assets=()):
+		def format_last_updated_col(self, cross_assets=()):
 
 			if cfg.elapsed:
 				from mmgen.util2 import format_elapsed_hr
@@ -899,19 +898,20 @@ class Ticker:
 				min_t = None
 
 			for row in self.rows:
-				if isinstance(row, tuple):
-					try:
-						t = int(d[row.id]['last_updated'])
-					except TypeError as e:
-						d[row.id]['last_updated_fmt'] = gray('--' if 'NoneType' in str(e) else str(e))
-					except KeyError as e:
-						msg(str(e))
-						pass
-					else:
-						t_fmt = d[row.id]['last_updated_fmt'] = fmt_func(
-							(min(t, min_t) if min_t else t),
-							now = now)
-						max_w = max(len(t_fmt), max_w)
+				if not isinstance(row, tuple):
+					continue
+				try:
+					t = int(d[row.id]['last_updated'])
+				except TypeError as e:
+					d[row.id]['last_updated_fmt'] = gray('--' if 'NoneType' in str(e) else str(e))
+				except KeyError as e:
+					msg(str(e))
+					pass
+				else:
+					t_fmt = d[row.id]['last_updated_fmt'] = fmt_func(
+						(min(t, min_t) if min_t else t),
+						now = now)
+					max_w = max(len(t_fmt), max_w)
 
 			self.upd_w = max_w
 
@@ -924,8 +924,9 @@ class Ticker:
 			if asset.id:
 				return asset.id
 			else:
+				m = asset.symbol
 				for d in self.data.values():
-					if d['symbol'] == asset.symbol:
+					if m == d['symbol']:
 						return d['id']
 
 		def create_label(self, id):
@@ -961,16 +962,26 @@ class Ticker:
 			if self.table_hdr:
 				yield self.table_hdr
 
-			for n, row in enumerate(self.rows, cfg.asset_range[0] if cfg.asset_range else 1):
-				if isinstance(row, str):
-					if cfg.asset_range:
-						return
-					yield ('-' * self.hl_wid)
-				else:
+			if cfg.asset_range:
+				yield '-' * self.hl_wid
+				for n, row in enumerate(self.rows, cfg.asset_range[0]):
+					if isinstance(row, str):
+						break
 					try:
 						yield self.fmt_row(self.data[row.id], idx=n)
 					except KeyError:
 						yield gray(f'(no data for {row.id})')
+			else:
+				for row in self.rows:
+					if isinstance(row, str):
+						if cfg.asset_range:
+							return
+						yield ('-' * self.hl_wid)
+					else:
+						try:
+							yield self.fmt_row(self.data[row.id])
+						except KeyError:
+							yield gray(f'(no data for {row.id})')
 
 			yield '-' * self.hl_wid
 
@@ -1003,7 +1014,7 @@ class Ticker:
 
 			super().__init__(data)
 
-			self.format_last_update_col()
+			self.format_last_updated_col()
 
 			if cfg.portfolio:
 				self.prices['total'] = {col_id: sum(self.prices[row.id][col_id] * cfg.portfolio[row.id]
@@ -1072,9 +1083,9 @@ class Ticker:
 			) for k in self.col_ids}
 
 			cols = (
-				['label', 'usd-us-dollar'] +
-				[asset.id for asset in self.usr_col_assets] +
-				[a for a, b in (
+				['label', 'usd-us-dollar']
+				+ [asset.id for asset in self.usr_col_assets]
+				+ [a for a, b in (
 					('btc-bitcoin',  not cfg.btc_only),
 					('pct1y',       'y' in cfg.percent_cols),
 					('pct1m',       'm' in cfg.percent_cols),
@@ -1082,6 +1093,17 @@ class Ticker:
 					('pct1d',       'd' in cfg.percent_cols),
 					('update_time', cfg.update_time))
 						if b])
+
+			if cfg.asset_range:
+				def get_num_w():
+					for n, r in enumerate(cfg.rows):
+						if isinstance(r, str):
+							return len(str(n))
+				num_w = get_num_w()
+				col_fs_data.update({
+					'idx': fd(' ' * (num_w + 2), f'{{idx:{num_w}}}) ', num_w + 2)})
+				cols = ['idx'] + cols
+
 			cols2 = list(cols)
 			if cfg.update_time:
 				cols2.pop()
@@ -1094,15 +1116,6 @@ class Ticker:
 			self.fs_str2 = ''.join(col_fs_data[c].fs_str for c in cols2)
 			self.fs_num2 = ''.join(col_fs_data[c].fs_num for c in cols2)
 			self.hl_wid2 = sum(col_fs_data[c].wid for c in cols2)
-
-			if cfg.asset_range:
-				def get_col1_w():
-					for n, r in enumerate(cfg.rows):
-						if isinstance(r, str):
-							return len(str(n))
-				col1_w = get_col1_w()
-				self.fs_str = ' ' * (col1_w + 2) + self.fs_str
-				self.fs_num = f'{{idx:{col1_w}}}) ' + self.fs_num
 
 		@property
 		def table_hdr(self):
@@ -1152,7 +1165,7 @@ class Ticker:
 			for a in self.usr_col_assets:
 				self.prices[a.id]['usd-us-dollar'] = data[a.id]['price_usd']
 
-			self.format_last_update_col(cross_assets=self.usr_col_assets)
+			self.format_last_updated_col(cross_assets=self.usr_col_assets)
 
 			self.init_prec()
 			self.init_fs()
