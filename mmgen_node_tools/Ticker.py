@@ -416,6 +416,7 @@ def gen_data(data):
 								d['percent_change_7d']  = d['quotes']['USD']['percent_change_7d']
 								d['percent_change_30d'] = d['quotes']['USD']['percent_change_30d']
 								d['percent_change_1y']  = d['quotes']['USD']['percent_change_1y']
+								d['market_cap']  = d['quotes']['USD']['market_cap']
 								d['last_updated'] = int(datetime.datetime.fromisoformat(
 									d['last_updated']).timestamp())
 							yield (d['id'], d)
@@ -1041,6 +1042,7 @@ class Ticker:
 
 			return self.fs_num.format(
 				idx = idx,
+				mcap = d.get('market_cap') / 1_000_000_000 if cfg.asset_range else None,
 				lbl = self.create_label(d['id']) if cfg.name_labels else d['symbol'],
 				pc1 = fmt_pct(d.get('percent_change_7d')),
 				pc2 = fmt_pct(d.get('percent_change_24h')),
@@ -1091,8 +1093,9 @@ class Ticker:
 			if cfg.asset_range:
 				num_w = len(str(len(cfg.rows['asset_list'])))
 				col_fs_data.update({
-					'idx': fd(' ' * (num_w + 2), f'{{idx:{num_w}}}) ', num_w + 2)})
-				cols = ['idx'] + cols
+					'idx': fd(' ' * (num_w + 2), f'{{idx:{num_w}}}) ', num_w + 2),
+					'mcap': fd('{mcap:>12}', '{mcap:12.5f}', 12)})
+				cols = ['idx', 'label', 'mcap'] + cols[1:]
 
 			cols2 = list(cols)
 			if cfg.update_time:
@@ -1111,6 +1114,7 @@ class Ticker:
 		def table_hdr(self):
 			return self.fs_str.format(
 				lbl = '',
+				mcap = 'MarketCap(B)',
 				pc1 = ' CHG_7d',
 				pc2 = 'CHG_24h',
 				pc3 = 'CHG_1y',
