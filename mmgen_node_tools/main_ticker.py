@@ -57,6 +57,9 @@ opts_data = {
 -r, --add-rows=LIST   Add rows for asset specifiers in LIST (comma-separated,
                       see ASSET SPECIFIERS below). Can also be used to supply
                       a USD exchange rate for missing assets.
+-s, --sort=P          Sort output according to parameter P.  Valid parameters
+                      are {sp_codes}. See SORT PARAMETERS below.
+                      To reverse the sort, prefix the parameter with ‘r’.
 -t, --testing         Print command(s) to be executed to stdout and exit
 -T, --thousands-comma Use comma as a thousands separator
 -u, --update-time     Include UPDATED (last update time) column
@@ -132,6 +135,10 @@ A TRADE_SPECIFIER is a single argument in the format:
   If either ASSET or TO_ASSET refer to assets not present in the source data,
   a USD rate for the missing asset(s) must be supplied via the --add-columns
   or --add-rows options.
+
+SORT PARAMETERS:
+
+  {sp_fmt}
 
 
                                  PROXY NOTE
@@ -225,6 +232,7 @@ To add a portfolio, edit the file
 			dfl_cachedir = os.path.relpath(dfl_cachedir, start=homedir),
 			ds           = fmt_dict(DataSource.get_sources(), fmt='equal_compact'),
 			al           = DataSource.coinpaprika.dfl_asset_limit,
+			sp_codes     = fmt_list(sort_params, fmt='fancy'),
 			pc           = fmt_list(Ticker.percent_cols, fmt='fancy')),
 		'notes': lambda s: s.format(
 			assets = fmt_list(assets_list_gen(cfg_in), fmt='col', indent='  '),
@@ -232,6 +240,7 @@ To add a portfolio, edit the file
 			pf_cfg = os.path.relpath(cfg_in.portfolio_file, start=homedir),
 			al     = DataSource.coinpaprika.dfl_asset_limit,
 			cc     = src_cls['cc'](),
+			sp_fmt = '\n  '.join(f'‘{k}’ - {v.desc}' for k, v in sort_params.items()),
 			fi     = src_cls['fi']())
 	}
 }
@@ -246,7 +255,7 @@ gcfg = Config(opts_data=opts_data, caller_post_init=True)
 
 src_cls, cfg_in = Ticker.make_cfg(gcfg)
 
-from .Ticker import dfl_cachedir, homedir, DataSource, assets_list_gen
+from .Ticker import dfl_cachedir, homedir, DataSource, assets_list_gen, sort_params
 
 gcfg._post_init()
 

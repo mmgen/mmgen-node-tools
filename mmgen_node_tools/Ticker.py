@@ -24,7 +24,7 @@ from subprocess import run, PIPE, CalledProcessError
 from decimal import Decimal
 from collections import namedtuple
 
-from mmgen.color import red, yellow, green, blue, orange, gray, cyan
+from mmgen.color import red, yellow, green, blue, orange, gray, cyan, pink
 from mmgen.util import msg, msg_r, rmsg, Msg, Msg_r, die, fmt, fmt_list, fmt_dict, list_gen, suf, is_int
 from mmgen.ui import do_pager
 
@@ -40,6 +40,15 @@ percent_cols = {
 	'w': 'week',
 	'm': 'month',
 	'y': 'year'}
+
+sp = namedtuple('sort_parameter', ['key', 'desc'])
+sort_params = {
+	'd': sp('percent_change_24h', '1-day % change'),
+	'w': sp('percent_change_7d',  '1-week % change'),
+	'm': sp('percent_change_30d', '1-month % change'),
+	'y': sp('percent_change_1y',  '1-year % change'),
+	'p': sp('price_usd',          'asset price'),
+	'c': sp('market_cap',         'market cap')}
 
 class RowDict(dict):
 
@@ -274,6 +283,7 @@ class DataSource:
 				'percent_change_30d': data['pct_chg_4wks'],
 				'percent_change_7d': data['pct_chg_1wk'],
 				'percent_change_24h': data['regularMarketChangePercent']['raw'] * 100,
+				'market_cap': 0, # dummy - required for sorting
 				'last_updated': data['regularMarketTime']}
 
 		def rate_limit_errmsg(self, elapsed):
@@ -752,6 +762,19 @@ def make_cfg(gcfg_arg):
 			'' if proxy == '' else 'none' if (proxy and proxy.lower() == 'none')
 			else (proxy or cfg_in.cfg.get(name)))
 
+	def get_sort_opt():
+		match get_cfg_var('sort'):
+			case None:
+				return None
+			case s if s in sort_params:
+				return (s, True)
+			case s if s in ['r' + ch for ch in sort_params]:
+				return (s[1], False)
+			case s:
+				die(1,
+					f'{s!r}: invalid parameter for --sort option (must be one of {fmt_list(sort_params)})'
+					'\nTo reverse the sort, prefix the code letter with ‘r’')
+
 	cfg_tuple = namedtuple('global_cfg',[
 		'rows',
 		'usr_rows',
@@ -766,6 +789,7 @@ def make_cfg(gcfg_arg):
 		'proxy',
 		'proxy2',
 		'portfolio',
+		'sort',
 		'percent_cols',
 		'asset_limit',
 		'cached_data',
@@ -823,6 +847,7 @@ def make_cfg(gcfg_arg):
 		proxy       = proxy,
 		proxy2      = None if proxy2 == 'none' else '' if proxy2 == '' else (proxy2 or proxy),
 		portfolio   = portfolio,
+		sort        = get_sort_opt(),
 		percent_cols    = parse_percent_cols(get_cfg_var('percent_cols')),
 		asset_limit     = get_cfg_var('asset_limit'),
 		cached_data     = get_cfg_var('cached_data'),
@@ -869,6 +894,8 @@ class Ticker:
 
 		def __init__(self, data):
 
+			global cfg
+
 			self.comma = ',' if cfg.thousands_comma else ''
 
 			self.col1_wid = max(len('TOTAL'), (
@@ -884,6 +911,18 @@ class Ticker:
 					if group not in self.hidden_groups:
 						for row in rows:
 							self.max_rank = max(self.max_rank, int(data[row.id]['rank']))
+
+			if cfg.sort:
+				code, reverse = cfg.sort
+				key = sort_params[code].key
+				sort_func    = lambda row: data[row.id][key]
+				pf_sort_func = lambda row: data[row[0]][key]
+				for group in self.rows.keys():
+					if group not in self.hidden_groups:
+						self.rows[group] = sorted(self.rows[group], key=sort_func, reverse=reverse)
+				if cfg.portfolio:
+					cfg = cfg._replace(
+						portfolio = sorted(cfg.portfolio, key=pf_sort_func, reverse=reverse))
 
 			self.col_usd_prices = {k: self.data[k]['price_usd'] for k in self.col_ids}
 			self.prices = {row.id: self.get_row_prices(row.id) for row in self.rows if row.id in data}
@@ -950,6 +989,10 @@ class Ticker:
 						yield gray(f'(no data for {row.id})')
 
 			yield 'Current time: {}'.format(cyan(time.strftime('%F %X', time.gmtime(now)) + ' UTC'))
+
+			if cfg.sort:
+				text = sort_params[cfg.sort[0]].desc + ('' if cfg.sort[1] else ' [reversed]')
+				yield f'Sort order: {pink(text.upper())}'
 
 			for asset in self.usr_col_assets:
 				if asset.symbol != 'USD':

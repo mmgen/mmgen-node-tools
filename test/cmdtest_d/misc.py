@@ -90,6 +90,14 @@ class CmdTestScripts(CmdTestBase):
 		('ticker19', 'ticker [--cached-data 1-5]'),
 		('ticker20', 'ticker [--cached-data 2-5]'),
 		('ticker21', 'ticker [--cached-data 5-5]'),
+		('ticker22', 'ticker [--sort=rp]'),
+		('ticker23', 'ticker [--sort=rp xmr:10]'),
+		('ticker24', 'ticker [--sort=p]'),
+		('ticker25', 'ticker [--sort=p 200]'),
+		('ticker26', 'ticker [--sort=c -r algo,ada]'),
+		('ticker27', 'ticker [--sort=rp -r algo,ada]'),
+		('ticker28', 'ticker [--sort=d -r algo,ada]'),
+		('ticker29', 'ticker [--sort=y -r algo,ada]'),
 	)
 	}
 
@@ -365,3 +373,58 @@ class CmdTestScripts(CmdTestBase):
 				r'8\) ADA 17.11161 0.51 0.4764 0.00002180',
 			],
 			add_opts = ['--add-columns=eurusd=x'])
+
+	def ticker22(self):
+		return self.ticker(
+			[],
+			['MONERO', 'ETHEREUM', 'BITCOIN', 'SILVER', 'BRENT', 'GOLD'],
+			add_opts = ['--name-labels', '--sort=rp'])
+
+	def ticker23(self):
+		return self.ticker(
+			[],
+			['MONERO', 'ETHEREUM', 'BITCOIN', 'SILVER', 'BRENT', 'GOLD'],
+			add_opts = ['--name-labels', '--sort=rp', 'xmr:10'])
+
+	def ticker24(self):
+		return self.ticker(
+			[],
+			['BITCOIN', 'ETHEREUM', 'MONERO', 'GOLD', 'BRENT', 'SILVER'],
+			add_opts = ['--name-labels', '--sort=p'])
+
+	def ticker25(self):
+		return self.ticker(
+			[],
+			[
+				r' 1\) BITCOIN',
+				r' 2\) ETHEREUM',
+				r'30\) MONERO',
+				r'23\) LITECOIN',
+				r' 8\) CARDANO',
+				r'33\) ALGORAND'
+			],
+			add_opts = ['--name-labels', '--sort=p', '200'])
+
+	def ticker26(self):
+		return self.ticker(
+			[],
+			['BITCOIN', 'ETHEREUM', 'MONERO', 'CARDANO', 'ALGORAND'],
+			add_opts = ['--name-labels', '--sort=c', '-r', 'ada,algo'])
+
+	def ticker27(self):
+		return self.ticker(
+			[],
+			['MONERO', 'ETHEREUM', 'BITCOIN', 'S&P', 'NASDAQ', 'DOW', 'ALGORAND', 'CARDANO'],
+			add_opts = ['--name-labels', '--sort=rp', '--add-rows=ada-cardano,algo-algorand'])
+
+	def ticker28(self):
+		return self.ticker(
+			[],
+			['ETHEREUM', 'MONERO', 'BITCOIN', 'NASDAQ', 'S&P', 'DOW', 'CARDANO', 'ALGORAND'],
+			add_opts = ['--widest', '--sort=d', '-r', 'ada,algo'])
+
+	def ticker29(self):
+		return self.ticker(
+			[],
+			['ETHEREUM', 'BITCOIN', 'MONERO', 'S&P', 'DOW', 'NASDAQ', 'CARDANO', 'ALGORAND'],
+			add_opts = ['--widest', '-s', 'y', '-r', 'ada,algo'])
