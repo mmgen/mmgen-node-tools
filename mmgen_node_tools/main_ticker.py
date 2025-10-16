@@ -225,7 +225,7 @@ To add a portfolio, edit the file
 			dfl_cachedir = os.path.relpath(dfl_cachedir, start=homedir),
 			ds           = fmt_dict(DataSource.get_sources(), fmt='equal_compact'),
 			al           = DataSource.coinpaprika.dfl_asset_limit,
-			pc           = fmt_list(Ticker.percent_cols, fmt='bare')),
+			pc           = fmt_list(Ticker.percent_cols, fmt='fancy')),
 		'notes': lambda s: s.format(
 			assets = fmt_list(assets_list_gen(cfg_in), fmt='col', indent='  '),
 			cfg    = os.path.relpath(cfg_in.cfg_file, start=homedir),

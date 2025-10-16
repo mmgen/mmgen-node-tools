@@ -24,7 +24,7 @@ from subprocess import run, PIPE, CalledProcessError
 from decimal import Decimal
 from collections import namedtuple
 
-from mmgen.color import red, yellow, green, blue, orange, gray
+from mmgen.color import red, yellow, green, blue, orange, gray, cyan
 from mmgen.util import msg, msg_r, rmsg, Msg, Msg_r, die, fmt, fmt_list, fmt_dict, list_gen, suf, is_int
 from mmgen.ui import do_pager
 
@@ -39,8 +39,7 @@ percent_cols = {
 	'd': 'day',
 	'w': 'week',
 	'm': 'month',
-	'y': 'year',
-}
+	'y': 'year'}
 
 class RowDict(dict):
 
@@ -713,8 +712,8 @@ def make_cfg(gcfg_arg):
 			return ()
 
 	def get_portfolio():
-		return {k: Decimal(v) for k, v in cfg_in.portfolio.items()
-			if (not gcfg.btc) or k == 'btc-bitcoin'}
+		return tuple((k, Decimal(v)) for k, v in cfg_in.portfolio.items()
+			if (not gcfg.btc) or k == 'btc-bitcoin')
 
 	def parse_add_precision(arg):
 		if not arg:
@@ -932,7 +931,7 @@ class Ticker:
 			return self.data[id]['name'].upper()
 
 		def gen_output(self):
-			yield 'Current time: {} UTC'.format(time.strftime('%F %X', time.gmtime(now)))
+			yield 'Current time: {}'.format(cyan(time.strftime('%F %X', time.gmtime(now)) + ' UTC'))
 
 			for asset in self.usr_col_assets:
 				if asset.symbol != 'USD':
@@ -987,7 +986,7 @@ class Ticker:
 				yield blue('PORTFOLIO')
 				yield self.table_hdr
 				yield '-' * self.hl_wid
-				for sym, amt in cfg.portfolio.items():
+				for sym, amt in cfg.portfolio:
 					try:
 						yield self.fmt_row(self.data[sym], amt=amt)
 					except KeyError:
@@ -1005,16 +1004,17 @@ class Ticker:
 			self.adjust = cfg.adjust
 			self.show_adj = self.adjust != 1
 			self.usr_col_assets = [asset._replace(id=self.get_id(asset)) for asset in cfg.usr_columns]
-			self.col_ids = ('usd-us-dollar',) + tuple(a.id for a in self.usr_col_assets) + ('btc-bitcoin',)
+			self.col_ids = ('usd-us-dollar', 'btc-bitcoin') + tuple(a.id for a in self.usr_col_assets)
 
 			super().__init__(data)
 
 			self.format_last_updated_col()
 
 			if cfg.portfolio:
-				self.prices['total'] = {col_id: sum(self.prices[row.id][col_id] * cfg.portfolio[row.id]
+				pf_dict = dict(cfg.portfolio)
+				self.prices['total'] = {col_id: sum(self.prices[row.id][col_id] * pf_dict[row.id]
 					for row in self.rows
-						if row.id in cfg.portfolio and row.id in data)
+						if row.id in pf_dict and row.id in data)
 							for col_id in self.col_ids}
 
 			self.init_prec()
