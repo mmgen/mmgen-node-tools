@@ -865,6 +865,7 @@ class Ticker:
 
 		offer = None
 		to_asset = None
+		hidden_groups = ('extra',)
 
 		def __init__(self, data):
 
@@ -876,6 +877,14 @@ class Ticker:
 
 			self.rows = RowDict(
 				{k: tuple(row._replace(id=self.get_id(row)) for row in v) for k, v in cfg.rows.items()})
+
+			if cfg.asset_range:
+				self.max_rank = 0
+				for group, rows in self.rows.items():
+					if group not in self.hidden_groups:
+						for row in rows:
+							self.max_rank = max(self.max_rank, int(data[row.id]['rank']))
+
 			self.col_usd_prices = {k: self.data[k]['price_usd'] for k in self.col_ids}
 			self.prices = {row.id: self.get_row_prices(row.id) for row in self.rows if row.id in data}
 			self.prices['usd-us-dollar'] = self.get_row_prices('usd-us-dollar')
@@ -931,6 +940,15 @@ class Ticker:
 			return self.data[id]['name'].upper()
 
 		def gen_output(self):
+
+			def process_rows(rows):
+				yield '-' * self.hl_wid
+				for row in rows:
+					try:
+						yield self.fmt_row(self.data[row.id])
+					except KeyError:
+						yield gray(f'(no data for {row.id})')
+
 			yield 'Current time: {}'.format(cyan(time.strftime('%F %X', time.gmtime(now)) + ' UTC'))
 
 			for asset in self.usr_col_assets:
@@ -961,21 +979,11 @@ class Ticker:
 				yield self.table_hdr
 
 			if cfg.asset_range:
-				yield '-' * self.hl_wid
-				for n, row in enumerate(self.rows['asset_list'], cfg.asset_range[0]):
-					try:
-						yield self.fmt_row(self.data[row.id], idx=n)
-					except KeyError:
-						yield gray(f'(no data for {row.id})')
+				yield from process_rows(self.rows['asset_list'])
 			else:
 				for rows in self.rows.values():
 					if rows:
-						yield '-' * self.hl_wid
-						for row in rows:
-							try:
-								yield self.fmt_row(self.data[row.id])
-							except KeyError:
-								yield gray(f'(no data for {row.id})')
+						yield from process_rows(rows)
 
 			yield '-' * self.hl_wid
 
@@ -1028,7 +1036,7 @@ class Ticker:
 						d['price_usd'] / self.col_usd_prices[k]
 					) * self.adjust for k in self.col_ids}
 
-		def fmt_row(self, d, amt=None, amt_fmt=None, idx=None):
+		def fmt_row(self, d, amt=None, amt_fmt=None):
 
 			def fmt_pct(n):
 				return gray('     --') if n is None else (red, green)[n>=0](f'{n:+7.2f}')
@@ -1041,7 +1049,7 @@ class Ticker:
 					amt_fmt = amt_fmt.rstrip('0').rstrip('.')
 
 			return self.fs_num.format(
-				idx = idx,
+				idx = int(d['rank']) if cfg.asset_range else None,
 				mcap = d.get('market_cap') / 1_000_000_000 if cfg.asset_range else None,
 				lbl = self.create_label(d['id']) if cfg.name_labels else d['symbol'],
 				pc1 = fmt_pct(d.get('percent_change_7d')),
@@ -1091,7 +1099,7 @@ class Ticker:
 						if b])
 
 			if cfg.asset_range:
-				num_w = len(str(len(cfg.rows['asset_list'])))
+				num_w = len(str(self.max_rank))
 				col_fs_data.update({
 					'idx': fd(' ' * (num_w + 2), f'{{idx:{num_w}}}) ', num_w + 2),
 					'mcap': fd('{mcap:>12}', '{mcap:12.5f}', 12)})
@@ -1186,7 +1194,7 @@ class Ticker:
 				self.fs_str += '  {upd}'
 				self.hl_wid += self.upd_w + 2
 
-		def fmt_row(self, d, idx=None):
+		def fmt_row(self, d):
 			id = d['id']
 			p = self.prices[id][self.asset.id] * self.asset.amount
 			p_spot = '{:{}{}.{}f}'.format(p, self.max_wid, self.comma, 8+cfg.add_prec)
