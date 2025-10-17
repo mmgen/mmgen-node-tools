@@ -380,10 +380,13 @@ class CmdTestScripts(CmdTestBase):
 			add_opts = ['--add-columns=eurusd=x'])
 
 	def ticker22(self):
-		return self.ticker(
+		self.copy_file('ticker-cfg-bad.yaml', 'ticker-cfg.yaml')
+		t = self.ticker(
 			[],
 			['MONERO', 'ETHEREUM', 'BITCOIN', 'SILVER', 'BRENT', 'GOLD'],
 			add_opts = ['--name-labels', '--sort=rp'])
+		self.rm_file('ticker-cfg.yaml')
+		return t
 
 	def ticker23(self):
 		return self.ticker(

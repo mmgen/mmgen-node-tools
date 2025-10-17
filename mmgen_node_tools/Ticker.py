@@ -41,14 +41,14 @@ percent_cols = {
 	'm': 'month',
 	'y': 'year'}
 
-sp = namedtuple('sort_parameter', ['key', 'desc'])
+sp = namedtuple('sort_parameter', ['key', 'sort_dfl', 'desc'])
 sort_params = {
-	'd': sp('percent_change_24h', '1-day % change'),
-	'w': sp('percent_change_7d',  '1-week % change'),
-	'm': sp('percent_change_30d', '1-month % change'),
-	'y': sp('percent_change_1y',  '1-year % change'),
-	'p': sp('price_usd',          'asset price'),
-	'c': sp('market_cap',         'market cap')}
+	'd': sp('percent_change_24h', 0.0,        '1-day % change'),
+	'w': sp('percent_change_7d',  0.0,        '1-week % change'),
+	'm': sp('percent_change_30d', 0.0,        '1-month % change'),
+	'y': sp('percent_change_1y',  0.0,        '1-year % change'),
+	'p': sp('price_usd',          Decimal(0), 'asset price'),
+	'c': sp('market_cap',         0,          'market cap')}
 
 class RowDict(dict):
 
@@ -915,8 +915,9 @@ class Ticker:
 			if cfg.sort:
 				code, reverse = cfg.sort
 				key = sort_params[code].key
-				sort_func    = lambda row: data[row.id][key]
-				pf_sort_func = lambda row: data[row[0]][key]
+				sort_dfl = sort_params[code].sort_dfl
+				sort_func    = lambda row: data.get(row.id, {key: sort_dfl})[key]
+				pf_sort_func = lambda row: data.get(row[0], {key: sort_dfl})[key]
 				for group in self.rows.keys():
 					if group not in self.hidden_groups:
 						self.rows[group] = sorted(self.rows[group], key=sort_func, reverse=reverse)
