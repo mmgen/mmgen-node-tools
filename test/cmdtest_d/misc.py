@@ -67,7 +67,7 @@ class CmdTestScripts(CmdTestBase):
 	'ticker': (
 		"'mmnode-ticker' script",
 		('ticker1',  'ticker [--help]'),
-		('copy_files', 'copying JSON files to cache'),
+		('copy_cache_files', 'copying JSON files to cache'),
 		('ticker1a', 'ticker [--download=cc] (early caching)'),
 		('ticker1b', 'ticker [--download=cc] (late caching)'),
 		('ticker2',  'ticker (bad proxy)'),
@@ -106,17 +106,24 @@ class CmdTestScripts(CmdTestBase):
 			return
 		self.ticker_server = TickerServer(cfg)
 		self.ticker_server.start()
+		self.dests = {
+			'nt_datadir': os.path.join(cfg.data_dir_root, 'node_tools'),
+			'cache': self.tmpdir}
 		return super().__init__(cfg, trunner, cfgs, spawn)
 
-	@property
-	def nt_datadir(self):
-		return os.path.join( cfg.data_dir_root, 'node_tools' )
+	def rm_file(self, fn, dest='nt_datadir'):
+		os.unlink(os.path.join(self.dests[dest], fn))
 
-	def copy_files(self):
-		self.spawn('',msg_only=True)
-		shutil.copy2(os.path.join(refdir,'ticker-finance.json'),self.tmpdir)
-		shutil.copy2(os.path.join(refdir,'ticker-finance-history.json'),self.tmpdir)
-		shutil.copy2(os.path.join(refdir,'ticker-btc.json'),self.tmpdir)
+	def copy_file(self, src_fn, dest_fn=None, dest='nt_datadir'):
+		shutil.copy2(
+			os.path.join(refdir, src_fn),
+			os.path.join(self.dests[dest], dest_fn or src_fn))
+
+	def copy_cache_files(self):
+		self.spawn('', msg_only=True)
+		self.copy_file('ticker-finance.json', dest='cache')
+		self.copy_file('ticker-finance-history.json', dest='cache')
+		self.copy_file('ticker-btc.json', dest='cache')
 		return 'ok'
 
 	def ticker(
@@ -186,7 +193,7 @@ class CmdTestScripts(CmdTestBase):
 			])
 
 	def ticker5(self):
-		shutil.copy2(os.path.join(refdir,'ticker-cfg.yaml'),self.nt_datadir)
+		self.copy_file('ticker-cfg.yaml')
 		t = self.ticker(
 			['--wide','--adjust=-0.766'],
 			[
@@ -195,7 +202,7 @@ class CmdTestScripts(CmdTestBase):
 				r'LITECOIN 58.56 0.00251869 \+12.79 \+0.40 2022-08-02 18:25:59',
 				r'MONERO 157.76 0.00678495 \+7.28 \+1.21'
 			])
-		os.unlink(os.path.join(self.nt_datadir,'ticker-cfg.yaml'))
+		self.rm_file('ticker-cfg.yaml')
 		return t
 
 	def ticker6(self):
@@ -204,7 +211,7 @@ class CmdTestScripts(CmdTestBase):
 		return t
 
 	def ticker7(self): # demo
-		shutil.copy2(os.path.join(refdir,'ticker-portfolio.yaml'),self.nt_datadir)
+		self.copy_file('ticker-portfolio.yaml')
 		t = self.ticker(
 			['--wide','--portfolio'],
 			[
@@ -213,7 +220,7 @@ class CmdTestScripts(CmdTestBase):
 				'CARDANO','ALGORAND',
 				'PORTFOLIO','BITCOIN','ETHEREUM','MONERO','CARDANO','ALGORAND','TOTAL'
 			])
-		os.unlink(os.path.join(self.nt_datadir,'ticker-portfolio.yaml'))
+		self.rm_file('ticker-portfolio.yaml')
 		return t
 
 	def ticker8(self):
@@ -225,9 +232,7 @@ class CmdTestScripts(CmdTestBase):
 			])
 
 	def ticker9(self):
-		shutil.copy2(
-			os.path.join(refdir,'ticker-portfolio-bad.yaml'),
-			os.path.join(self.nt_datadir,'ticker-portfolio.yaml') )
+		self.copy_file('ticker-portfolio-bad.yaml', 'ticker-portfolio.yaml')
 		t = self.ticker(
 			['--wide','--portfolio','--elapsed','--add-rows=fake-fakecoin:0.0123','--add-precision=2'],
 			[
@@ -236,7 +241,7 @@ class CmdTestScripts(CmdTestBase):
 				r'FAKECOIN 81.3008 0.0034966927 -- -- --',
 				r'\(no data for noc-nocoin\)',
 			])
-		os.unlink(os.path.join(self.nt_datadir,'ticker-portfolio.yaml'))
+		self.rm_file('ticker-portfolio.yaml')
 		return t
 
 	def ticker10(self):
@@ -287,7 +292,7 @@ class CmdTestScripts(CmdTestBase):
 			])
 
 	def ticker14(self):
-		shutil.copy2(os.path.join(refdir,'ticker-portfolio.yaml'),self.nt_datadir)
+		self.copy_file('ticker-portfolio.yaml')
 		t = self.ticker(
 			['--btc','--wide','--portfolio','--elapsed'],
 			[
@@ -296,7 +301,7 @@ class CmdTestScripts(CmdTestBase):
 				'PORTFOLIO',
 				r'BITCOIN 28,850.44 \+6.05 -1.87 1.23456789'
 			])
-		os.unlink(os.path.join(self.nt_datadir,'ticker-portfolio.yaml'))
+		self.rm_file('ticker-portfolio.yaml')
 		return t
 
 	def ticker15(self):
