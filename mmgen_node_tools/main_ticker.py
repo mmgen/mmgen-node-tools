@@ -63,6 +63,8 @@ opts_data = {
 -t, --testing         Print command(s) to be executed to stdout and exit
 -T, --thousands-comma Use comma as a thousands separator
 -u, --update-time     Include UPDATED (last update time) column
+-U, --pchg-unit=A     Use asset ‘A’ as unit of reference for percentage
+                      change columns (default: USD)
 -v, --verbose         Be more verbose
 -w, --wide            Display most optional columns (same as -unT -p d,w)
 -W, --widest          Display all optional columns (same as -unT -p d,w,m,y)

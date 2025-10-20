@@ -1,0 +1,14 @@
+sort: d
+pchg_unit: btc
+
+assets:
+  coin1:
+    - btc-bitcoin
+    - ltc-litecoin
+    - eth-ethereum
+    - xmr-monero
+    - bad-badcoin
+  commodity:
+    - gc=f
+    - si=f
+    - bz=f

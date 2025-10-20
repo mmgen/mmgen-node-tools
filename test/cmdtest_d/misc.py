@@ -98,6 +98,9 @@ class CmdTestScripts(CmdTestBase):
 		('ticker27', 'ticker [--sort=rp -r algo,ada]'),
 		('ticker28', 'ticker [--sort=d -r algo,ada]'),
 		('ticker29', 'ticker [--sort=y -r algo,ada]'),
+		('ticker30', 'ticker [--cached-data --wide --pchg-unit=btc --sort=d] (cf with config file)'),
+		('ticker31', 'ticker [--cached-data --wide --pchg-unit=usd] (cf with no USD)'),
+		('ticker32', 'ticker [--cached-data --wide --pchg-unit=gc=f]'),
 	)
 	}
 
@@ -438,3 +441,38 @@ class CmdTestScripts(CmdTestBase):
 			[],
 			['ETHEREUM', 'BITCOIN', 'MONERO', 'S&P', 'DOW', 'NASDAQ', 'CARDANO', 'ALGORAND'],
 			add_opts = ['--widest', '-s', 'y', '-r', 'ada,algo'])
+
+	def ticker30(self):
+		self.copy_file('ticker-cfg-sort-pchg.yaml', 'ticker-cfg.yaml')
+		t = self.ticker(add_opts=['--wide'])
+		chk1 = '\n'.join(t.read().splitlines()[5:-2])
+		self.rm_file('ticker-cfg.yaml')
+
+		self.copy_file('ticker-cfg-bad.yaml', 'ticker-cfg.yaml')
+		t = self.ticker(add_opts=['--wide', '--pchg-unit=btc', '--sort=d'], no_msg=True)
+		chk2 = '\n'.join(t.read().splitlines()[5:-2])
+		self.rm_file('ticker-cfg.yaml')
+
+		assert chk1 == chk2, f'\nOUTPUT 1\n{chk1}\n!= OUTPUT 2\n{chk2}\n'
+		return t
+
+	def ticker31(self):
+		t = self.ticker(add_opts=['--wide'])
+		chk1 = '\n'.join(t.read().splitlines()[5:-2])
+
+		t = self.ticker(add_opts=['--wide', '--pchg-unit=usd'], no_msg=True)
+		chk2 = '\n'.join(t.read().splitlines()[6:-2])
+
+		assert chk1 == chk2, f'\nOUTPUT 1\n{chk1}\n!= OUTPUT 2\n{chk2}\n'
+		return t
+
+	def ticker32(self):
+		return self.ticker(
+			[],
+			[
+				'BITCOIN', r'\+10.99', r'\+7.06', '-1.18', r'\+1.05',
+				'ETHEREUM',
+				'GOLD', r'\+0.00', r'\+0.00', r'\+0.00', r'\+0.00',
+				'SILVER'
+			],
+			add_opts = ['--widest', '--pchg-unit=gc=f'])

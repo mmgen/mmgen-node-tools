@@ -535,6 +535,10 @@ def gen_data(data):
 		'name': 'US Dollar',
 		'price_usd': Decimal(1),
 		'price_btc': Decimal(1) / btcusd,
+		'percent_change_24h': 0.0,
+		'percent_change_7d': 0.0,
+		'percent_change_30d': 0.0,
+		'percent_change_1y': 0.0,
 		'last_updated': None})
 
 def cache_data(data_src, no_overwrite=False):
@@ -742,7 +746,8 @@ def make_cfg(gcfg_arg):
 			{k: tuple(parse_asset_id(e) for e in v) for k, v in cfg_in.cfg['assets'].items()})
 		for hdr, data in (
 				('user_uniq', get_usr_assets()),
-				('portfolio_uniq', get_portfolio_assets())):
+				('portfolio_uniq', get_portfolio_assets()),
+				('pchg_unit_uniq', [pchg_unit] if pchg_unit else None)):
 			if data:
 				if uniq_data := tuple(gen_uniq(data, 'symbol', preload=rows)):
 					rows[hdr] = uniq_data
@@ -791,6 +796,7 @@ def make_cfg(gcfg_arg):
 		'portfolio',
 		'sort',
 		'percent_cols',
+		'pchg_unit',
 		'asset_limit',
 		'cached_data',
 		'elapsed',
@@ -833,6 +839,9 @@ def make_cfg(gcfg_arg):
 	if portfolio and asset_range:
 		die(1, '--portfolio not supported in market cap view')
 
+	pchg_unit = (lambda s: parse_asset_id(s, require_label=False) if s else None)(
+		get_cfg_var('pchg_unit'))
+
 	cfg = cfg_tuple(
 		rows        = create_rows(),
 		usr_rows    = usr_rows,
@@ -849,6 +858,7 @@ def make_cfg(gcfg_arg):
 		portfolio   = portfolio,
 		sort        = get_sort_opt(),
 		percent_cols    = parse_percent_cols(get_cfg_var('percent_cols')),
+		pchg_unit       = pchg_unit,
 		asset_limit     = get_cfg_var('asset_limit'),
 		cached_data     = get_cfg_var('cached_data'),
 		elapsed         = get_cfg_var('elapsed'),
@@ -890,7 +900,7 @@ class Ticker:
 
 		offer = None
 		to_asset = None
-		hidden_groups = ('extra',)
+		hidden_groups = ('extra', 'pchg_unit_uniq')
 
 		def __init__(self, data):
 
@@ -924,6 +934,14 @@ class Ticker:
 				if cfg.portfolio:
 					cfg = cfg._replace(
 						portfolio = sorted(cfg.portfolio, key=pf_sort_func, reverse=reverse))
+
+			if cfg.pchg_unit:
+				self.pchg_data = self.data[self.get_id(cfg.pchg_unit)]
+				self.pchg_factors = {k: (self.pchg_data[k] / 100) + 1 for k in (
+					'percent_change_24h',
+					'percent_change_7d',
+					'percent_change_30d',
+					'percent_change_1y')}
 
 			self.col_usd_prices = {k: self.data[k]['price_usd'] for k in self.col_ids}
 			self.prices = {row.id: self.get_row_prices(row.id) for row in self.rows if row.id in data}
@@ -994,6 +1012,11 @@ class Ticker:
 			if cfg.sort:
 				text = sort_params[cfg.sort[0]].desc + ('' if cfg.sort[1] else ' [reversed]')
 				yield f'Sort order: {pink(text.upper())}'
+
+			if cfg.pchg_unit:
+				yield 'Percent change unit: {}'.format(orange('{} ({})'.format(
+					self.pchg_data['symbol'],
+					self.pchg_data['name'].upper())))
 
 			for asset in self.usr_col_assets:
 				if asset.symbol != 'USD':
@@ -1085,6 +1108,8 @@ class Ticker:
 			def fmt_pct(d, key, wid=7):
 				if (n := d.get(key)) is None:
 					return gray('     --')
+				if cfg.pchg_unit:
+					n = ((((n / 100) + 1) / self.pchg_factors[key]) - 1) * 100
 				return (red, green)[n>=0](f'{n:+{wid}.2f}')
 
 			p = self.prices[d['id']]
