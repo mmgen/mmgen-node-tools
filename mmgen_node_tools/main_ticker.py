@@ -40,10 +40,10 @@ opts_data = {
                       used to supply a USD exchange rate for missing assets.
 -C, --cached-data     Use cached data from previous network query instead of
                       live data from server
--D, --cachedir=D      Read and write cached JSON data to directory ‘D’
-                      instead of ‘~/{dfl_cachedir}’
 -d, --download=D      Retrieve and cache asset data ‘D’ from network (valid
                       options: {ds})
+-D, --cachedir=D      Read and write cached JSON data to directory ‘D’
+                      instead of ‘~/{dfl_cachedir}’
 -e, --add-precision=N Add ‘N’ digits of precision to columns
 -E, --elapsed         Show elapsed time in UPDATED column (see --update-time)
 -F, --portfolio       Display portfolio data

@@ -133,6 +133,7 @@ class CmdTestScripts(CmdTestBase):
 			cached_data = True,
 			add_opts    = [],
 			use_proxy   = True,
+			no_msg      = False,
 			exit_val    = None):
 		t = self.spawn(
 			'mmnode-ticker',
@@ -141,6 +142,7 @@ class CmdTestScripts(CmdTestBase):
 			+ (['--proxy=http://asdfzxcv:32459'] if use_proxy else [])
 			+ add_opts
 			+ args,
+			no_msg = no_msg,
 			exit_val = exit_val)
 		if expect_list:
 			t.match_expect_list(expect_list)

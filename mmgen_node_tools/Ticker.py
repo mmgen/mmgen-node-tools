@@ -43,10 +43,10 @@ percent_cols = {
 
 sp = namedtuple('sort_parameter', ['key', 'sort_dfl', 'desc'])
 sort_params = {
-	'd': sp('percent_change_24h', 0.0,        '1-day % change'),
-	'w': sp('percent_change_7d',  0.0,        '1-week % change'),
-	'm': sp('percent_change_30d', 0.0,        '1-month % change'),
-	'y': sp('percent_change_1y',  0.0,        '1-year % change'),
+	'd': sp('percent_change_24h', 0.0,        '1-day percent change'),
+	'w': sp('percent_change_7d',  0.0,        '1-week percent change'),
+	'm': sp('percent_change_30d', 0.0,        '1-month percent change'),
+	'y': sp('percent_change_1y',  0.0,        '1-year percent change'),
 	'p': sp('price_usd',          Decimal(0), 'asset price'),
 	'c': sp('market_cap',         0,          'market cap')}
 
@@ -1025,8 +1025,8 @@ class Ticker:
 			if cfg.asset_range:
 				yield from process_rows(self.rows['asset_list'])
 			else:
-				for rows in self.rows.values():
-					if rows:
+				for group, rows in self.rows.items():
+					if rows and group not in self.hidden_groups:
 						yield from process_rows(rows)
 
 			yield '-' * self.hl_wid
@@ -1082,8 +1082,10 @@ class Ticker:
 
 		def fmt_row(self, d, amt=None, amt_fmt=None):
 
-			def fmt_pct(n):
-				return gray('     --') if n is None else (red, green)[n>=0](f'{n:+7.2f}')
+			def fmt_pct(d, key, wid=7):
+				if (n := d.get(key)) is None:
+					return gray('     --')
+				return (red, green)[n>=0](f'{n:+{wid}.2f}')
 
 			p = self.prices[d['id']]
 
@@ -1096,10 +1098,10 @@ class Ticker:
 				idx = int(d['rank']) if cfg.asset_range else None,
 				mcap = d.get('market_cap') / 1_000_000_000 if cfg.asset_range else None,
 				lbl = self.create_label(d['id']) if cfg.name_labels else d['symbol'],
-				pc1 = fmt_pct(d.get('percent_change_7d')),
-				pc2 = fmt_pct(d.get('percent_change_24h')),
-				pc3 = fmt_pct(d.get('percent_change_1y')),
-				pc4 = fmt_pct(d.get('percent_change_30d')),
+				pc1 = fmt_pct(d, 'percent_change_7d'),
+				pc2 = fmt_pct(d, 'percent_change_24h'),
+				pc3 = fmt_pct(d, 'percent_change_1y', wid=8),
+				pc4 = fmt_pct(d, 'percent_change_30d'),
 				upd = d.get('last_updated_fmt'),
 				amt = amt_fmt,
 				**{k.replace('-', '_'): v * (1 if amt is None else amt) for k, v in p.items()})
@@ -1117,7 +1119,7 @@ class Ticker:
 
 			col_fs_data = {
 				'label':       fd(f'{{lbl:{self.col1_wid}}}', f'{{lbl:{self.col1_wid}}}', self.col1_wid),
-				'pct1y':       fd(' {pc3:7}', ' {pc3:7}', 8),
+				'pct1y':       fd(' {pc3:8}', ' {pc3:8}', 9),
 				'pct1m':       fd(' {pc4:7}', ' {pc4:7}', 8),
 				'pct1w':       fd(' {pc1:7}', ' {pc1:7}', 8),
 				'pct1d':       fd(' {pc2:7}', ' {pc2:7}', 8),
@@ -1169,7 +1171,7 @@ class Ticker:
 				mcap = 'MarketCap(B)',
 				pc1 = ' CHG_7d',
 				pc2 = 'CHG_24h',
-				pc3 = 'CHG_1y',
+				pc3 = '  CHG_1y',
 				pc4 = 'CHG_30d',
 				upd = 'UPDATED',
 				amt = '         AMOUNT',
