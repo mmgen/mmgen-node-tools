@@ -539,6 +539,7 @@ def gen_data(data):
 		'percent_change_7d': 0.0,
 		'percent_change_30d': 0.0,
 		'percent_change_1y': 0.0,
+		'market_cap': 0,
 		'last_updated': None})
 
 def cache_data(data_src, no_overwrite=False):

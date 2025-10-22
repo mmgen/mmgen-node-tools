@@ -101,6 +101,9 @@ class CmdTestScripts(CmdTestBase):
 		('ticker30', 'ticker [--cached-data --wide --pchg-unit=btc --sort=d] (cf with config file)'),
 		('ticker31', 'ticker [--cached-data --wide --pchg-unit=usd] (cf with no USD)'),
 		('ticker32', 'ticker [--cached-data --wide --pchg-unit=gc=f]'),
+		('ticker33', 'ticker [--cached-data --wide --pchg-unit=btc --sort=c] (cfg file with USD)'),
+		('ticker34', 'ticker [--cached-data --wide --pchg-unit=btc --sort=y] (cfg file with USD)'),
+		('ticker35', 'ticker [--cached-data --wide --pchg-unit=btc --sort=p] (cfg file with USD)'),
 	)
 	}
 
@@ -475,4 +478,25 @@ class CmdTestScripts(CmdTestBase):
 				'GOLD', r'\+0.00', r'\+0.00', r'\+0.00', r'\+0.00',
 				'SILVER'
 			],
-			add_opts = ['--widest', '--pchg-unit=gc=f'])
+			add_opts = ['--widest', '--pchg-unit=gc=f', '--sort=c'])
+
+	def _ticker_cur(self, sort):
+		self.copy_file('ticker-cfg-usd.yaml', 'ticker-cfg.yaml')
+		t = self.ticker(
+			[],
+			[
+				'BITCOIN 23,250.77 1.00000000 \+0.00',
+				'US DOLLAR 1.00 0.00004301 -15.93',
+			],
+			add_opts = ['--widest', '--pchg-unit=btc', f'--sort={sort}'])
+		self.rm_file('ticker-cfg.yaml')
+		return t
+
+	def ticker33(self):
+		return self._ticker_cur(sort='c')
+
+	def ticker34(self):
+		return self._ticker_cur(sort='y')
+
+	def ticker35(self):
+		return self._ticker_cur(sort='p')

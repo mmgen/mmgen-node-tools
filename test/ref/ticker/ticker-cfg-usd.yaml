@@ -1,0 +1,11 @@
+assets:
+  coin1:
+    - btc-bitcoin
+    - eth-ethereum
+    - xmr-monero
+  commodity:
+    - gc=f
+    - si=f
+  currency:
+    - usd-us-dollar
+    - eurusd=x
