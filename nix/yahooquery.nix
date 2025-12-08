@@ -19,7 +19,7 @@ buildPythonPackage rec {
     build-system = with python.pkgs; [ hatchling ];
 
     propagatedBuildInputs = with python.pkgs; [
-        (callPackage ./curl-cffi.nix {}) # >=0.10.0
+        curl-cffi
         pandas
         requests-futures
         tqdm

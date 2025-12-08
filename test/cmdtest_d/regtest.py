@@ -114,7 +114,7 @@ class CmdTestRegtest(CmdTestBase):
 		self.proto = init_proto( cfg, self.proto.coin, network='regtest', need_amt=True )
 		self.addrs = [a.views[a.view_pref] for a in gen_addrs(self.proto, 'regtest', [1, 2, 3, 4, 5])]
 
-		self.use_bdb_wallet = self.bdb_wallet or self.proto.coin != 'BTC'
+		self.use_bdb_wallet = self.bdb_wallet and self.proto.coin != 'BTC'
 		self.regtest = MMGenRegtest(cfg, self.proto.coin, bdb_wallet=self.use_bdb_wallet)
 
 	def setup(self):
@@ -334,6 +334,13 @@ class CmdTestRegtest(CmdTestBase):
 					[wif],
 					[],
 					self.proto.sighash_type)
+			else:
+				tx = await r.rpc_call(
+					'signrawtransactionwithwallet',
+					tx_hex,
+					None, # prevtxs
+					self.proto.sighash_type,
+					wallet = 'miner')
 			assert tx['complete']
 			return tx['hex']
 
