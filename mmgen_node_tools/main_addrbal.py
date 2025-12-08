@@ -44,7 +44,7 @@ def do_output(proto, addr_data, blk_hdrs):
 			heights = {u['height'] for u in unspents}
 			Msg('{}Balance: {}'.format(
 				indent,
-				sum(proto.coin_amt(u['amount']) for u in unspents).hl2(unit=True, fs='{:,}'))),
+				sum(proto.coin_amt(u['amount']) for u in unspents).hl3(unit=True, fs='{:,}'))),
 			Msg('{}{} unspent output{} in {} block{}'.format(
 				indent,
 				red(str(len(unspents))),
@@ -148,7 +148,7 @@ async def main(req_addrs):
 		good_addrs = len([v for v in addr_data.values() if v])
 
 		Msg('Total: {} in {} address{}'.format(
-			proto.coin_amt(res['total_amount']).hl2(unit=True, fs='{:,}'),
+			proto.coin_amt(res['total_amount']).hl3(unit=True, fs='{:,}'),
 			red(str(good_addrs)),
 			suf(good_addrs, 'es')))
 
