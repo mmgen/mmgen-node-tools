@@ -970,8 +970,7 @@ class Ticker:
 					t = int(d[row.id]['last_updated'])
 				except TypeError as e:
 					d[row.id]['last_updated_fmt'] = gray('--' if 'NoneType' in str(e) else str(e))
-				except KeyError as e:
-					msg(str(e))
+				except KeyError:
 					pass
 				else:
 					t_fmt = d[row.id]['last_updated_fmt'] = fmt_func(

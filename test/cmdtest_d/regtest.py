@@ -23,18 +23,18 @@ from ..include.common import cfg, imsg, stop_test_daemons, joinpath
 from .base import CmdTestBase
 
 args1 = ['--bob']
-args2 = ['--bob','--rpc-backend=http']
+args2 = ['--bob', '--rpc-backend=http']
 
-def gen_addrs(proto,network,keys):
+def gen_addrs(proto, network, keys):
 	from mmgen.tool.api import tool_api
 	tool = tool_api(cfg)
-	tool.init_coin(proto.coin,'regtest')
+	tool.init_coin(proto.coin, 'regtest')
 	tool.addrtype = proto.mmtypes[-1]
 	return [tool.privhex2addr('{:064x}'.format(key)) for key in keys]
 
 class CmdTestRegtest(CmdTestBase):
 	'various operations via regtest mode'
-	networks = ('btc','ltc','bch')
+	networks = ('btc', 'ltc', 'bch')
 	passthru_opts = ('coin',)
 	tmpdir_nums = [1]
 	color = True
@@ -110,31 +110,31 @@ class CmdTestRegtest(CmdTestBase):
 		if trunner is None:
 			return
 		if cfg._proto.testnet:
-			die(2,'--testnet and --regtest options incompatible with regtest test suite')
+			die(2, '--testnet and --regtest options incompatible with regtest test suite')
 		self.proto = init_proto( cfg, self.proto.coin, network='regtest', need_amt=True )
-		self.addrs = [a.views[a.view_pref] for a in gen_addrs(self.proto,'regtest',[1,2,3,4,5])]
+		self.addrs = [a.views[a.view_pref] for a in gen_addrs(self.proto, 'regtest', [1, 2, 3, 4, 5])]
 
 		self.use_bdb_wallet = self.bdb_wallet or self.proto.coin != 'BTC'
 		self.regtest = MMGenRegtest(cfg, self.proto.coin, bdb_wallet=self.use_bdb_wallet)
 
 	def setup(self):
-		stop_test_daemons(self.proto.network_id,force=True,remove_datadir=True)
+		stop_test_daemons(self.proto.network_id, force=True, remove_datadir=True)
 		from shutil import rmtree
 		try:
-			rmtree(joinpath(self.tr.data_dir,'regtest'))
+			rmtree(joinpath(self.tr.data_dir, 'regtest'))
 		except:
 			pass
 		t = self.spawn(
 			'mmgen-regtest',
 			(['--bdb-wallet'] if self.use_bdb_wallet else [])
 			+ ['--setup-no-stop-daemon', 'setup'])
-		for s in ('Starting','Creating','Creating','Creating','Mined','Setup complete'):
+		for s in ('Starting', 'Creating', 'Creating', 'Creating', 'Mined', 'Setup complete'):
 			t.expect(s)
 		return t
 
 	def netrate(self, add_args, expect_str, exit_val=None):
 		t = self.spawn('mmnode-netrate', args1 + add_args, exit_val=exit_val)
-		t.expect(expect_str,regex=True)
+		t.expect(expect_str, regex=True)
 		return t
 
 	def netrate1(self):
@@ -147,35 +147,35 @@ class CmdTestRegtest(CmdTestBase):
 			return 'ok'
 		return t
 
-	def halving_calculator(self,add_args,expect_list):
-		t = self.spawn('mmnode-halving-calculator',args1+add_args)
+	def halving_calculator(self, add_args, expect_list):
+		t = self.spawn('mmnode-halving-calculator', args1+add_args)
 		t.match_expect_list(expect_list)
 		return t
 
 	def halving_calculator1(self):
-		return self.halving_calculator(['--help'],['USAGE:'])
+		return self.halving_calculator(['--help'], ['USAGE:'])
 
 	def halving_calculator2(self):
-		return self.halving_calculator([],['Current block: 393',f'Current block subsidy: 12.5 {cfg.coin}'])
+		return self.halving_calculator([], ['Current block: 393', f'Current block subsidy: 12.5 {cfg.coin}'])
 
 	def halving_calculator3(self):
-		return self.halving_calculator(['--list'],['33 4950','0'])
+		return self.halving_calculator(['--list'], ['33 4950', '0'])
 
 	def halving_calculator4(self):
-		return self.halving_calculator(['--mined'],['0 0.0000015 14949.9999835'])
+		return self.halving_calculator(['--mined'], ['0 0.0000015 14949.9999835'])
 
 	def halving_calculator5(self):
-		return self.halving_calculator(['--mined','--bdr-proj=5'],['5.00000 0 0.0000015 14949.9999835'])
+		return self.halving_calculator(['--mined', '--bdr-proj=5'], ['5.00000 0 0.0000015 14949.9999835'])
 
 	def halving_calculator6(self):
-		return self.halving_calculator(['--mined','--sample-size=20'],['33 4950','0 0.0000015 14949.9999835'])
+		return self.halving_calculator(['--mined', '--sample-size=20'], ['33 4950', '0 0.0000015 14949.9999835'])
 
-	def sendto(self,addr,amt):
-		return self.spawn('mmgen-regtest',['send',addr,amt])
+	def sendto(self, addr, amt):
+		return self.spawn('mmgen-regtest', ['send', addr, amt])
 
-	def sendto1(self): return self.sendto(self.addrs[0],'0.123')
-	def sendto2(self): return self.sendto(self.addrs[0],'0.234')
-	def sendto3(self): return self.sendto(self.addrs[1],'0.345')
+	def sendto1(self): return self.sendto(self.addrs[0], '0.123')
+	def sendto2(self): return self.sendto(self.addrs[0], '0.234')
+	def sendto3(self): return self.sendto(self.addrs[1], '0.345')
 
 	def addrbal(self, args, expect_list):
 		t = self.spawn('mmnode-addrbal', args2 + args)
@@ -231,7 +231,7 @@ class CmdTestRegtest(CmdTestBase):
 			[
 				'No balance',
 				'2 unspent outputs in 2 blocks',
-				'394','0.123','395','0.234',
+				'394', '0.123', '395', '0.234',
 				'No balance'
 			])
 
@@ -240,7 +240,7 @@ class CmdTestRegtest(CmdTestBase):
 			['--tabular', self.addrs[4], self.addrs[0], self.addrs[3]],
 			[
 				self.addrs[4] + ' - - -',
-				self.addrs[0] + ' 2 395','0.357',
+				self.addrs[0] + ' 2 395', '0.357',
 				self.addrs[3] + ' - - -',
 			])
 
@@ -249,11 +249,11 @@ class CmdTestRegtest(CmdTestBase):
 			['--tabular', '--first-block', self.addrs[4], self.addrs[0], self.addrs[3]],
 			[
 				self.addrs[4] + ' - - - -',
-				self.addrs[0] + ' 2 394','395','0.357',
+				self.addrs[0] + ' 2 394', '395', '0.357',
 				self.addrs[3] + ' - - - -',
 			])
 
-	def blocks_info(self,args,expect_list):
+	def blocks_info(self, args, expect_list):
 		t = self.spawn('mmnode-blocks-info', args1 + args)
 		t.match_expect_list(expect_list)
 		return t
@@ -261,7 +261,7 @@ class CmdTestRegtest(CmdTestBase):
 	def blocks_info1(self):
 		return self.blocks_info(
 			['--help'],
-			['USAGE:','OPTIONS:'])
+			['USAGE:', 'OPTIONS:'])
 
 	def blocks_info2(self):
 		return self.blocks_info(
@@ -278,7 +278,7 @@ class CmdTestRegtest(CmdTestBase):
 			])
 
 	def blocks_info4(self):
-		n1,i1,o1,n2,i2,o2 = (2,1,3,6,3,9) if cfg.coin == 'BCH' else (2,1,4,6,3,12)
+		n1, i1, o1, n2, i2, o2 = (2, 1, 3, 6, 3, 9) if cfg.coin == 'BCH' else (2, 1, 4, 6, 3, 12)
 		return self.blocks_info(
 			['--miner-info', '--fields=all', '--stats=all', '+3'],
 			[
@@ -302,21 +302,21 @@ class CmdTestRegtest(CmdTestBase):
 			from collections import namedtuple
 
 			t = tool_api(cfg)
-			t.init_coin(self.proto.coin,self.proto.network)
+			t.init_coin(self.proto.coin, self.proto.network)
 			t.addrtype = 'compressed' if self.proto.coin == 'BCH' else 'bech32'
-			wp = namedtuple('wifaddrpair',['wif','addr'])
+			wp = namedtuple('wifaddrpair', ['wif', 'addr'])
 
 			def gen():
-				for n in range(0xfaceface,nPairs+0xfaceface):
+				for n in range(0xfaceface, nPairs+0xfaceface):
 					wif = t.hex2wif(f'{n:064x}')
 					yield wp( wif, t.wif2addr(wif) )
 
 			return list(gen())
 
-		def gen_fees(n_in,low,high):
+		def gen_fees(n_in, low, high):
 
 			# very approximate tx size estimation:
-			ibytes,wbytes,obytes = (148,0,34) if self.proto.coin == 'BCH' else (43,108,31)
+			ibytes, wbytes, obytes = (148, 0, 34) if self.proto.coin == 'BCH' else (43, 108, 31)
 			x = (ibytes + (wbytes//4) + (obytes * nPairs)) * self.proto.coin_amt.satoshi
 
 			n = n_in - 1
@@ -325,14 +325,20 @@ class CmdTestRegtest(CmdTestBase):
 			for i in range(n_in):
 				yield Decimal(low + (i/n)**6 * vmax) * x
 
-		async def do_tx(inputs,outputs,wif):
-			tx_hex = await r.rpc_call( 'createrawtransaction', inputs, outputs )
-			tx = await r.rpc_call( 'signrawtransactionwithkey', tx_hex, [wif], [], self.proto.sighash_type )
+		async def do_tx(inputs, outputs, wif):
+			tx_hex = await r.rpc_call('createrawtransaction', inputs, outputs)
+			if wif:
+				tx = await r.rpc_call(
+					'signrawtransactionwithkey',
+					tx_hex,
+					[wif],
+					[],
+					self.proto.sighash_type)
 			assert tx['complete']
 			return tx['hex']
 
 		async def do_tx1():
-			us = await r.rpc_call('listunspent',wallet='miner')
+			us = await r.rpc_call('listunspent', wallet='miner')
 			tx_input = us[7] # 25 BTC in coinbase -- us[0] could have < 25 BTC
 			fee = self.proto.coin_amt('0.001')
 			outputs = {p.addr: tx1_amt for p in pairs[:nTxs]}
@@ -342,7 +348,7 @@ class CmdTestRegtest(CmdTestBase):
 				outputs,
 				await r.miner_wif)
 
-		async def do_tx2(tx,pairno):
+		async def do_tx2(tx, pairno):
 			fee = self.proto.coin_amt(fees[pairno], from_decimal=True)
 			outputs = {p.addr: tx2_amt for p in pairs}
 			outputs.update({burn_addr: tx1_amt - (tx2_amt*len(pairs)) - fee})
@@ -353,10 +359,10 @@ class CmdTestRegtest(CmdTestBase):
 
 		async def do_txs(tx_in):
 			for pairno in range(nTxs):
-				tx_hex = await do_tx2(tx_in,pairno)
-				await r.rpc_call('sendrawtransaction',tx_hex)
+				tx_hex = await do_tx2(tx_in, pairno)
+				await r.rpc_call('sendrawtransaction', tx_hex)
 
-		self.spawn('',msg_only=True)
+		self.spawn('', msg_only=True)
 
 		r = self.regtest
 		nPairs = 100
@@ -372,20 +378,20 @@ class CmdTestRegtest(CmdTestBase):
 		tx1_hex = await do_tx1()
 
 		imsg('Relaying funding transaction')
-		await r.rpc_call('sendrawtransaction',tx1_hex)
+		await r.rpc_call('sendrawtransaction', tx1_hex)
 
 		imsg('Mining a block')
-		await r.generate(1,silent=True)
+		await r.generate(1, silent=True)
 
 		imsg('Generating fees for mempool transactions')
-		fees = list(gen_fees(nTxs,2,120))
+		fees = list(gen_fees(nTxs, 2, 120))
 
 		imsg(f'Creating and relaying {nTxs} mempool transactions with {nPairs} outputs each')
-		await do_txs(await r.rpc_call('decoderawtransaction',tx1_hex))
+		await do_txs(await r.rpc_call('decoderawtransaction', tx1_hex))
 
 		return 'ok'
 
-	def _feeview(self,args,expect_list=[]):
+	def _feeview(self, args, expect_list=[]):
 		t = self.spawn('mmnode-feeview', args1 + args)
 		if expect_list:
 			t.match_expect_list(expect_list)
@@ -395,7 +401,7 @@ class CmdTestRegtest(CmdTestBase):
 		return self._feeview([])
 
 	def feeview2(self):
-		return self._feeview(['--columns=40','--include-current'])
+		return self._feeview(['--columns=40', '--include-current'])
 
 	def feeview3(self):
 		return self._feeview(['--precision=6'])
@@ -404,7 +410,7 @@ class CmdTestRegtest(CmdTestBase):
 		return self._feeview(['--detail'])
 
 	def feeview5(self):
-		return self._feeview(['--show-empty','--log',f'--outdir={self.tmpdir}'])
+		return self._feeview(['--show-empty', '--log', f'--outdir={self.tmpdir}'])
 
 	def feeview6(self):
 		return self._feeview(['--ignore-below=1MB'])
@@ -414,13 +420,13 @@ class CmdTestRegtest(CmdTestBase):
 
 	async def feeview8(self):
 		imsg('Clearing mempool')
-		await self.regtest.generate(1,silent=True)
+		await self.regtest.generate(1, silent=True)
 		return self._feeview([])
 
 	def stop(self):
 		if cfg.no_daemon_stop:
-			self.spawn('',msg_only=True)
+			self.spawn('', msg_only=True)
 			msg_r('(leaving daemon running by user request)')
 			return 'ok'
 		else:
-			return self.spawn('mmgen-regtest',['stop'])
+			return self.spawn('mmgen-regtest', ['stop'])

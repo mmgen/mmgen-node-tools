@@ -353,7 +353,8 @@ class BlocksInfo:
 
 		nblocks, step = (add1, add2) if last is None else (None, add1)
 
-		if p.debug: msg(repr(self.range_data(first, last, from_tip, nblocks, step)))
+		if p.debug:
+			msg(repr(self.range_data(first, last, from_tip, nblocks, step)))
 
 		if nblocks:
 			if first is None:
@@ -643,9 +644,7 @@ class BlocksInfo:
 		values = {n: d.func(n) for n in fnames}
 		col1_w = max((len(l) for l in lbls.values()), default=0) + 2
 
-		print(d.spec_vals)
 		for v in d.spec_vals:
-			print(v)
 			if v.condition(values):
 				try:    idx = fnames.index(v.insert_after) + 1
 				except: idx = 0
