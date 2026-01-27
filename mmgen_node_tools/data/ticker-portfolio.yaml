@@ -3,4 +3,12 @@
 # Invoke `mmnode-ticker --list-ids` for a full list of supported asset IDs.
 btc-bitcoin:  '1.23456789'
 eth-ethereum: '2.3456789012'
-xmr-monero:   '4.5678901234'
+xmr-monero:   '4.567890123456'
+
+# Nested values are supported. Values for each asset will be summed.
+wallet2:
+  btc-bitcoin:  '0.12345678'
+  ltc-litecoin: '1.23456789'
+
+exchange1:
+  xmr-monero:  '12.345678901234'

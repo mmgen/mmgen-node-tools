@@ -720,15 +720,28 @@ def make_cfg(gcfg_arg):
 			+ usr_columns)
 
 	def get_portfolio_assets():
-		if cfg_in.portfolio and gcfg.portfolio:
-			ret = (parse_asset_id(e) for e in cfg_in.portfolio)
+		if portfolio:
+			ret = (parse_asset_id(e) for e in portfolio)
 			return tuple(e for e in ret if (not gcfg.btc) or e.symbol == 'BTC')
 		else:
 			return ()
 
-	def get_portfolio():
-		return tuple((k, Decimal(v)) for k, v in cfg_in.portfolio.items()
-			if (not gcfg.btc) or k == 'btc-bitcoin')
+	def parse_portfolio():
+		ret = {}
+		def add(k, v):
+			if gcfg.btc and k != 'btc-bitcoin':
+				return
+			if k in ret:
+				ret[k] += Decimal(v)
+			else:
+				ret[k] = Decimal(v)
+		for k, v in cfg_in.portfolio.items():
+			if isinstance(v, dict):
+				for k2, v2 in v.items():
+					add(k2, v2)
+			else:
+				add(k, v)
+		return ret
 
 	def parse_add_precision(arg):
 		if not arg:
@@ -834,7 +847,7 @@ def make_cfg(gcfg_arg):
 	proxy2 = get_proxy('proxy2')
 
 	portfolio = (
-		get_portfolio() if cfg_in.portfolio and get_cfg_var('portfolio') and not query
+		parse_portfolio() if cfg_in.portfolio and get_cfg_var('portfolio') and not query
 		else None)
 
 	if portfolio and asset_range:
@@ -928,13 +941,14 @@ class Ticker:
 				key = sort_params[code].key
 				sort_dfl = sort_params[code].sort_dfl
 				sort_func    = lambda row: data.get(row.id, {key: sort_dfl})[key]
-				pf_sort_func = lambda row: data.get(row[0], {key: sort_dfl})[key]
+				pf_sort_func = lambda row: data.get(row, {key: sort_dfl})[key]
 				for group in self.rows.keys():
 					if group not in self.hidden_groups:
 						self.rows[group] = sorted(self.rows[group], key=sort_func, reverse=reverse)
 				if cfg.portfolio:
-					cfg = cfg._replace(
-						portfolio = sorted(cfg.portfolio, key=pf_sort_func, reverse=reverse))
+					cfg = cfg._replace(portfolio =
+						{k: cfg.portfolio[k]
+							for k in sorted(cfg.portfolio, key=pf_sort_func, reverse=reverse)})
 
 			if cfg.pchg_unit:
 				self.pchg_data = self.data[self.get_id(cfg.pchg_unit)]
@@ -1061,7 +1075,7 @@ class Ticker:
 				yield blue('PORTFOLIO')
 				yield self.table_hdr
 				yield '-' * self.hl_wid
-				for sym, amt in cfg.portfolio:
+				for sym, amt in cfg.portfolio.items():
 					try:
 						yield self.fmt_row(self.data[sym], amt=amt)
 					except KeyError:
@@ -1086,10 +1100,9 @@ class Ticker:
 			self.format_last_updated_col()
 
 			if cfg.portfolio:
-				pf_dict = dict(cfg.portfolio)
-				self.prices['total'] = {col_id: sum(self.prices[row.id][col_id] * pf_dict[row.id]
+				self.prices['total'] = {col_id: sum(self.prices[row.id][col_id] * cfg.portfolio[row.id]
 					for row in self.rows
-						if row.id in pf_dict and row.id in data)
+						if row.id in cfg.portfolio and row.id in data)
 							for col_id in self.col_ids}
 
 			self.init_prec()
