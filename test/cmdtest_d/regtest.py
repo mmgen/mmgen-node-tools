@@ -117,6 +117,19 @@ class CmdTestRegtest(CmdTestBase):
 		self.use_bdb_wallet = self.bdb_wallet and self.proto.coin != 'BTC'
 		self.regtest = MMGenRegtest(cfg, self.proto.coin, bdb_wallet=self.use_bdb_wallet)
 
+	def blk(self, num):
+		return str({
+			'BTC': num,
+			'LTC': num + 272,
+			'BCH': num + 272}[self.proto.coin])
+
+	@property
+	def subsidy(self):
+		return str({
+			'BTC': 50,
+			'LTC': 12.5,
+			'BCH': 12.5}[self.proto.coin])
+
 	def setup(self):
 		stop_test_daemons(self.proto.network_id, force=True, remove_datadir=True)
 		from shutil import rmtree
@@ -156,7 +169,9 @@ class CmdTestRegtest(CmdTestBase):
 		return self.halving_calculator(['--help'], ['USAGE:'])
 
 	def halving_calculator2(self):
-		return self.halving_calculator([], ['Current block: 393', f'Current block subsidy: 12.5 {cfg.coin}'])
+		return self.halving_calculator(
+			[],
+			[f'Current block: {self.blk(121)}', f'Current block subsidy: {self.subsidy} {cfg.coin}'])
 
 	def halving_calculator3(self):
 		return self.halving_calculator(['--list'], ['33 4950', '0'])
@@ -188,33 +203,33 @@ class CmdTestRegtest(CmdTestBase):
 			[
 				f'Balance: 0.357 {cfg.coin}',
 				'2 unspent outputs in 2 blocks',
-				'394', '0.123',
-				'395', '0.234'
+				self.blk(122), '0.123',
+				self.blk(123), '0.234'
 			])
 
 	def addrbal_multiple(self):
 		return self.addrbal(
 			[self.addrs[1], self.addrs[0]],
 			[
-				'396', '0.345',
-				'394', '0.123',
-				'395', '0.234'
+				self.blk(124), '0.345',
+				self.blk(122), '0.123',
+				self.blk(123), '0.234'
 			])
 
 	def addrbal_multiple_tabular1(self):
 		return self.addrbal(
 			['--tabular', self.addrs[1], self.addrs[0]],
 			[
-				self.addrs[1] + ' 1 396', '0.345',
-				self.addrs[0] + ' 2 395', '0.357'
+				self.addrs[1] + f' 1 {self.blk(124)}', '0.345',
+				self.addrs[0] + f' 2 {self.blk(123)}', '0.357'
 			])
 
 	def addrbal_multiple_tabular2(self):
 		return self.addrbal(
 			['--tabular', '--first-block', self.addrs[1], self.addrs[0]],
 			[
-				self.addrs[1] + ' 1 396', '396', '0.345',
-				self.addrs[0] + ' 2 394', '395', '0.357'
+				self.addrs[1] + f' 1 {self.blk(124)}', self.blk(124), '0.345',
+				self.addrs[0] + f' 2 {self.blk(122)}', self.blk(123), '0.357'
 			])
 
 	def addrbal_nobal1(self):
@@ -231,7 +246,7 @@ class CmdTestRegtest(CmdTestBase):
 			[
 				'No balance',
 				'2 unspent outputs in 2 blocks',
-				'394', '0.123', '395', '0.234',
+				self.blk(122), '0.123', self.blk(123), '0.234',
 				'No balance'
 			])
 
@@ -240,7 +255,7 @@ class CmdTestRegtest(CmdTestBase):
 			['--tabular', self.addrs[4], self.addrs[0], self.addrs[3]],
 			[
 				self.addrs[4] + ' - - -',
-				self.addrs[0] + ' 2 395', '0.357',
+				self.addrs[0] + f' 2 {self.blk(123)}', '0.357',
 				self.addrs[3] + ' - - -',
 			])
 
@@ -249,7 +264,7 @@ class CmdTestRegtest(CmdTestBase):
 			['--tabular', '--first-block', self.addrs[4], self.addrs[0], self.addrs[3]],
 			[
 				self.addrs[4] + ' - - - -',
-				self.addrs[0] + ' 2 394', '395', '0.357',
+				self.addrs[0] + f' 2 {self.blk(122)}', self.blk(123), '0.357',
 				self.addrs[3] + ' - - - -',
 			])
 
@@ -266,14 +281,14 @@ class CmdTestRegtest(CmdTestBase):
 	def blocks_info2(self):
 		return self.blocks_info(
 			[],
-			['Current height: 396'])
+			[f'Current height: {self.blk(124)}'])
 
 	def blocks_info3(self):
 		return self.blocks_info(
 			['+100'],
 			[
-				'Range: 297-396',
-				'Current height: 396',
+				f'Range: {self.blk(25)}-{self.blk(124)}',
+				f'Current height: {self.blk(124)}',
 				'Next diff adjust: 2016'
 			])
 
@@ -290,7 +305,7 @@ class CmdTestRegtest(CmdTestBase):
 				f'nTx: {n2}',
 				f'Inputs: {i2}',
 				f'Outputs: {o2}',
-				'Current height: 396',
+				f'Current height: {self.blk(124)}',
 				'Next diff adjust: 2016'
 			])
 

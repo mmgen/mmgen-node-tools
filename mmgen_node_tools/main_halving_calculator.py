@@ -94,7 +94,7 @@ async def main():
 			f'Halving interval:          {proto.halving_interval:>7}\n'
 			f'Blocks since last halving: {proto.halving_interval - remaining:>7}\n'
 			f'Blocks until next halving: {remaining:>7}\n\n'
-			f'Current block subsidy:     {str(sub).rstrip("0")} {proto.coin}\n'
+			f'Current block subsidy:     {str(sub).rstrip("0").rstrip(".")} {proto.coin}\n'
 			f'Current block discovery interval (over last {sample_size} blocks): {bdr/60:0.2f} min\n\n'
 			f'Current clock time (UTC):  {date(clock_time)}\n'
 			f'Est. halving date (UTC):   {date(t_next)}\n'

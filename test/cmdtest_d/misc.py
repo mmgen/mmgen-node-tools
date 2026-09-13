@@ -174,7 +174,7 @@ class CmdTestScripts(CmdTestBase):
 
 	def ticker2(self):
 		t = self.ticker(cached_data=False)
-		ret = t.expect(['proxy host could not be resolved', 'unexpected keyword'])
+		ret = t.expect(['host was not resolved', 'unexpected keyword'])
 		t.exit_val = 1 if ret else 3
 		return t
 

@@ -119,11 +119,11 @@ def create_data(coin_amt, mempool):
 	size_key = 'size' if proto.coin == 'BCH' else 'vsize'
 	for tx in mempool.values():
 		fee = coin_amt(tx['fees']['base']).to_unit('satoshi')
-		size = tx[size_key]
-		for bracket in out:
-			if fee / size < bracket.top:
-				bracket.tx_bytes += size
-				break
+		if size := tx[size_key]:
+			for bracket in out:
+				if fee / size < bracket.top:
+					bracket.tx_bytes += size
+					break
 
 	# remove empty top brackets:
 	while out and out[-1].tx_bytes == 0:
