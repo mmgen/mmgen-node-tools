@@ -859,8 +859,13 @@ def make_cfg(gcfg_arg):
 	if portfolio and asset_range:
 		die(1, '--portfolio not supported in market cap view')
 
-	pchg_unit = (lambda s: parse_asset_id(s, require_label=False) if s else None)(
-		get_cfg_var('pchg_unit'))
+	def parse_id(s):
+		return parse_asset_id(s, require_label=False) if s else None
+
+	def make_adj(x):
+		return (100 + x) / 100 if x else 1
+
+	pchg_unit = parse_id(get_cfg_var('pchg_unit'))
 
 	cfg = cfg_tuple(
 		rows        = create_rows(),
@@ -868,7 +873,7 @@ def make_cfg(gcfg_arg):
 		usr_columns = usr_columns,
 		query       = query,
 		asset_range = asset_range,
-		adjust      = (lambda x: (100 + x) / 100 if x else 1)(Decimal(gcfg.adjust or 0)),
+		adjust      = make_adj(Decimal(gcfg.adjust or 0)),
 		clsname     = 'trading' if query else 'overview',
 		btc_only    = get_cfg_var('btc'),
 		add_prec    = parse_add_precision(get_cfg_var('add_precision')),
@@ -893,14 +898,16 @@ def make_cfg(gcfg_arg):
 
 def get_cfg_in():
 	ret = namedtuple('cfg_in_data', ['cfg', 'portfolio', 'cfg_file', 'portfolio_file'])
-	cfg_file, portfolio_file = (
-		[os.path.join(gcfg.data_dir_root, 'node_tools', fn)
-			for fn in (cfg_fn, portfolio_fn)])
-	cfg_data, portfolio_data = (
-		[yaml.safe_load(open(fn).read()) if os.path.exists(fn) else None
-			for fn in (cfg_file, portfolio_file)])
+	def load_yaml(fn):
+		if os.path.exists(fn):
+			with open(fn) as fh:
+				return yaml.safe_load(fh.read())
+	def make_path(fn):
+		return os.path.join(gcfg.data_dir_root, 'node_tools', fn)
+	cfg_file = make_path(cfg_fn)
+	portfolio_file = make_path(portfolio_fn)
 	return ret(
-		cfg = cfg_data or {
+		cfg = load_yaml(cfg_file) or {
 			'assets': {
 				'coin':      [ 'btc-bitcoin', 'eth-ethereum', 'xmr-monero' ],
 				             # gold futures, silver futures, Brent futures
@@ -910,7 +917,7 @@ def get_cfg_in():
 				             # Dow Jones Industrials, Nasdaq 100, S&P 500
 				'index':     [ '^dji', '^ixic', '^gspc' ]},
 			'proxy': 'http://vpn-gw:8118'},
-		portfolio      = portfolio_data,
+		portfolio      = load_yaml(portfolio_file),
 		cfg_file       = cfg_file,
 		portfolio_file = portfolio_file)
 

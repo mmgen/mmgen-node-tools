@@ -650,6 +650,8 @@ class BlocksInfo:
 				values[v.name] = v.code(values)
 
 		def gen():
+			def make_conv(x):
+				return self.fmt_funcs[x] if x else '{}'
 			for n, fname in enumerate(fnames):
 				spec_conv = d.spec_convs.get(fname)
 				yield (
@@ -658,8 +660,7 @@ class BlocksInfo:
 						wid = col1_w + (spec_conv.width_adj if spec_conv else 0),
 						suf = d.spec_sufs.get(fname) or ''),
 					fname,
-					spec_conv.conv if spec_conv else (
-						(lambda x: self.fmt_funcs[x] if x else '{}')(self.fields[fname].fmt_func)),
+					spec_conv.conv if spec_conv else make_conv(self.fields[fname].fmt_func),
 					values[fname])
 
 		return (sname, (d.hdr,) + tuple(gen()))
