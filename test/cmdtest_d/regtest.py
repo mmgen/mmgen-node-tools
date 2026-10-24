@@ -119,7 +119,7 @@ class CmdTestRegtest(CmdTestBase):
 
 	def blk(self, num):
 		return str({
-			'BTC': num,
+			'BTC': num + 1,
 			'LTC': num + 272,
 			'BCH': num + 272}[self.proto.coin])
 

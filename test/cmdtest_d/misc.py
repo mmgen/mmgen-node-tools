@@ -174,8 +174,11 @@ class CmdTestScripts(CmdTestBase):
 
 	def ticker2(self):
 		t = self.ticker(cached_data=False)
-		ret = t.expect(['host was not resolved', 'unexpected keyword'])
-		t.exit_val = 1 if ret else 3
+		ret = t.expect(['resolved', 'unexpected keyword', 'Resolving timed out'])
+		t.exit_val = {
+			0: 3,
+			1: 1,
+			2: 28}[ret]
 		return t
 
 	def ticker3(self):
