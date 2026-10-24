@@ -65,7 +65,9 @@ class DataSource:
 
 	@classmethod
 	def get_sources(cls, randomize=False):
-		g = random.sample(cls.source_groups, k=len(cls.source_groups)) if randomize else cls.source_groups
+		g = (
+			random.sample(cls.source_groups, k=len(cls.source_groups)) # nosec B311 # non-cryptographic use
+			if randomize else cls.source_groups)
 		return {k: v for a in g for k, v in a.items()}
 
 	class base:
@@ -73,7 +75,7 @@ class DataSource:
 		def fetch_delay(self):
 			global last_api_host
 			if not gcfg.testing and last_api_host and last_api_host != self.api_host:
-				delay = 1 + random.randrange(1, 5000) / 1000
+				delay = 1 + random.randrange(1, 5000) / 1000 # nosec B311 # non-cryptographic use
 				msg_r(f'Waiting {delay:.3f} seconds...')
 				time.sleep(delay)
 				msg('')

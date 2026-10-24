@@ -23,7 +23,7 @@ from mmgen.util import die
 
 from mmgen_node_tools.Util import do_system
 
-_alsa_config_file = '/tmp/alsa-config-' + os.path.basename(sys.argv[0])
+_alsa_config_file = f'/tmp/alsa-config-{os.path.basename(sys.argv[0])}' # nosec B108 # unused code
 _dvols = {'Master': 78, 'Speaker': 78, 'Headphone': 15, 'PCM': 190}
 
 def timespec2secs(ts):

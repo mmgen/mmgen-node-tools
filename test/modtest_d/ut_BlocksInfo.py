@@ -41,7 +41,6 @@ range_vecs = (
 	(f'{tip-1}-cur',   (tip-1,    tip,    None, None, None),  (tip-1,    tip,    None) ),
 	( '0-cur+3000',    (0,        tip,    None, None, 3000 ), (0,        tip,    list(range(0,tip+1,3000))) ),
 	( '+1440+144',     (tip-1439, tip,    None, 1440, 144 ),  (tip-1439, tip,    list(range(tip-1439,tip+1,144))) ),
-	( '+144*10+12*12', (tip-1439, tip,    None, 1440, 144 ),  (tip-1439, tip,    list(range(tip-1439,tip+1,144))) ),
 )
 
 full_set = ['aa','bbb','ccc_P2','ddddd','eeeeee','ffffffff','gg']

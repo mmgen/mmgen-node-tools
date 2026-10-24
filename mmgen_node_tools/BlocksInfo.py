@@ -62,14 +62,12 @@ class RangeParser:
 		return (None, None)
 
 	def parse_add(self):
-		m = re.match(r'\+([0-9*]+)(.*)', self.arg)
+		m = re.match(r'\+([0-9]+)(.*)', self.arg)
 		if m:
 			res, self.arg = (m[1], m[2])
-			if res.strip('*') != res:
-				die(1, f"'+{res}': malformed nBlocks specifier")
 			if len(res) > 30:
 				die(1, f"'+{res}': overly long nBlocks specifier")
-			return self.caller.check_nblocks(eval(res)) # res is only digits plus '*', so eval safe
+			return self.caller.check_nblocks(int(res))
 
 class BlocksInfo:
 
