@@ -320,12 +320,11 @@ class fake_data:
 				'inflight': [int(n)+830000 for n in blocks[iter_no]]}
 
 		def gen_data():
-			for iter_no in iterations_data:
+			for iter_no, data in iterations_data.items():
 				yield (
 					iter_no,
-					[make_peerinfo(peer_id,blocks,iter_no) for peer_id,blocks in blocks_data.items()
-						if peer_id in iterations_data[iter_no] ]
-				)
+					[make_peerinfo(peer_id, blocks, iter_no) for peer_id, blocks in blocks_data.items()
+						if peer_id in data])
 
 		address_data = dict(gen_address_data())
 		iterations_data = dict(gen_iterations_data())

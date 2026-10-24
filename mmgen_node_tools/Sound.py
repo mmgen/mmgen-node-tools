@@ -57,8 +57,8 @@ def play_sound(fn, vol, repeat_spec='', remote_host='', kill_flg=None, testing=F
 #		do_system('amixer -q set Headphone off')
 
 		vols = dict([(k, int(_dvols[k] * float(vol) / 100)) for k in _dvols])
-		for k in vols:
-			do_system('sudo amixer -q set %s %s' % (k, vols[k]), testing)
+		for k, v in vols.items():
+			do_system(f'sudo amixer -q set {k} {v}', testing)
 
 	fn = os.path.expanduser(fn)
 	cmd = (
