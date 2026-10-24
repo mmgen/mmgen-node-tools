@@ -115,7 +115,8 @@ class DataSource:
 			if use_cached_data:
 				data_type = 'json'
 				try:
-					data_in = open(self.json_fn).read()
+					with open(self.json_fn) as fh:
+						data_in = fh.read()
 				except FileNotFoundError:
 					die(1, f'Cannot use cached data, because {self.json_fn_disp} does not exist')
 			else:
@@ -557,13 +558,20 @@ def main():
 	def update_sample_file(usr_cfg_file):
 		usr_data = files('mmgen_node_tools').joinpath('data', os.path.basename(usr_cfg_file)).read_text()
 		sample_file = usr_cfg_file + '.sample'
-		sample_data = open(sample_file).read() if os.path.exists(sample_file) else None
+
+		if os.path.exists(sample_file):
+			with open(sample_file) as fh:
+				sample_data = fh.read()
+		else:
+			sample_data = None
+
 		if usr_data != sample_data:
 			os.makedirs(os.path.dirname(sample_file), exist_ok=True)
 			msg('{} {}'.format(
 				('Updating', 'Creating')[sample_data is None],
 				sample_file))
-			open(sample_file, 'w').write(usr_data)
+			with open(sample_file, 'w') as fh:
+				fh.write(usr_data)
 
 	try:
 		from importlib.resources import files # Python 3.9
