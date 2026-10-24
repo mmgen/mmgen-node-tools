@@ -18,7 +18,7 @@
 #  mmnode-ticker              OK
 #  mmnode-txfind              -
 
-all_tests='mod lint misc scripts btc btc_rt bch_rt ltc_rt'
+all_tests='mod lint ruff pylint bandit misc scripts btc btc_rt bch_rt ltc_rt'
 
 groups_desc="
 	default  - All tests minus the extra tests
@@ -30,19 +30,45 @@ groups_desc="
 
 init_groups() {
 	dfl_tests='mod misc scripts btc btc_rt bch_rt ltc_rt'
-	extra_tests='lint'
+	extra_tests='lint ruff pylint bandit'
 	noalt_tests='mod misc scripts btc btc_rt'
 	quick_tests='mod misc scripts btc btc_rt'
-	qskip_tests='lint bch_rt ltc_rt'
+	qskip_tests='lint ruff pylint bandit bch_rt ltc_rt'
 }
 
 init_tests() {
 
-	d_lint="code errors with static code analyzer"
+	d_ruff="code errors with Ruff static analyzer"
+	e_ruff="Error checking failed!"
+	t_ruff="
+		- $ruff check mmgen_node_tools
+		- $ruff check test
+	"
+
+	d_pylint="code errors with Pylint static analyzer"
+	e_pylint="Error checking failed!"
+	t_pylint="
+		- $pylint mmgen_node_tools
+		- $pylint test
+		- $pylint --disable=relative-beyond-top-level test/cmdtest_d
+	"
+
+	d_bandit="code vulnerabilities with Bandit static analyzer"
+	e_bandit="Error checking failed!"
+	t_bandit="
+		- $bandit setup.py
+		- $bandit mmgen_node_tools
+	"
+
+	d_lint="code errors and vulnerabilities with all available tools"
+	e_lint="Error checking failed!"
 	t_lint="
-		- $pylint --errors-only mmgen_node_tools
-		- $pylint --errors-only test
-		- $pylint --errors-only --disable=relative-beyond-top-level test/cmdtest_d
+		- # ruff
+		$t_ruff
+		- # bandit
+		$t_bandit
+		- # pylint
+		$t_pylint
 	"
 
 	d_mod="low-level subsystems"
