@@ -151,7 +151,7 @@ class BlocksInfo:
 	def parse_cslist(cls, uarg, full_set, dfl_set, desc):
 
 		def make_list(m, func):
-			groups_lc = [set(e.lower() for e in gi.split(',')) for gi in m.groups()]
+			groups_lc = [{e.lower() for e in gi.split(',')} for gi in m.groups()]
 			for group in groups_lc:
 				for e in group:
 					if e not in full_set_lc:
@@ -159,8 +159,8 @@ class BlocksInfo:
 			# display elements in order:
 			return [e for e in full_set if e.lower() in func(groups_lc)]
 
-		full_set_lc = set(e.lower() for e in full_set)
-		dfl_set_lc  = set(e.lower() for e in dfl_set)
+		full_set_lc = {e.lower() for e in full_set}
+		dfl_set_lc  = {e.lower() for e in dfl_set}
 		cspat = r'(\w+(?:,\w+)*)'
 
 		for pat, func in (

@@ -308,8 +308,9 @@ class fake_data:
 
 		def gen_blocks_data(iterations):
 			for peer,blocks_str in fake_data.blocks.items():
-				iter_strs = dict([s.lstrip().split(maxsplit=1) for s in blocks_str.strip().split('\n') if ' ' in s])
-				yield (peer,dict((i,iter_strs.get(i,'').split()) for i in iterations))
+				iter_strs = dict(s.lstrip().split(maxsplit=1)
+					for s in blocks_str.strip().split('\n') if ' ' in s)
+				yield (peer, {i: iter_strs.get(i,'').split() for i in iterations})
 
 		def make_peerinfo(peer_id,blocks,iter_no):
 			d = address_data[peer_id]
