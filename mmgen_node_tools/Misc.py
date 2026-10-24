@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-#
 # mmgen = Multi-Mode GENerator, a command-line cryptocurrency wallet
 # Copyright (C)2013-2022 The MMGen Project <mmgen@tuta.io>
 # Licensed under the GNU General Public License, Version 3:

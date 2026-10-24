@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-#
 # MMGen Node Tools, terminal-based programs for Bitcoin and forkcoin nodes
 # Copyright (C)2013-2025 The MMGen Project <mmgen@tuta.io>
 # Licensed under the GNU General Public License, Version 3:
