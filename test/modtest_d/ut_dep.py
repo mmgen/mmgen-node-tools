@@ -14,7 +14,7 @@ class unit_tests:
 
 	def yahooquery(self,name,ut):
 		try:
-			from yahooquery import Ticker # noqa F401
+			from yahooquery import Ticker # noqa: F401
 			return True
 		except ImportError:
 			imsg(yellow('Unable to import Ticker from yahooquery'))

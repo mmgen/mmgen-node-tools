@@ -955,7 +955,7 @@ class Ticker:
 				sort_dfl = sort_params[code].sort_dfl
 				sort_func    = lambda row: data.get(row.id, {key: sort_dfl})[key]
 				pf_sort_func = lambda row: data.get(row, {key: sort_dfl})[key]
-				for group in self.rows.keys(): # noqa SIM118
+				for group in self.rows.keys(): # noqa: SIM118
 					if group not in self.hidden_groups:
 						self.rows[group] = sorted(self.rows[group], key=sort_func, reverse=reverse)
 				if cfg.portfolio:

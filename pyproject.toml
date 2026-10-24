@@ -15,30 +15,24 @@ indent-style = "tab"
 
 [tool.ruff.lint]
 ignore = [
-	"E401", # multiple imports per line
-	"E701", # multiple statements per line
-	"E721", # use isinstance()
-	"E731", # lambda instead of def
-	"E402", # module import not top of file
-	"E722", # bare except
-	"E713", # membership 'not in'
-	"E741", # ambiguous variable name
+	"E722",    # bare except
+	"N999",    # Invalid module name
+	"I001",    # Import block is un-sorted or un-formatted
+	"RUF012",  # Mutable default value for class attribute
+	"SIM102",  # Use a single `if` statement instead of nested `if` statements
+	"UP032",   # Use f-string instead of `format` call
+	"B006",    # Do not use mutable data structures for argument defaults
+	"UP031",   # Use format specifiers instead of percent format
+	"BLE001",  # Do not catch blind exception: `Exception`
+	"S110",    # `try`-`except`-`pass` detected, consider logging the exception
+	"ISC004",  # Unparenthesized implicit string concatenation in collection
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"test/include/common.py"        = [ "F821" ]         # undefined name 'cfg'
-"test/misc/input_func.py"       = [ "F401" ]         # imported but unused
-"test/modtest_d/cashaddr.py"    = [ "F841" ]         # assigned to but never used
-"test/modtest_d/dep.py"         = [ "F401" ]         # imported but unused
-"test/modtest_d/testdep.py"     = [ "F401" ]         # imported but unused
-"test/modtest_d/obj.py"         = [ "F841" ]         # assigned to but never used
-"test/objtest_d/*"              = [ "F401" ]         # imported but unused
-"test/objattrtest_d/*"          = [ "F401" ]         # imported but unused
-"test/overlay/fakemods/*"       = [ "F403", "F405" ] # `import *` used
-"test/*.py"                     = [ "F401" ]         # imported but unused
-"test/colortest.py"             = [ "F403", "F405" ] # `import *` used
-"test/tooltest2.py"             = [ "F403", "F405" ] # `import *` used
-"test/overlay/tree/*"           = [ "ALL" ]
+"test/overlay/tree/*"        = [ "ALL" ]
+"test/*" = [
+	"SIM115",   # open() with context manager
+]
 
 [tool.pylint.format]
 indent-string = "\t"
