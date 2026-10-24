@@ -44,7 +44,7 @@ def get_url(url, gzip_ok=False, proxy=None, timeout=60, verbose=False, debug=Fal
 		print('get_url():')
 		print('  url', url)
 		print('  gzip_ok:', gzip_ok, 'proxy:', proxy, 'timeout:', timeout, 'verbose:', verbose)
-	import pycurl, io
+	import pycurl, io # pylint: disable=import-error # unused code
 	c = pycurl.Curl()
 	c_out = io.StringIO()
 	c.setopt(pycurl.WRITEFUNCTION, c_out.write)

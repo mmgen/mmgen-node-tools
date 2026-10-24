@@ -16,7 +16,7 @@ import os, shutil
 
 from ..include.common import cfg
 from .base import CmdTestBase
-from .httpd.ticker import TickerServer
+from .httpd.ticker import TickerServer # pylint: disable=import-error,no-name-in-module
 
 refdir = os.path.join('test','ref','ticker')
 

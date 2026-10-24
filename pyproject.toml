@@ -37,21 +37,22 @@ ignore = [
 [tool.pylint.format]
 indent-string = "\t"
 indent-after-paren = 2
-max-line-length = 110
+max-line-length = 106
 
 [tool.pylint.main]
-py-version = "3.7"
 recursive = true
+errors-only = true
 jobs = 0
+ignore = [
+	"data",
+]
 
 [tool.pylint."messages control"]
-ignored-modules = [
-	"mmgen.term",
-	"mmgen.color",
+disable = [
+	"no-method-argument",
+	"possibly-used-before-assignment",
+	"no-member",
 ]
-ignored-classes = [
-	"mmgen_node_tools.Ticker.Ticker.base",
-	"mmgen_node_tools.Ticker.DataSource.base",
-	"mmgen_node_tools.PeerBlocks.Display",
-	"mmgen_node_tools.PollDisplay.PollDisplay",
-]
+
+[tool.pylint.miscellaneous]
+notes = ["FIXME", "TODO", "DEBUG", "WIP", "NB"]
