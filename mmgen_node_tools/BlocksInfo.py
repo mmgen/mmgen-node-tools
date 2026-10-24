@@ -170,11 +170,10 @@ class BlocksInfo:
 				(rf'\+{cspat}\-{cspat}$', lambda g: (dfl_set_lc | g[0]) - g[1]),
 				(rf'\-{cspat}\+{cspat}$', lambda g: (dfl_set_lc - g[0]) | g[1]),
 				(rf'all\-{cspat}$',       lambda g: full_set_lc - g[0])):
-			m = re.match(pat, uarg, re.ASCII|re.IGNORECASE)
-			if m:
+			if m := re.match(pat, uarg, re.ASCII|re.IGNORECASE):
 				return make_list(m, func)
-		else:
-			die(1, f'{uarg}: invalid parameter')
+
+		die(1, f'{uarg}: invalid parameter')
 
 	def __init__(self, cfg, cmd_args, rpc):
 
@@ -490,7 +489,7 @@ class BlocksInfo:
 					case _:
 						assert False, f'{d}: invalid stats data'
 
-		foo, data = await res
+		_, data = await res
 		indent = '' if sname in self.noindent_stats else '  '
 		Msg('\n'.join(gen(data)))
 

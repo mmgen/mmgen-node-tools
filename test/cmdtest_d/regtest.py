@@ -12,10 +12,10 @@
 test.cmdtest_d.regtest: Regtest tests for the cmdtest.py test suite
 """
 
-import sys, os
+import sys
 from decimal import Decimal
 
-from mmgen.util import msg_r, die, gmsg
+from mmgen.util import msg_r, die
 from mmgen.protocol import init_proto
 from mmgen.proto.btc.regtest import MMGenRegtest
 

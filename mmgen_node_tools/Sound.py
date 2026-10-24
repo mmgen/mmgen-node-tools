@@ -32,7 +32,7 @@ def timespec2secs(ts):
 	pat = r'^([0-9]+)([smhd]*)$'
 	m = re.match(pat, ts)
 	if m is None:
-		die(2,"'%s': invalid time specifier" % ts)
+		die(2, f"'{ts}': invalid time specifier")
 	a, b = m.groups()
 	return int(a) * (mul[b] if b else 1)
 
@@ -53,17 +53,17 @@ def play_sound(fn, vol, repeat_spec='', remote_host='', kill_flg=None, testing=F
 	if not remote_host:
 		do_system('sudo alsactl store -f ' + _alsa_config_file)
 		for k in 'Master', 'Speaker', 'Headphone':
-			do_system(('sudo amixer -q set %s on' % k), testing)
+			do_system(f'sudo amixer -q set {k} on', testing)
 #		do_system('amixer -q set Headphone off')
 
-		vols = dict([(k, int(_dvols[k] * float(vol) / 100)) for k in _dvols])
+		vols = {k: int(_dvols[k] * float(vol) / 100) for k in _dvols}
 		for k, v in vols.items():
 			do_system(f'sudo amixer -q set {k} {v}', testing)
 
 	fn = os.path.expanduser(fn)
 	cmd = (
-		'aplay -q %s' % fn,
-		'ssh %s mmnode-play-sound -v%d %s' % (remote_host, vol, fn)
+		f'aplay -q {fn}',
+		f'ssh {remote_host} mmnode-play-sound -v{vol} {fn}'
 	)[bool(remote_host)]
 
 	if repeat_spec and kill_flg:

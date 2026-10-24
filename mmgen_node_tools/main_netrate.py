@@ -18,7 +18,7 @@
 mmnode-netrate: Bitcoin daemon network rate monitor
 """
 
-import sys, time
+import sys, asyncio
 
 from mmgen.cfg import Config
 from mmgen.util import async_run
@@ -56,7 +56,7 @@ async def main():
 					(r-rs)/(t-ts),
 					(s-ss)/(t-ts)))
 
-		time.sleep(2)
+		await asyncio.sleep(2)
 
 		if rs is not None:
 			sys.stderr.write('{}{}{}'.format(ERASE_LINE, CUR_UP, ERASE_LINE))

@@ -135,7 +135,7 @@ async def main(req_addrs):
 		if 'desc' in res['unspents'][0]:
 			import re
 			for unspent in sorted(res['unspents'], key=lambda x: x['height']):
-				addr = re.match('addr\((.*?)\)', unspent['desc'])[1]
+				addr = re.match(r'addr\((.*?)\)', unspent['desc'])[1]
 				addr_data[addr].append(unspent)
 		else:
 			from mmgen.proto.btc.tx.base import decodeScriptPubKey

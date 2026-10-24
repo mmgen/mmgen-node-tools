@@ -7,14 +7,14 @@ test.unit_tests_d.ut_dep: dependency unit tests for the MMGen Node Tools
   No data verification is performed.
 """
 
-from ..include.common import vmsg,imsg
+from ..include.common import imsg
 from mmgen.color import yellow
 
 class unit_tests:
 
 	def yahooquery(self,name,ut):
 		try:
-			from yahooquery import Ticker
+			from yahooquery import Ticker # noqa F401
 			return True
 		except ImportError:
 			imsg(yellow('Unable to import Ticker from yahooquery'))

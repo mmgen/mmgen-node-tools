@@ -115,7 +115,7 @@ class CmdTestScripts(CmdTestBase):
 		self.dests = {
 			'nt_datadir': os.path.join(cfg.data_dir_root, 'node_tools'),
 			'cache': self.tmpdir}
-		return super().__init__(cfg, trunner, cfgs, spawn)
+		super().__init__(cfg, trunner, cfgs, spawn)
 
 	def rm_file(self, fn, dest='nt_datadir'):
 		os.unlink(os.path.join(self.dests[dest], fn))
@@ -485,7 +485,7 @@ class CmdTestScripts(CmdTestBase):
 		t = self.ticker(
 			[],
 			[
-				'BITCOIN 23,250.77 1.00000000 \+0.00',
+				r'BITCOIN 23,250.77 1.00000000 \+0.00',
 				'US DOLLAR 1.00 0.00004301 -15.93',
 			],
 			add_opts = ['--widest', '--pchg-unit=btc', f'--sort={sort}'])
