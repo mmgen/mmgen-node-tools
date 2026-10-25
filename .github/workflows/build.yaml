@@ -1,0 +1,46 @@
+name: Build/Install
+
+run-name: Build and install
+
+on:
+  push:
+    branches:
+      - ci
+    paths:
+      - '.github/workflows/build.yaml'
+      - '.github/build-requirements.txt'
+      - 'pyproject.toml'
+      - 'setup.cfg'
+      - 'test/ref/**'
+      - 'cmds/**'
+      - '**.py'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.14"]
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Install Ubuntu package dependencies
+      run: |
+        sudo apt-get install libsecp256k1-dev
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+        cache-dependency-path: |
+          .github/build-requirements.txt
+          setup.cfg
+
+    - name: Build and install MMGen Node Tools
+      run: |
+        python3 -m pip install setuptools build wheel
+        python3 -m build --no-isolation --wheel
+        python3 -m pip install --user --break-system-packages dist/*.whl

@@ -1,0 +1,61 @@
+name: Check
+
+run-name: Check code with Ruff, Bandit and Pylint static analyzers
+
+on:
+  push:
+    branches:
+      - ci
+    paths:
+      - '.github/workflows/lint.yaml'
+      - '.github/build-requirements.txt'
+      - 'pyproject.toml'
+      - 'setup.cfg'
+      - 'test/ref/**'
+      - 'cmds/**'
+      - '**.py'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.14"]
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Install Ubuntu package dependencies
+      run: |
+        sudo apt-get install libsecp256k1-dev
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+        cache-dependency-path: |
+          .github/build-requirements.txt
+          setup.cfg
+
+    - name: Install Python dependencies
+      run: |
+        python3 -m pip install pyyaml yahooquery mmgen-wallet==16.3.0dev20
+        python3 -m pip install ruff pylint bandit
+
+    - name: Check the code with Ruff static analyzer
+      run: |
+        ruff check --output-format=github mmgen_node_tools
+        ruff check --output-format=github test
+
+    - name: Check code vulnerabilities with Bandit static analyzer
+      run: |
+        bandit --silent --recursive --severity-level=all --configfile=pyproject.toml setup.py
+        bandit --silent --recursive --severity-level=all --configfile=pyproject.toml mmgen_node_tools
+
+    - name: Check the code with Pylint static analyzer
+      env:
+        PYTHONPATH: .
+      run: |
+        pylint mmgen_node_tools

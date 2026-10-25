@@ -2,6 +2,9 @@
 
 ### Terminal-based utilities for Bitcoin and forkcoin full nodes
 
+[![Build/Install][bb_img]][bb]
+[![Check code with Ruff, Bandit and Pylint static analyzers][lb_img]][lb]
+
 Requires modules from the [MMGen online/offline cryptocurrency wallet][6].
 
 ## Install:
@@ -103,3 +106,7 @@ Donate:
 [6]: https://github.com/mmgen/mmgen-wallet/
 [7]: https://github.com/mmgen/mmgen-wallet/wiki/Install-MMGen-Wallet-on-Linux-or-macOS
 [8]: https://github.com/mmgen/mmgen-wallet/wiki/Install-MMGen-on-Microsoft-Windows#a_m
+[bb_img]: https://github.com/mmgen/mmgen-node-tools/actions/workflows/build.yaml/badge.svg
+[lb_img]: https://github.com/mmgen/mmgen-node-tools/actions/workflows/lint.yaml/badge.svg
+[bb]: https://github.com/mmgen/mmgen-node-tools/actions/workflows/build.yaml
+[lb]: https://github.com/mmgen/mmgen-node-tools/actions/workflows/lint.yaml
